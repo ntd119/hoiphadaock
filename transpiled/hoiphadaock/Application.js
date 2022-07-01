@@ -67,7 +67,7 @@
         // table model
 
         var tableModel = new qx.ui.table.model.Simple();
-        tableModel.setColumns(["ID", "Number 1", "Number 2", "Image"]);
+        tableModel.setColumns(["STT", "Number 1", "Number 2", "Image"]);
         var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
         var rowData = [];
 
@@ -115,4 +115,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656680576723
+//# sourceMappingURL=Application.js.map?dt=1656680662432

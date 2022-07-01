@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-01T13:02:55.859Z",
+      "mtime": "2022-07-01T13:04:21.731Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
