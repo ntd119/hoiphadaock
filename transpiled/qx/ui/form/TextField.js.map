@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "names": [
+    "qx",
+    "Bootstrap",
+    "executePendingDefers",
+    "$$dbClassInfo",
+    "Class",
+    "define",
+    "extend",
+    "ui",
+    "form",
+    "AbstractField",
+    "properties",
+    "appearance",
+    "refine",
+    "init",
+    "allowGrowY",
+    "allowShrinkY",
+    "members",
+    "_renderContentElement",
+    "innerHeight",
+    "element",
+    "core",
+    "Environment",
+    "get",
+    "parseInt",
+    "setStyles",
+    "_createContentElement",
+    "el",
+    "deviceType",
+    "addListener",
+    "_onKeyPress",
+    "evt",
+    "getKeyIdentifier",
+    "isFocusable",
+    "blur",
+    "setFocusable",
+    "destruct",
+    "getContentElement",
+    "removeListener",
+    "TextField"
+  ],
+  "sources": [
+    "C:/Users/admin/PycharmProjects/hoiphadaock/node_modules/@qooxdoo/framework/source/class/qx/ui/form/TextField.js"
+  ],
+  "sourcesContent": [
+    "/* ************************************************************************\n\n   qooxdoo - the new era of web development\n\n   http://qooxdoo.org\n\n   Copyright:\n     2004-2008 1&1 Internet AG, Germany, http://www.1und1.de\n\n   License:\n     MIT: https://opensource.org/licenses/MIT\n     See the LICENSE file in the project's top-level directory for details.\n\n   Authors:\n     * Sebastian Werner (wpbasti)\n     * Andreas Ecker (ecker)\n     * Fabian Jakobs (fjakobs)\n     * Adrian Olaru (adrianolaru)\n\n************************************************************************ */\n\n/**\n * The TextField is a single-line text input field.\n */\nqx.Class.define(\"qx.ui.form.TextField\", {\n  extend: qx.ui.form.AbstractField,\n\n  /*\n  *****************************************************************************\n     PROPERTIES\n  *****************************************************************************\n  */\n\n  properties: {\n    // overridden\n    appearance: {\n      refine: true,\n      init: \"textfield\"\n    },\n\n    // overridden\n    allowGrowY: {\n      refine: true,\n      init: false\n    },\n\n    // overridden\n    allowShrinkY: {\n      refine: true,\n      init: false\n    }\n  },\n\n  members: {\n    // overridden\n    _renderContentElement(innerHeight, element) {\n      if (\n        qx.core.Environment.get(\"engine.name\") == \"mshtml\" &&\n        (parseInt(qx.core.Environment.get(\"engine.version\"), 10) < 9 ||\n          qx.core.Environment.get(\"browser.documentmode\") < 9)\n      ) {\n        element.setStyles({\n          \"line-height\": innerHeight + \"px\"\n        });\n      }\n    },\n\n    // overridden\n    _createContentElement() {\n      var el = super._createContentElement();\n      var deviceType = qx.core.Environment.get(\"device.type\");\n      if (deviceType == \"tablet\" || deviceType == \"mobile\") {\n        el.addListener(\"keypress\", this._onKeyPress, this);\n      }\n\n      return el;\n    },\n\n    /**\n     * Close the virtual keyboard if the Enter key is pressed.\n     * @param evt {qx.event.type.KeySequence} the keypress event.\n     */\n    _onKeyPress(evt) {\n      // On return\n      if (evt.getKeyIdentifier() == \"Enter\") {\n        if (this.isFocusable()) {\n          this.blur();\n        } else {\n          // When the text field is not focusable, blur() will raise an exception on\n          // touch devices and the virtual keyboard is not closed. To work around this\n          // issue, we're enabling the focus just for the blur() call.\n          this.setFocusable(true);\n          this.blur();\n          this.setFocusable(false);\n        }\n      }\n    }\n  },\n\n  destruct() {\n    this.getContentElement().removeListener(\"keypress\", this._onKeyPress, this);\n  }\n});\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAAA,EAAE,CAACC,SAAH,CAAaC,oBAAb,CAAkCC,aAAlC;;EAAA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;;EAEA;AACA;AACA;EACAH,EAAE,CAACI,KAAH,CAASC,MAAT,CAAgB,sBAAhB,EAAwC;IACtCC,MAAM,EAAEN,EAAE,CAACO,EAAH,CAAMC,IAAN,CAAWC,aADmB;;IAGtC;AACF;AACA;AACA;AACA;IAEEC,UAAU,EAAE;MACV;MACAC,UAAU,EAAE;QACVC,MAAM,EAAE,IADE;QAEVC,IAAI,EAAE;MAFI,CAFF;MAOV;MACAC,UAAU,EAAE;QACVF,MAAM,EAAE,IADE;QAEVC,IAAI,EAAE;MAFI,CARF;MAaV;MACAE,YAAY,EAAE;QACZH,MAAM,EAAE,IADI;QAEZC,IAAI,EAAE;MAFM;IAdJ,CAT0B;IA6BtCG,OAAO,EAAE;MACP;MACAC,qBAFO,iCAEeC,WAFf,EAE4BC,OAF5B,EAEqC;QAC1C,IACEnB,EAAE,CAACoB,IAAH,CAAQC,WAAR,CAAoBC,GAApB,CAAwB,aAAxB,KAA0C,QAA1C,KACCC,QAAQ,CAACvB,EAAE,CAACoB,IAAH,CAAQC,WAAR,CAAoBC,GAApB,CAAwB,gBAAxB,CAAD,EAA4C,EAA5C,CAAR,GAA0D,CAA1D,IACCtB,EAAE,CAACoB,IAAH,CAAQC,WAAR,CAAoBC,GAApB,CAAwB,sBAAxB,IAAkD,CAFpD,CADF,EAIE;UACAH,OAAO,CAACK,SAAR,CAAkB;YAChB,eAAeN,WAAW,GAAG;UADb,CAAlB;QAGD;MACF,CAZM;MAcP;MACAO,qBAfO,mCAeiB;QACtB,IAAIC,EAAE,6EAAN;;QACA,IAAIC,UAAU,GAAG3B,EAAE,CAACoB,IAAH,CAAQC,WAAR,CAAoBC,GAApB,CAAwB,aAAxB,CAAjB;;QACA,IAAIK,UAAU,IAAI,QAAd,IAA0BA,UAAU,IAAI,QAA5C,EAAsD;UACpDD,EAAE,CAACE,WAAH,CAAe,UAAf,EAA2B,KAAKC,WAAhC,EAA6C,IAA7C;QACD;;QAED,OAAOH,EAAP;MACD,CAvBM;;MAyBP;AACJ;AACA;AACA;MACIG,WA7BO,uBA6BKC,GA7BL,EA6BU;QACf;QACA,IAAIA,GAAG,CAACC,gBAAJ,MAA0B,OAA9B,EAAuC;UACrC,IAAI,KAAKC,WAAL,EAAJ,EAAwB;YACtB,KAAKC,IAAL;UACD,CAFD,MAEO;YACL;YACA;YACA;YACA,KAAKC,YAAL,CAAkB,IAAlB;YACA,KAAKD,IAAL;YACA,KAAKC,YAAL,CAAkB,KAAlB;UACD;QACF;MACF;IA3CM,CA7B6B;IA2EtCC,QA3EsC,sBA2E3B;MACT,KAAKC,iBAAL,GAAyBC,cAAzB,CAAwC,UAAxC,EAAoD,KAAKR,WAAzD,EAAsE,IAAtE;IACD;EA7EqC,CAAxC;EAxBA7B,EAAE,CAACO,EAAH,CAAMC,IAAN,CAAW8B,SAAX,CAAqBnC,aAArB,GAAqCA,aAArC"
+}

@@ -1,0 +1,24 @@
+{
+  "version": 3,
+  "names": [
+    "qx",
+    "Bootstrap",
+    "executePendingDefers",
+    "$$dbClassInfo",
+    "Theme",
+    "define",
+    "extend",
+    "theme",
+    "indigo",
+    "Font",
+    "fonts",
+    "hoiphadaock"
+  ],
+  "sources": [
+    "C:/Users/admin/PycharmProjects/hoiphadaock/source/class/hoiphadaock/theme/Font.js"
+  ],
+  "sourcesContent": [
+    "/* ************************************************************************\n\n   Copyright: 2022 undefined\n\n   License: MIT license\n\n   Authors: undefined\n\n************************************************************************ */\n\nqx.Theme.define(\"hoiphadaock.theme.Font\",\n{\n  extend : qx.theme.indigo.Font,\n\n  fonts :\n  {\n  }\n});"
+  ],
+  "mappings": ";;;;;;;;;;;;EAAAA,EAAE,CAACC,SAAH,CAAaC,oBAAb,CAAkCC,aAAlC;;EAAA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;AACA;EAEAH,EAAE,CAACI,KAAH,CAASC,MAAT,CAAgB,wBAAhB,EACA;IACEC,MAAM,EAAGN,EAAE,CAACO,KAAH,CAASC,MAAT,CAAgBC,IAD3B;IAGEC,KAAK,EACL;EAJF,CADA;EAVAC,WAAW,CAACJ,KAAZ,CAAkBE,IAAlB,CAAuBN,aAAvB,GAAuCA,aAAvC"
+}
