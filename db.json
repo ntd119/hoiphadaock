@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-01T12:55:54.944Z",
+      "mtime": "2022-07-01T13:02:55.859Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -19,7 +19,6 @@
         },
         "qx.log.appender.Native": {},
         "qx.log.appender.Console": {},
-        "qx.ui.form.Button": {},
         "qx.ui.table.model.Simple": {},
         "qx.ui.table.Table": {},
         "qx.ui.table.selection.Model": {},
@@ -9392,6 +9391,12 @@
         },
         "qx.ui.core.LayoutItem": {
           "load": true
+        },
+        "qx.core.Object": {
+          "load": true
+        },
+        "qx.theme.manager.Meta": {
+          "load": true
         }
       },
       "extends": "qx.ui.form.MenuButton",
@@ -11197,6 +11202,12 @@
           "load": true
         },
         "qx.ui.core.LayoutItem": {
+          "load": true
+        },
+        "qx.core.Object": {
+          "load": true
+        },
+        "qx.theme.manager.Meta": {
           "load": true
         }
       },

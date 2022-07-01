@@ -20714,1559 +20714,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.core.Widget": {
-        "construct": true,
-        "require": true
-      },
-      "qx.ui.layout.Atom": {
-        "construct": true
-      },
-      "qx.ui.basic.Label": {},
-      "qx.ui.basic.Image": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * A multi-purpose widget, which combines a label with an icon.
-   *
-   * The intended purpose of qx.ui.basic.Atom is to easily align the common icon-text
-   * combination in different ways.
-   *
-   * This is useful for all types of buttons, tooltips, ...
-   *
-   * *Example*
-   *
-   * Here is a little example of how to use the widget.
-   *
-   * <pre class='javascript'>
-   *   var atom = new qx.ui.basic.Atom("Icon Right", "icon/32/actions/go-next.png");
-   *   this.getRoot().add(atom);
-   * </pre>
-   *
-   * This example creates an atom with the label "Icon Right" and an icon.
-   *
-   * *External Documentation*
-   *
-   * <a href='http://qooxdoo.org/docs/#desktop/widget/atom.md' target='_blank'>
-   * Documentation of this widget in the qooxdoo manual.</a>
-   *
-   *
-   * @childControl label {qx.ui.basic.Label} label part of the atom
-   * @childControl icon {qx.ui.basic.Image} icon part of the atom
-   */
-  qx.Class.define("qx.ui.basic.Atom", {
-    extend: qx.ui.core.Widget,
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-
-    /**
-     * @param label {String} Label to use
-     * @param icon {String?null} Icon to use
-     */
-    construct: function construct(label, icon) {
-      {
-        this.assertArgumentsCount(arguments, 0, 2);
-      }
-      qx.ui.core.Widget.constructor.call(this);
-
-      this._setLayout(new qx.ui.layout.Atom());
-
-      if (label != null) {
-        this.setLabel(label);
-      }
-
-      if (icon !== undefined) {
-        this.setIcon(icon);
-      }
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      // overridden
-      appearance: {
-        refine: true,
-        init: "atom"
-      },
-
-      /** The label/caption/text of the qx.ui.basic.Atom instance */
-      label: {
-        apply: "_applyLabel",
-        nullable: true,
-        check: "String",
-        event: "changeLabel"
-      },
-
-      /**
-       * Switches between rich HTML and text content. The text mode (<code>false</code>) supports
-       * advanced features like ellipsis when the available space is not
-       * enough. HTML mode (<code>true</code>) supports multi-line content and all the
-       * markup features of HTML content.
-       */
-      rich: {
-        check: "Boolean",
-        init: false,
-        apply: "_applyRich"
-      },
-
-      /** Any URI String supported by qx.ui.basic.Image to display an icon */
-      icon: {
-        check: "String",
-        apply: "_applyIcon",
-        nullable: true,
-        themeable: true,
-        event: "changeIcon"
-      },
-
-      /**
-       * The space between the icon and the label
-       */
-      gap: {
-        check: "Integer",
-        nullable: false,
-        event: "changeGap",
-        apply: "_applyGap",
-        themeable: true,
-        init: 4
-      },
-
-      /**
-       * Configure the visibility of the sub elements/widgets.
-       * Possible values: both, label, icon
-       */
-      show: {
-        init: "both",
-        check: ["both", "label", "icon"],
-        themeable: true,
-        inheritable: true,
-        apply: "_applyShow",
-        event: "changeShow"
-      },
-
-      /**
-       * The position of the icon in relation to the text.
-       * Only useful/needed if text and icon is configured and 'show' is configured as 'both' (default)
-       */
-      iconPosition: {
-        init: "left",
-        check: ["top", "right", "bottom", "left", "top-left", "bottom-left", "top-right", "bottom-right"],
-        themeable: true,
-        apply: "_applyIconPosition"
-      },
-
-      /**
-       * Whether the content should be rendered centrally when to much space
-       * is available. Enabling this property centers in both axis. The behavior
-       * when disabled of the centering depends on the {@link #iconPosition} property.
-       * If the icon position is <code>left</code> or <code>right</code>, the X axis
-       * is not centered, only the Y axis. If the icon position is <code>top</code>
-       * or <code>bottom</code>, the Y axis is not centered. In case of e.g. an
-       * icon position of <code>top-left</code> no axis is centered.
-       */
-      center: {
-        init: false,
-        check: "Boolean",
-        themeable: true,
-        apply: "_applyCenter"
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-
-    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
-    members: {
-      // overridden
-      _createChildControlImpl: function _createChildControlImpl(id, hash) {
-        var control;
-
-        switch (id) {
-          case "label":
-            control = new qx.ui.basic.Label(this.getLabel());
-            control.setAnonymous(true);
-            control.setRich(this.getRich());
-            control.setSelectable(this.getSelectable());
-
-            this._add(control);
-
-            if (this.getLabel() == null || this.getShow() === "icon") {
-              control.exclude();
-            }
-
-            break;
-
-          case "icon":
-            control = new qx.ui.basic.Image(this.getIcon());
-            control.setAnonymous(true);
-
-            this._addAt(control, 0);
-
-            if (this.getIcon() == null || this.getShow() === "label") {
-              control.exclude();
-            }
-
-            break;
-        }
-
-        return control || qx.ui.basic.Atom.superclass.prototype._createChildControlImpl.call(this, id);
-      },
-      // overridden
-
-      /**
-       * @lint ignoreReferenceField(_forwardStates)
-       */
-      _forwardStates: {
-        focused: true,
-        hovered: true
-      },
-
-      /**
-       * Updates the visibility of the label
-       */
-      _handleLabel: function _handleLabel() {
-        if (this.getLabel() == null || this.getShow() === "icon") {
-          this._excludeChildControl("label");
-        } else {
-          this._showChildControl("label");
-        }
-      },
-
-      /**
-       * Updates the visibility of the icon
-       */
-      _handleIcon: function _handleIcon() {
-        if (this.getIcon() == null || this.getShow() === "label") {
-          this._excludeChildControl("icon");
-        } else {
-          this._showChildControl("icon");
-        }
-      },
-      // property apply
-      _applyLabel: function _applyLabel(value, old) {
-        var label = this.getChildControl("label", true);
-
-        if (label) {
-          label.setValue(value);
-        }
-
-        this._handleLabel();
-      },
-      // property apply
-      _applyRich: function _applyRich(value, old) {
-        var label = this.getChildControl("label", true);
-
-        if (label) {
-          label.setRich(value);
-        }
-      },
-      // property apply
-      _applyIcon: function _applyIcon(value, old) {
-        var icon = this.getChildControl("icon", true);
-
-        if (icon) {
-          icon.setSource(value);
-        }
-
-        this._handleIcon();
-      },
-      // property apply
-      _applyGap: function _applyGap(value, old) {
-        this._getLayout().setGap(value);
-      },
-      // property apply
-      _applyShow: function _applyShow(value, old) {
-        this._handleLabel();
-
-        this._handleIcon();
-      },
-      // property apply
-      _applyIconPosition: function _applyIconPosition(value, old) {
-        this._getLayout().setIconPosition(value);
-      },
-      // property apply
-      _applyCenter: function _applyCenter(value, old) {
-        this._getLayout().setCenter(value);
-      },
-      // overridden
-      _applySelectable: function _applySelectable(value, old) {
-        qx.ui.basic.Atom.superclass.prototype._applySelectable.call(this, value, old);
-
-        var label = this.getChildControl("label", true);
-
-        if (label) {
-          this.getChildControl("label").setSelectable(value);
-        }
-      }
-    }
-  });
-  qx.ui.basic.Atom.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Mixin": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {},
-      "qx.util.PropertyUtil": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "qx.command.bindEnabled": {
-          "load": true
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-       * Martin Wittemann (martinwittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * This mixin is included by all widgets, which support an 'execute' like
-   * buttons or menu entries.
-   */
-  qx.Mixin.define("qx.ui.core.MExecutable", {
-    /*
-    *****************************************************************************
-       EVENTS
-    *****************************************************************************
-    */
-    events: {
-      /** Fired if the {@link #execute} method is invoked.*/
-      execute: "qx.event.type.Event"
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      /**
-       * A command called if the {@link #execute} method is called, e.g. on a
-       * button tap.
-       */
-      command: {
-        check: "qx.ui.command.Command",
-        apply: "_applyCommand",
-        event: "changeCommand",
-        nullable: true
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      __executableBindingIds__P_20_0: null,
-      __semaphore__P_20_1: false,
-      __executeListenerId__P_20_2: null,
-
-      /**
-       * @type {Map} Set of properties, which will by synced from the command to the
-       *    including widget
-       *
-       * @lint ignoreReferenceField(_bindableProperties)
-       */
-      _bindableProperties: qx.core.Environment.select("qx.command.bindEnabled", {
-        "true": ["enabled", "label", "icon", "toolTipText", "value", "menu"],
-        "false": ["label", "icon", "toolTipText", "value", "menu"]
-      }),
-
-      /**
-       * Initiate the execute action.
-       */
-      execute: function execute() {
-        var cmd = this.getCommand();
-
-        if (cmd) {
-          if (this.__semaphore__P_20_1) {
-            this.__semaphore__P_20_1 = false;
-          } else {
-            this.__semaphore__P_20_1 = true;
-            cmd.execute(this);
-          }
-        }
-
-        this.fireEvent("execute");
-      },
-
-      /**
-       * Handler for the execute event of the command.
-       *
-       * @param e {qx.event.type.Event} The execute event of the command.
-       */
-      __onCommandExecute__P_20_3: function __onCommandExecute__P_20_3(e) {
-        if (this.isEnabled()) {
-          if (this.__semaphore__P_20_1) {
-            this.__semaphore__P_20_1 = false;
-            return;
-          }
-
-          if (this.isEnabled()) {
-            this.__semaphore__P_20_1 = true;
-            this.execute();
-          }
-        }
-      },
-      // property apply
-      _applyCommand: function _applyCommand(value, old) {
-        // execute forwarding
-        if (old != null) {
-          old.removeListenerById(this.__executeListenerId__P_20_2);
-        }
-
-        if (value != null) {
-          this.__executeListenerId__P_20_2 = value.addListener("execute", this.__onCommandExecute__P_20_3, this);
-        } // binding stuff
-
-
-        var ids = this.__executableBindingIds__P_20_0;
-
-        if (ids == null) {
-          this.__executableBindingIds__P_20_0 = ids = {};
-        }
-
-        var selfPropertyValue;
-
-        for (var i = 0; i < this._bindableProperties.length; i++) {
-          var property = this._bindableProperties[i]; // remove the old binding
-
-          if (old != null && !old.isDisposed() && ids[property] != null) {
-            old.removeBinding(ids[property]);
-            ids[property] = null;
-          } // add the new binding
-
-
-          if (value != null && qx.Class.hasProperty(this.constructor, property)) {
-            // handle the init value (don't sync the initial null)
-            var cmdPropertyValue = value.get(property);
-
-            if (cmdPropertyValue == null) {
-              selfPropertyValue = this.get(property); // check also for themed values [BUG #5906]
-
-              if (selfPropertyValue == null) {
-                // update the appearance to make sure every themed property is up to date
-                this.$$resyncNeeded = true;
-                this.syncAppearance();
-                selfPropertyValue = qx.util.PropertyUtil.getThemeValue(this, property);
-              }
-            } else {
-              // Reset the self property value [BUG #4534]
-              selfPropertyValue = null;
-            } // set up the binding
-
-
-            ids[property] = value.bind(property, this, property); // reapply the former value
-
-            if (selfPropertyValue) {
-              this.set(property, selfPropertyValue);
-            }
-          }
-        }
-      }
-    },
-    destruct: function destruct() {
-      this._applyCommand(null, this.getCommand());
-
-      this.__executableBindingIds__P_20_0 = null;
-    }
-  });
-  qx.ui.core.MExecutable.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Interface": {
-        "usage": "dynamic",
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Martin Wittemann (martinwittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * Form interface for all form widgets which are executable in some way. This
-   * could be a button for example.
-   */
-  qx.Interface.define("qx.ui.form.IExecutable", {
-    /*
-    *****************************************************************************
-       EVENTS
-    *****************************************************************************
-    */
-    events: {
-      /**
-       * Fired when the widget is executed. Sets the "data" property of the
-       * event to the object that issued the command.
-       */
-      execute: "qx.event.type.Data"
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /*
-      ---------------------------------------------------------------------------
-        COMMAND PROPERTY
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Set the command of this executable.
-       *
-       * @param command {qx.ui.command.Command} The command.
-       */
-      setCommand: function setCommand(command) {
-        return arguments.length == 1;
-      },
-
-      /**
-       * Return the current set command of this executable.
-       *
-       * @return {qx.ui.command.Command} The current set command.
-       */
-      getCommand: function getCommand() {},
-
-      /**
-       * Fire the "execute" event on the command.
-       */
-      execute: function execute() {}
-    }
-  });
-  qx.ui.form.IExecutable.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.Object": {
-        "require": true
-      },
-      "qx.ui.core.LayoutItem": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "qx.debug": {
-          "load": true
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Base class for all layout managers.
-   *
-   * Custom layout manager must derive from
-   * this class and implement the methods {@link #invalidateLayoutCache},
-   * {@link #renderLayout} and {@link #getSizeHint}.
-   */
-  qx.Class.define("qx.ui.layout.Abstract", {
-    type: "abstract",
-    extend: qx.core.Object,
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /** @type {Map} The cached size hint */
-      __sizeHint__P_79_0: null,
-
-      /** @type {Boolean} Whether the children cache is valid. This field is protected
-       *    because sub classes must be able to access it quickly.
-       */
-      _invalidChildrenCache: null,
-
-      /** @type {qx.ui.core.Widget} The connected widget */
-      __widget__P_79_1: null,
-
-      /*
-      ---------------------------------------------------------------------------
-        LAYOUT INTERFACE
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Invalidate all layout relevant caches. Automatically deletes the size hint.
-       *
-       * @abstract
-       */
-      invalidateLayoutCache: function invalidateLayoutCache() {
-        this.__sizeHint__P_79_0 = null;
-      },
-
-      /**
-       * Applies the children layout.
-       *
-       * @abstract
-       * @param availWidth {Integer} Final width available for the content (in pixel)
-       * @param availHeight {Integer} Final height available for the content (in pixel)
-       * @param padding {Map} Map containing the padding values. Keys:
-       * <code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>
-       */
-      renderLayout: function renderLayout(availWidth, availHeight, padding) {
-        this.warn("Missing renderLayout() implementation!");
-      },
-
-      /**
-       * Computes the layout dimensions and possible ranges of these.
-       *
-       * @return {Map|null} The map with the preferred width/height and the allowed
-       *   minimum and maximum values in cases where shrinking or growing
-       *   is required. Can also return <code>null</code> when this detection
-       *   is not supported by the layout.
-       */
-      getSizeHint: function getSizeHint() {
-        if (this.__sizeHint__P_79_0) {
-          return this.__sizeHint__P_79_0;
-        }
-
-        return this.__sizeHint__P_79_0 = this._computeSizeHint();
-      },
-
-      /**
-       * Whether the layout manager supports height for width.
-       *
-       * @return {Boolean} Whether the layout manager supports height for width
-       */
-      hasHeightForWidth: function hasHeightForWidth() {
-        return false;
-      },
-
-      /**
-       * If layout wants to trade height for width it has to implement this
-       * method and return the preferred height if it is resized to
-       * the given width. This function returns <code>null</code> if the item
-       * do not support height for width.
-       *
-       * @param width {Integer} The computed width
-       * @return {Integer} The desired height
-       */
-      getHeightForWidth: function getHeightForWidth(width) {
-        this.warn("Missing getHeightForWidth() implementation!");
-        return null;
-      },
-
-      /**
-       * This computes the size hint of the layout and returns it.
-       *
-       * @abstract
-       * @return {Map} The size hint.
-       */
-      _computeSizeHint: function _computeSizeHint() {
-        return null;
-      },
-
-      /**
-       * This method is called, on each child "add" and "remove" action and
-       * whenever the layout data of a child is changed. The method should be used
-       * to clear any children relevant cached data.
-       *
-       */
-      invalidateChildrenCache: function invalidateChildrenCache() {
-        this._invalidChildrenCache = true;
-      },
-
-      /**
-       * Verifies the value of a layout property.
-       *
-       * Note: This method is only available in the debug builds.
-       *
-       * @signature function(item, name, value)
-       * @param item {Object} The affected layout item
-       * @param name {Object} Name of the layout property
-       * @param value {Object} Value of the layout property
-       */
-      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
-        "true": function _true(item, name, value) {// empty implementation
-        },
-        "false": null
-      }),
-
-      /**
-       * Remove all currently visible separators
-       */
-      _clearSeparators: function _clearSeparators() {
-        // It may be that the widget do not implement clearSeparators which is especially true
-        // when it do not inherit from LayoutItem.
-        var widget = this.__widget__P_79_1;
-
-        if (widget instanceof qx.ui.core.LayoutItem) {
-          widget.clearSeparators();
-        }
-      },
-
-      /**
-       * Renders a separator between two children
-       *
-       * @param separator {String|qx.ui.decoration.IDecorator} The separator to render
-       * @param bounds {Map} Contains the left and top coordinate and the width and height
-       *    of the separator to render.
-       */
-      _renderSeparator: function _renderSeparator(separator, bounds) {
-        this.__widget__P_79_1.renderSeparator(separator, bounds);
-      },
-
-      /**
-       * This method is called by the widget to connect the widget with the layout.
-       *
-       * @param widget {qx.ui.core.Widget} The widget to connect to.
-       */
-      connectToWidget: function connectToWidget(widget) {
-        if (widget && this.__widget__P_79_1) {
-          throw new Error("It is not possible to manually set the connected widget.");
-        }
-
-        this.__widget__P_79_1 = widget; // Invalidate cache
-
-        this.invalidateChildrenCache();
-      },
-
-      /**
-       * Return the widget that is this layout is responsible for.
-       *
-       * @return {qx.ui.core.Widget} The widget connected to this layout.
-       */
-      _getWidget: function _getWidget() {
-        return this.__widget__P_79_1;
-      },
-
-      /**
-       * Indicate that the layout has layout changed and propagate this information
-       * up the widget hierarchy.
-       *
-       * Also a generic property apply method for all layout relevant properties.
-       */
-      _applyLayoutChange: function _applyLayoutChange() {
-        if (this.__widget__P_79_1) {
-          this.__widget__P_79_1.scheduleLayoutUpdate();
-        }
-      },
-
-      /**
-       * Returns the list of all layout relevant children.
-       *
-       * @return {Array} List of layout relevant children.
-       */
-      _getLayoutChildren: function _getLayoutChildren() {
-        return this.__widget__P_79_1.getLayoutChildren();
-      }
-    },
-
-    /*
-    *****************************************************************************
-       DESTRUCT
-    *****************************************************************************
-    */
-    destruct: function destruct() {
-      this.__widget__P_79_1 = this.__sizeHint__P_79_0 = null;
-    }
-  });
-  qx.ui.layout.Abstract.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.layout.Abstract": {
-        "require": true
-      },
-      "qx.ui.layout.Util": {},
-      "qx.ui.basic.Label": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "qx.debug": {
-          "load": true
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * A atom layout. Used to place an image and label in relation
-   * to each other. Useful to create buttons, list items, etc.
-   *
-   * *Features*
-   *
-   * * Gap between icon and text (using {@link #gap})
-   * * Vertical and horizontal mode (using {@link #iconPosition})
-   * * Sorting options to place first child on top/left or bottom/right (using {@link #iconPosition})
-   * * Automatically middles/centers content to the available space
-   * * Auto-sizing
-   * * Supports more than two children (will be processed the same way like the previous ones)
-   *
-   * *Item Properties*
-   *
-   * None
-   *
-   * *Notes*
-   *
-   * * Does not support margins and alignment of {@link qx.ui.core.LayoutItem}.
-   *
-   * *Alternative Names*
-   *
-   * None
-   */
-  qx.Class.define("qx.ui.layout.Atom", {
-    extend: qx.ui.layout.Abstract,
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      /** The gap between the icon and the text */
-      gap: {
-        check: "Integer",
-        init: 4,
-        apply: "_applyLayoutChange"
-      },
-
-      /** The position of the icon in relation to the text */
-      iconPosition: {
-        check: ["left", "top", "right", "bottom", "top-left", "bottom-left", "top-right", "bottom-right"],
-        init: "left",
-        apply: "_applyLayoutChange"
-      },
-
-      /**
-       * Whether the content should be rendered centrally when to much space
-       * is available. Enabling this property centers in both axis. The behavior
-       * when disabled of the centering depends on the {@link #iconPosition} property.
-       * If the icon position is <code>left</code> or <code>right</code>, the X axis
-       * is not centered, only the Y axis. If the icon position is <code>top</code>
-       * or <code>bottom</code>, the Y axis is not centered. In case of e.g. an
-       * icon position of <code>top-left</code> no axis is centered.
-       */
-      center: {
-        check: "Boolean",
-        init: false,
-        apply: "_applyLayoutChange"
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /*
-      ---------------------------------------------------------------------------
-        LAYOUT INTERFACE
-      ---------------------------------------------------------------------------
-      */
-      // overridden
-      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
-        "true": function _true(item, name, value) {
-          this.assert(false, "The property '" + name + "' is not supported by the Atom layout!");
-        },
-        "false": null
-      }),
-      // overridden
-      renderLayout: function renderLayout(availWidth, availHeight, padding) {
-        var left = padding.left;
-        var top = padding.top;
-        var Util = qx.ui.layout.Util;
-        var iconPosition = this.getIconPosition();
-
-        var children = this._getLayoutChildren();
-
-        var length = children.length;
-        var width, height;
-        var child, hint;
-        var gap = this.getGap();
-        var center = this.getCenter(); // reverse ordering
-
-        var allowedPositions = ["bottom", "right", "top-right", "bottom-right"];
-
-        if (allowedPositions.indexOf(iconPosition) != -1) {
-          var start = length - 1;
-          var end = -1;
-          var increment = -1;
-        } else {
-          var start = 0;
-          var end = length;
-          var increment = 1;
-        } // vertical
-
-
-        if (iconPosition == "top" || iconPosition == "bottom") {
-          if (center) {
-            var allocatedHeight = 0;
-
-            for (var i = start; i != end; i += increment) {
-              height = children[i].getSizeHint().height;
-
-              if (height > 0) {
-                allocatedHeight += height;
-
-                if (i != start) {
-                  allocatedHeight += gap;
-                }
-              }
-            }
-
-            top += Math.round((availHeight - allocatedHeight) / 2);
-          }
-
-          var childTop = top;
-
-          for (var i = start; i != end; i += increment) {
-            child = children[i];
-            hint = child.getSizeHint();
-            width = Math.min(hint.maxWidth, Math.max(availWidth, hint.minWidth));
-            height = hint.height;
-            left = Util.computeHorizontalAlignOffset("center", width, availWidth) + padding.left;
-            child.renderLayout(left, childTop, width, height); // Ignore pseudo invisible elements
-
-            if (height > 0) {
-              childTop = top + height + gap;
-            }
-          }
-        } // horizontal
-        // in this way it also supports shrinking of the first label
-        else {
-          var remainingWidth = availWidth;
-          var shrinkTarget = null;
-          var count = 0;
-
-          for (var i = start; i != end; i += increment) {
-            child = children[i];
-            width = child.getSizeHint().width;
-
-            if (width > 0) {
-              if (!shrinkTarget && child instanceof qx.ui.basic.Label) {
-                shrinkTarget = child;
-              } else {
-                remainingWidth -= width;
-              }
-
-              count++;
-            }
-          }
-
-          if (count > 1) {
-            var gapSum = (count - 1) * gap;
-            remainingWidth -= gapSum;
-          }
-
-          if (shrinkTarget) {
-            var hint = shrinkTarget.getSizeHint();
-            var shrinkTargetWidth = Math.max(hint.minWidth, Math.min(remainingWidth, hint.maxWidth));
-            remainingWidth -= shrinkTargetWidth;
-          }
-
-          if (center && remainingWidth > 0) {
-            left += Math.round(remainingWidth / 2);
-          }
-
-          for (var i = start; i != end; i += increment) {
-            child = children[i];
-            hint = child.getSizeHint();
-            height = Math.min(hint.maxHeight, Math.max(availHeight, hint.minHeight));
-
-            if (child === shrinkTarget) {
-              width = shrinkTargetWidth;
-            } else {
-              width = hint.width;
-            }
-
-            var align = "middle";
-
-            if (iconPosition == "top-left" || iconPosition == "top-right") {
-              align = "top";
-            } else if (iconPosition == "bottom-left" || iconPosition == "bottom-right") {
-              align = "bottom";
-            }
-
-            var childTop = top + Util.computeVerticalAlignOffset(align, hint.height, availHeight);
-            child.renderLayout(left, childTop, width, height); // Ignore pseudo invisible childs for gap e.g.
-            // empty text or unavailable images
-
-            if (width > 0) {
-              left += width + gap;
-            }
-          }
-        }
-      },
-      // overridden
-      _computeSizeHint: function _computeSizeHint() {
-        var children = this._getLayoutChildren();
-
-        var length = children.length;
-        var hint, result; // Fast path for only one child
-
-        if (length === 1) {
-          var hint = children[0].getSizeHint(); // Work on a copy, but do not respect max
-          // values as a Atom can be rendered bigger
-          // than its content.
-
-          result = {
-            width: hint.width,
-            height: hint.height,
-            minWidth: hint.minWidth,
-            minHeight: hint.minHeight
-          };
-        } else {
-          var minWidth = 0,
-              width = 0;
-          var minHeight = 0,
-              height = 0;
-          var iconPosition = this.getIconPosition();
-          var gap = this.getGap();
-
-          if (iconPosition === "top" || iconPosition === "bottom") {
-            var count = 0;
-
-            for (var i = 0; i < length; i++) {
-              hint = children[i].getSizeHint(); // Max of widths
-
-              width = Math.max(width, hint.width);
-              minWidth = Math.max(minWidth, hint.minWidth); // Sum of heights
-
-              if (hint.height > 0) {
-                height += hint.height;
-                minHeight += hint.minHeight;
-                count++;
-              }
-            }
-
-            if (count > 1) {
-              var gapSum = (count - 1) * gap;
-              height += gapSum;
-              minHeight += gapSum;
-            }
-          } else {
-            var count = 0;
-
-            for (var i = 0; i < length; i++) {
-              hint = children[i].getSizeHint(); // Max of heights
-
-              height = Math.max(height, hint.height);
-              minHeight = Math.max(minHeight, hint.minHeight); // Sum of widths
-
-              if (hint.width > 0) {
-                width += hint.width;
-                minWidth += hint.minWidth;
-                count++;
-              }
-            }
-
-            if (count > 1) {
-              var gapSum = (count - 1) * gap;
-              width += gapSum;
-              minWidth += gapSum;
-            }
-          } // Build hint
-
-
-          result = {
-            minWidth: minWidth,
-            width: width,
-            minHeight: minHeight,
-            height: height
-          };
-        }
-
-        return result;
-      }
-    }
-  });
-  qx.ui.layout.Atom.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.basic.Atom": {
-        "construct": true,
-        "require": true
-      },
-      "qx.ui.core.MExecutable": {
-        "require": true
-      },
-      "qx.ui.form.IExecutable": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * A Button widget which supports various states and allows it to be used
-   * via the mouse, touch, pen and the keyboard.
-   *
-   * If the user presses the button by clicking on it, or the <code>Enter</code> or
-   * <code>Space</code> keys, the button fires an {@link qx.ui.core.MExecutable#execute} event.
-   *
-   * If the {@link qx.ui.core.MExecutable#command} property is set, the
-   * command is executed as well.
-   *
-   * *Example*
-   *
-   * Here is a little example of how to use the widget.
-   *
-   * <pre class='javascript'>
-   *   var button = new qx.ui.form.Button("Hello World");
-   *
-   *   button.addListener("execute", function(e) {
-   *     alert("Button was clicked");
-   *   }, this);
-   *
-   *   this.getRoot().add(button);
-   * </pre>
-   *
-   * This example creates a button with the label "Hello World" and attaches an
-   * event listener to the {@link #execute} event.
-   *
-   * *External Documentation*
-   *
-   * <a href='http://qooxdoo.org/docs/#desktop/widget/button.md' target='_blank'>
-   * Documentation of this widget in the qooxdoo manual.</a>
-   */
-  qx.Class.define("qx.ui.form.Button", {
-    extend: qx.ui.basic.Atom,
-    include: [qx.ui.core.MExecutable],
-    implement: [qx.ui.form.IExecutable],
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-
-    /**
-     * @param label {String} label of the atom
-     * @param icon {String?null} Icon URL of the atom
-     * @param command {qx.ui.command.Command?null} Command instance to connect with
-     */
-    construct: function construct(label, icon, command) {
-      qx.ui.basic.Atom.constructor.call(this, label, icon);
-
-      if (command != null) {
-        this.setCommand(command);
-      } // ARIA attrs
-
-
-      this.getContentElement().setAttribute("role", "button"); // Add listeners
-
-      this.addListener("pointerover", this._onPointerOver);
-      this.addListener("pointerout", this._onPointerOut);
-      this.addListener("pointerdown", this._onPointerDown);
-      this.addListener("pointerup", this._onPointerUp);
-      this.addListener("tap", this._onTap);
-      this.addListener("keydown", this._onKeyDown);
-      this.addListener("keyup", this._onKeyUp); // Stop events
-
-      this.addListener("dblclick", function (e) {
-        e.stopPropagation();
-      });
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      // overridden
-      appearance: {
-        refine: true,
-        init: "button"
-      },
-      // overridden
-      focusable: {
-        refine: true,
-        init: true
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-
-    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
-    members: {
-      // overridden
-
-      /**
-       * @lint ignoreReferenceField(_forwardStates)
-       */
-      _forwardStates: {
-        focused: true,
-        hovered: true,
-        pressed: true,
-        disabled: true
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        USER API
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Manually press the button
-       */
-      press: function press() {
-        if (this.hasState("abandoned")) {
-          return;
-        }
-
-        this.addState("pressed");
-      },
-
-      /**
-       * Manually release the button
-       */
-      release: function release() {
-        if (this.hasState("pressed")) {
-          this.removeState("pressed");
-        }
-      },
-
-      /**
-       * Completely reset the button (remove all states)
-       */
-      reset: function reset() {
-        this.removeState("pressed");
-        this.removeState("abandoned");
-        this.removeState("hovered");
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        EVENT LISTENERS
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Listener method for "pointerover" event
-       * <ul>
-       * <li>Adds state "hovered"</li>
-       * <li>Removes "abandoned" and adds "pressed" state (if "abandoned" state is set)</li>
-       * </ul>
-       *
-       * @param e {qx.event.type.Pointer} Mouse event
-       */
-      _onPointerOver: function _onPointerOver(e) {
-        if (!this.isEnabled() || e.getTarget() !== this) {
-          return;
-        }
-
-        if (this.hasState("abandoned")) {
-          this.removeState("abandoned");
-          this.addState("pressed");
-        }
-
-        this.addState("hovered");
-      },
-
-      /**
-       * Listener method for "pointerout" event
-       * <ul>
-       * <li>Removes "hovered" state</li>
-       * <li>Adds "abandoned" and removes "pressed" state (if "pressed" state is set)</li>
-       * </ul>
-       *
-       * @param e {qx.event.type.Pointer} Mouse event
-       */
-      _onPointerOut: function _onPointerOut(e) {
-        if (!this.isEnabled() || e.getTarget() !== this) {
-          return;
-        }
-
-        this.removeState("hovered");
-
-        if (this.hasState("pressed")) {
-          this.removeState("pressed");
-          this.addState("abandoned");
-        }
-      },
-
-      /**
-       * Listener method for "pointerdown" event
-       * <ul>
-       * <li>Removes "abandoned" state</li>
-       * <li>Adds "pressed" state</li>
-       * </ul>
-       *
-       * @param e {qx.event.type.Pointer} Mouse event
-       */
-      _onPointerDown: function _onPointerDown(e) {
-        if (!e.isLeftPressed()) {
-          return;
-        }
-
-        e.stopPropagation(); // Activate capturing if the button get a pointerout while
-        // the button is pressed.
-
-        this.capture();
-        this.removeState("abandoned");
-        this.addState("pressed");
-      },
-
-      /**
-       * Listener method for "pointerup" event
-       * <ul>
-       * <li>Removes "pressed" state (if set)</li>
-       * <li>Removes "abandoned" state (if set)</li>
-       * <li>Adds "hovered" state (if "abandoned" state is not set)</li>
-       *</ul>
-       *
-       * @param e {qx.event.type.Pointer} Mouse event
-       */
-      _onPointerUp: function _onPointerUp(e) {
-        this.releaseCapture(); // We must remove the states before executing the command
-        // because in cases were the window lost the focus while
-        // executing we get the capture phase back (mouseout).
-
-        var hasPressed = this.hasState("pressed");
-        var hasAbandoned = this.hasState("abandoned");
-
-        if (hasPressed) {
-          this.removeState("pressed");
-        }
-
-        if (hasAbandoned) {
-          this.removeState("abandoned");
-        }
-
-        e.stopPropagation();
-      },
-
-      /**
-       * Listener method for "tap" event which stops the propagation.
-       *
-       * @param e {qx.event.type.Pointer} Pointer event
-       */
-      _onTap: function _onTap(e) {
-        // "execute" is fired here so that the button can be dragged
-        // without executing it (e.g. in a TabBar with overflow)
-        this.execute();
-        e.stopPropagation();
-      },
-
-      /**
-       * Listener method for "keydown" event.<br/>
-       * Removes "abandoned" and adds "pressed" state
-       * for the keys "Enter" or "Space"
-       *
-       * @param e {Event} Key event
-       */
-      _onKeyDown: function _onKeyDown(e) {
-        switch (e.getKeyIdentifier()) {
-          case "Enter":
-          case "Space":
-            this.removeState("abandoned");
-            this.addState("pressed");
-            e.stopPropagation();
-        }
-      },
-
-      /**
-       * Listener method for "keyup" event.<br/>
-       * Removes "abandoned" and "pressed" state (if "pressed" state is set)
-       * for the keys "Enter" or "Space"
-       *
-       * @param e {Event} Key event
-       */
-      _onKeyUp: function _onKeyUp(e) {
-        switch (e.getKeyIdentifier()) {
-          case "Enter":
-          case "Space":
-            if (this.hasState("pressed")) {
-              this.removeState("abandoned");
-              this.removeState("pressed");
-              this.execute();
-              e.stopPropagation();
-            }
-
-        }
-      }
-    }
-  });
-  qx.ui.form.Button.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
       "qx.Interface": {
         "usage": "dynamic",
         "require": true
@@ -45721,6 +44168,266 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "require": true
+      },
+      "qx.ui.core.LayoutItem": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.debug": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Base class for all layout managers.
+   *
+   * Custom layout manager must derive from
+   * this class and implement the methods {@link #invalidateLayoutCache},
+   * {@link #renderLayout} and {@link #getSizeHint}.
+   */
+  qx.Class.define("qx.ui.layout.Abstract", {
+    type: "abstract",
+    extend: qx.core.Object,
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /** @type {Map} The cached size hint */
+      __sizeHint__P_79_0: null,
+
+      /** @type {Boolean} Whether the children cache is valid. This field is protected
+       *    because sub classes must be able to access it quickly.
+       */
+      _invalidChildrenCache: null,
+
+      /** @type {qx.ui.core.Widget} The connected widget */
+      __widget__P_79_1: null,
+
+      /*
+      ---------------------------------------------------------------------------
+        LAYOUT INTERFACE
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Invalidate all layout relevant caches. Automatically deletes the size hint.
+       *
+       * @abstract
+       */
+      invalidateLayoutCache: function invalidateLayoutCache() {
+        this.__sizeHint__P_79_0 = null;
+      },
+
+      /**
+       * Applies the children layout.
+       *
+       * @abstract
+       * @param availWidth {Integer} Final width available for the content (in pixel)
+       * @param availHeight {Integer} Final height available for the content (in pixel)
+       * @param padding {Map} Map containing the padding values. Keys:
+       * <code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>
+       */
+      renderLayout: function renderLayout(availWidth, availHeight, padding) {
+        this.warn("Missing renderLayout() implementation!");
+      },
+
+      /**
+       * Computes the layout dimensions and possible ranges of these.
+       *
+       * @return {Map|null} The map with the preferred width/height and the allowed
+       *   minimum and maximum values in cases where shrinking or growing
+       *   is required. Can also return <code>null</code> when this detection
+       *   is not supported by the layout.
+       */
+      getSizeHint: function getSizeHint() {
+        if (this.__sizeHint__P_79_0) {
+          return this.__sizeHint__P_79_0;
+        }
+
+        return this.__sizeHint__P_79_0 = this._computeSizeHint();
+      },
+
+      /**
+       * Whether the layout manager supports height for width.
+       *
+       * @return {Boolean} Whether the layout manager supports height for width
+       */
+      hasHeightForWidth: function hasHeightForWidth() {
+        return false;
+      },
+
+      /**
+       * If layout wants to trade height for width it has to implement this
+       * method and return the preferred height if it is resized to
+       * the given width. This function returns <code>null</code> if the item
+       * do not support height for width.
+       *
+       * @param width {Integer} The computed width
+       * @return {Integer} The desired height
+       */
+      getHeightForWidth: function getHeightForWidth(width) {
+        this.warn("Missing getHeightForWidth() implementation!");
+        return null;
+      },
+
+      /**
+       * This computes the size hint of the layout and returns it.
+       *
+       * @abstract
+       * @return {Map} The size hint.
+       */
+      _computeSizeHint: function _computeSizeHint() {
+        return null;
+      },
+
+      /**
+       * This method is called, on each child "add" and "remove" action and
+       * whenever the layout data of a child is changed. The method should be used
+       * to clear any children relevant cached data.
+       *
+       */
+      invalidateChildrenCache: function invalidateChildrenCache() {
+        this._invalidChildrenCache = true;
+      },
+
+      /**
+       * Verifies the value of a layout property.
+       *
+       * Note: This method is only available in the debug builds.
+       *
+       * @signature function(item, name, value)
+       * @param item {Object} The affected layout item
+       * @param name {Object} Name of the layout property
+       * @param value {Object} Value of the layout property
+       */
+      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
+        "true": function _true(item, name, value) {// empty implementation
+        },
+        "false": null
+      }),
+
+      /**
+       * Remove all currently visible separators
+       */
+      _clearSeparators: function _clearSeparators() {
+        // It may be that the widget do not implement clearSeparators which is especially true
+        // when it do not inherit from LayoutItem.
+        var widget = this.__widget__P_79_1;
+
+        if (widget instanceof qx.ui.core.LayoutItem) {
+          widget.clearSeparators();
+        }
+      },
+
+      /**
+       * Renders a separator between two children
+       *
+       * @param separator {String|qx.ui.decoration.IDecorator} The separator to render
+       * @param bounds {Map} Contains the left and top coordinate and the width and height
+       *    of the separator to render.
+       */
+      _renderSeparator: function _renderSeparator(separator, bounds) {
+        this.__widget__P_79_1.renderSeparator(separator, bounds);
+      },
+
+      /**
+       * This method is called by the widget to connect the widget with the layout.
+       *
+       * @param widget {qx.ui.core.Widget} The widget to connect to.
+       */
+      connectToWidget: function connectToWidget(widget) {
+        if (widget && this.__widget__P_79_1) {
+          throw new Error("It is not possible to manually set the connected widget.");
+        }
+
+        this.__widget__P_79_1 = widget; // Invalidate cache
+
+        this.invalidateChildrenCache();
+      },
+
+      /**
+       * Return the widget that is this layout is responsible for.
+       *
+       * @return {qx.ui.core.Widget} The widget connected to this layout.
+       */
+      _getWidget: function _getWidget() {
+        return this.__widget__P_79_1;
+      },
+
+      /**
+       * Indicate that the layout has layout changed and propagate this information
+       * up the widget hierarchy.
+       *
+       * Also a generic property apply method for all layout relevant properties.
+       */
+      _applyLayoutChange: function _applyLayoutChange() {
+        if (this.__widget__P_79_1) {
+          this.__widget__P_79_1.scheduleLayoutUpdate();
+        }
+      },
+
+      /**
+       * Returns the list of all layout relevant children.
+       *
+       * @return {Array} List of layout relevant children.
+       */
+      _getLayoutChildren: function _getLayoutChildren() {
+        return this.__widget__P_79_1.getLayoutChildren();
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCT
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.__widget__P_79_1 = this.__sizeHint__P_79_0 = null;
+    }
+  });
+  qx.ui.layout.Abstract.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
       "qx.Class": {
         "usage": "dynamic",
         "defer": "runtime",
@@ -51487,1251 +50194,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
-      "qx.Interface": {
-        "usage": "dynamic",
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2017 Martijn Evers, The Netherlands
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Martijn Evers (mever)
-  
-  ************************************************************************ */
-
-  /**
-   * Field interface.
-   *
-   * This interface allows any value to be set as long as the following constraint
-   * is met: any value returned by {@link getValue} can be set by {@link setValue}.
-   *
-   * This specifies the interface for handling the model value of a field.
-   * The model value is always in a consistent state (see duration example), and
-   * should only handle model values of a type that correctly represents the
-   * data available through its UI. E.g.: duration can ideally be modeled by a number
-   * of time units, like seconds. When using a date the duration may be
-   * unclear (since Unix time?). Type conversions should be handled by data binding.
-   *
-   * The model value is not necessary what is shown to the end-user
-   * by implementing class. A good example is the {@link qx.ui.form.TextField}
-   * which is able to operate with or without live updating the model value.
-   *
-   * Duration example: a field for duration may use two date pickers for begin
-   * and end dates. When the end date is before the start date the model is in
-   * inconsistent state. getValue should never return such state. And calling
-   * it must result in either null or the last consistent value (depending
-   * on implementation or setting).
-   */
-  qx.Interface.define("qx.ui.form.IField", {
-    /*
-    *****************************************************************************
-       EVENTS
-    *****************************************************************************
-    */
-    events: {
-      /** Fired when the model value was modified */
-      changeValue: "qx.event.type.Data"
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /*
-      ---------------------------------------------------------------------------
-        VALUE PROPERTY
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Sets the field model value. Should also update the UI.
-       *
-       * @param value {var|null} Updates the field with the new model value.
-       * @return {null|Error} Should return an error when the type of
-       *  model value is not compatible with the implementing class (the concrete field).
-       */
-      setValue: function setValue(value) {
-        return arguments.length == 1;
-      },
-
-      /**
-       * Resets the model value to its initial value. Should also update the UI.
-       */
-      resetValue: function resetValue() {},
-
-      /**
-       * Returns a consistent and up-to-date model value.
-       *
-       * Note: returned value can also be a promise of type <code>Promise&lt;*|null&gt;</code>.
-       *
-       * @return {var|null} The model value plain or as promise.
-       */
-      getValue: function getValue() {}
-    }
-  });
-  qx.ui.form.IField.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Interface": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.form.IField": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Martin Wittemann (martinwittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * Form interface for all form widgets which have strings as their primary
-   * data type like textfield's.
-   */
-  qx.Interface.define("qx.ui.form.IStringForm", {
-    extend: qx.ui.form.IField,
-
-    /*
-    *****************************************************************************
-       EVENTS
-    *****************************************************************************
-    */
-    events: {
-      /** Fired when the value was modified */
-      changeValue: "qx.event.type.Data"
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /*
-      ---------------------------------------------------------------------------
-        VALUE PROPERTY
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Sets the element's value.
-       *
-       * @param value {String|null} The new value of the element.
-       */
-      setValue: function setValue(value) {
-        return arguments.length == 1;
-      },
-
-      /**
-       * Resets the element's value to its initial value.
-       */
-      resetValue: function resetValue() {},
-
-      /**
-       * The element's user set value.
-       *
-       * @return {String|null} The value.
-       */
-      getValue: function getValue() {}
-    }
-  });
-  qx.ui.form.IStringForm.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.core.Widget": {
-        "construct": true,
-        "require": true
-      },
-      "qx.ui.form.IStringForm": {
-        "require": true
-      },
-      "qx.locale.Manager": {
-        "construct": true
-      },
-      "qx.bom.client.Css": {
-        "require": true
-      },
-      "qx.bom.client.Html": {
-        "require": true
-      },
-      "qx.html.Label": {},
-      "qx.theme.manager.Color": {},
-      "qx.theme.manager.Font": {},
-      "qx.bom.webfonts.WebFont": {},
-      "qx.bom.Font": {},
-      "qx.ui.core.queue.Layout": {},
-      "qx.bom.Label": {},
-      "qx.bom.client.OperatingSystem": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "require": true
-      }
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "css.textoverflow": {
-          "className": "qx.bom.client.Css"
-        },
-        "html.xul": {
-          "className": "qx.bom.client.Html"
-        },
-        "os.name": {
-          "className": "qx.bom.client.OperatingSystem"
-        },
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        },
-        "engine.version": {
-          "className": "qx.bom.client.Engine"
-        },
-        "qx.dynlocale": {
-          "load": true
-        },
-        "browser.name": {
-          "className": "qx.bom.client.Browser"
-        },
-        "browser.version": {
-          "className": "qx.bom.client.Browser"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-       * Martin Wittemann (martinwittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * The label class brings typical text content to the widget system.
-   *
-   * It supports simple text nodes and complex HTML (rich). The default
-   * content mode is for text only. The mode is changeable through the property
-   * {@link #rich}.
-   *
-   * The label supports heightForWidth when used in HTML mode. This means
-   * that multi line HTML automatically computes the correct preferred height.
-   *
-   * *Example*
-   *
-   * Here is a little example of how to use the widget.
-   *
-   * <pre class='javascript'>
-   *   // a simple text label without wrapping and markup support
-   *   var label1 = new qx.ui.basic.Label("Simple text label");
-   *   this.getRoot().add(label1, {left:20, top:10});
-   *
-   *   // a HTML label with automatic line wrapping
-   *   var label2 = new qx.ui.basic.Label().set({
-   *     value: "A <b>long label</b> text with auto-wrapping. This also may contain <b style='color:red'>rich HTML</b> markup.",
-   *     rich : true,
-   *     width: 120
-   *   });
-   *   this.getRoot().add(label2, {left:20, top:50});
-   * </pre>
-   *
-   * The first label in this example is a basic text only label. As such no
-   * automatic wrapping is supported. The second label is a long label containing
-   * HTML markup with automatic line wrapping.
-   *
-   * *External Documentation*
-   *
-   * <a href='http://qooxdoo.org/docs/#desktop/widget/label.md' target='_blank'>
-   * Documentation of this widget in the qooxdoo manual.</a>
-   *
-   * NOTE: Instances of this class must be disposed of after use
-   *
-   */
-  qx.Class.define("qx.ui.basic.Label", {
-    extend: qx.ui.core.Widget,
-    implement: [qx.ui.form.IStringForm],
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-
-    /**
-     * @param value {String} Text or HTML content to use
-     */
-    construct: function construct(value) {
-      qx.ui.core.Widget.constructor.call(this);
-
-      if (value != null) {
-        this.setValue(value);
-      }
-
-      {
-        qx.locale.Manager.getInstance().addListener("changeLocale", this._onChangeLocale, this);
-      }
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      /**
-       * Switches between rich HTML and text content. The text mode (<code>false</code>) supports
-       * advanced features like ellipsis when the available space is not
-       * enough. HTML mode (<code>true</code>) supports multi-line content and all the
-       * markup features of HTML content.
-       */
-      rich: {
-        check: "Boolean",
-        init: false,
-        event: "changeRich",
-        apply: "_applyRich"
-      },
-
-      /**
-       * Controls whether text wrap is activated or not. But please note, that
-       * this property works only in combination with the property {@link #rich}.
-       * The {@link #wrap} has only an effect if the {@link #rich} property is
-       * set to <code>true</code>, otherwise {@link #wrap} has no effect.
-       */
-      wrap: {
-        check: "Boolean",
-        init: true,
-        apply: "_applyWrap"
-      },
-
-      /**
-       * Controls whether line wrapping can occur in the middle of a word; this is
-       * typically only useful when there is a restricted amount of horizontal space
-       * and words would otherwise overflow beyond the width of the element.  Words
-       * are typically considered as separated by spaces, so "abc/def/ghi" is a 11
-       * character word that would not be split without `breakWithWords` set to true.
-       */
-      breakWithinWords: {
-        check: "Boolean",
-        init: false,
-        apply: "_applyBreakWithinWords"
-      },
-
-      /**
-       * Contains the HTML or text content. Interpretation depends on the value
-       * of {@link #rich}. In text mode entities and other HTML special content
-       * is not supported. But it is possible to use unicode escape sequences
-       * to insert symbols and other non ASCII characters.
-       */
-      value: {
-        check: "String",
-        apply: "_applyValue",
-        event: "changeValue",
-        nullable: true
-      },
-
-      /**
-       * The buddy property can be used to connect the label to another widget.
-       * That causes two things:
-       * <ul>
-       *   <li>The label will always take the same enabled state as the buddy
-       *       widget.
-       *   </li>
-       *   <li>A tap on the label will focus the buddy widget.</li>
-       * </ul>
-       * This is the behavior of the for attribute of HTML:
-       * http://www.w3.org/TR/html401/interact/forms.html#adef-for
-       */
-      buddy: {
-        check: "qx.ui.core.Widget",
-        apply: "_applyBuddy",
-        nullable: true,
-        init: null,
-        dereference: true
-      },
-
-      /** Control the text alignment */
-      textAlign: {
-        check: ["left", "center", "right", "justify"],
-        nullable: true,
-        themeable: true,
-        apply: "_applyTextAlign",
-        event: "changeTextAlign"
-      },
-      // overridden
-      appearance: {
-        refine: true,
-        init: "label"
-      },
-      // overridden
-      selectable: {
-        refine: true,
-        init: false
-      },
-      // overridden
-      allowGrowX: {
-        refine: true,
-        init: false
-      },
-      // overridden
-      allowGrowY: {
-        refine: true,
-        init: false
-      },
-      // overridden
-      allowShrinkY: {
-        refine: true,
-        init: false
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-
-    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
-    members: {
-      __font__P_54_0: null,
-      __invalidContentSize__P_54_1: null,
-      __tapListenerId__P_54_2: null,
-      __webfontListenerId__P_54_3: null,
-
-      /*
-      ---------------------------------------------------------------------------
-        WIDGET API
-      ---------------------------------------------------------------------------
-      */
-      // overridden
-      _getContentHint: function _getContentHint() {
-        if (this.__invalidContentSize__P_54_1) {
-          this.__contentSize__P_54_4 = this.__computeContentSize__P_54_5();
-          delete this.__invalidContentSize__P_54_1;
-        }
-
-        return {
-          width: this.__contentSize__P_54_4.width,
-          height: this.__contentSize__P_54_4.height
-        };
-      },
-      // overridden
-      _hasHeightForWidth: function _hasHeightForWidth() {
-        return this.getRich() && this.getWrap();
-      },
-      // overridden
-      _applySelectable: function _applySelectable(value) {
-        // This is needed for all browsers not having text-overflow:ellipsis
-        // but supporting XUL (firefox < 4)
-        // https://bugzilla.mozilla.org/show_bug.cgi?id=312156
-        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          if (value && !this.isRich()) {
-            {
-              this.warn("Only rich labels are selectable in browsers with Gecko engine!");
-            }
-            return;
-          }
-        }
-
-        qx.ui.basic.Label.superclass.prototype._applySelectable.call(this, value);
-      },
-      // overridden
-      _getContentHeightForWidth: function _getContentHeightForWidth(width) {
-        if (!this.getRich() && !this.getWrap()) {
-          return null;
-        }
-
-        return this.__computeContentSize__P_54_5(width).height;
-      },
-      // overridden
-      _createContentElement: function _createContentElement() {
-        return new qx.html.Label();
-      },
-      // property apply
-      _applyTextAlign: function _applyTextAlign(value, old) {
-        this.getContentElement().setStyle("textAlign", value);
-      },
-      // overridden
-      _applyTextColor: function _applyTextColor(value, old) {
-        if (value) {
-          this.getContentElement().setStyle("color", qx.theme.manager.Color.getInstance().resolve(value));
-        } else {
-          this.getContentElement().removeStyle("color");
-        }
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        LABEL ADDONS
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * @type {Map} Internal fallback of label size when no font is defined
-       *
-       * @lint ignoreReferenceField(__contentSize)
-       */
-      __contentSize__P_54_4: {
-        width: 0,
-        height: 0
-      },
-      // property apply
-      _applyFont: function _applyFont(value, old) {
-        if (old && this.__font__P_54_0 && this.__webfontListenerId__P_54_3) {
-          this.__font__P_54_0.removeListenerById(this.__webfontListenerId__P_54_3);
-
-          this.__webfontListenerId__P_54_3 = null;
-        } // Apply
-
-
-        var styles;
-
-        if (value) {
-          this.__font__P_54_0 = qx.theme.manager.Font.getInstance().resolve(value);
-
-          if (this.__font__P_54_0 instanceof qx.bom.webfonts.WebFont) {
-            if (!this.__font__P_54_0.isValid()) {
-              this.__webfontListenerId__P_54_3 = this.__font__P_54_0.addListener("changeStatus", this._onWebFontStatusChange, this);
-            }
-          }
-
-          styles = this.__font__P_54_0.getStyles();
-        } else {
-          this.__font__P_54_0 = null;
-          styles = qx.bom.Font.getDefaultStyles();
-        } // check if text color already set - if so this local value has higher priority
-
-
-        if (this.getTextColor() != null) {
-          delete styles["color"];
-        }
-
-        this.getContentElement().setStyles(styles); // Invalidate text size
-
-        this.__invalidContentSize__P_54_1 = true; // Update layout
-
-        qx.ui.core.queue.Layout.add(this);
-      },
-
-      /**
-       * Internal utility to compute the content dimensions.
-       *
-       * @param width {Integer?null} Optional width constraint
-       * @return {Map} Map with <code>width</code> and <code>height</code> keys
-       */
-      __computeContentSize__P_54_5: function __computeContentSize__P_54_5(width) {
-        var Label = qx.bom.Label;
-        var font = this.getFont();
-        var styles = font ? this.__font__P_54_0.getStyles() : qx.bom.Font.getDefaultStyles();
-        var content = this.getValue() || "A";
-        var rich = this.getRich();
-
-        if (this.__webfontListenerId__P_54_3) {
-          this.__fixEllipsis__P_54_6();
-        }
-
-        if (rich && this.getBreakWithinWords()) {
-          styles.wordBreak = "break-all";
-        }
-
-        return rich ? Label.getHtmlSize(content, styles, width) : Label.getTextSize(content, styles);
-      },
-
-      /**
-       * Firefox > 9 on OS X will draw an ellipsis on top of the label content even
-       * though there is enough space for the text. Re-applying the content forces
-       * a recalculation and fixes the problem. See qx bug #6293
-       */
-      __fixEllipsis__P_54_6: function __fixEllipsis__P_54_6() {
-        if (!this.getContentElement()) {
-          return;
-        }
-
-        if (qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("engine.name") == "gecko" && parseInt(qx.core.Environment.get("engine.version"), 10) < 16 && parseInt(qx.core.Environment.get("engine.version"), 10) > 9) {
-          var domEl = this.getContentElement().getDomElement();
-
-          if (domEl) {
-            /* eslint-disable-next-line no-self-assign */
-            domEl.innerHTML = domEl.innerHTML;
-          }
-        }
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        PROPERTY APPLIER
-      ---------------------------------------------------------------------------
-      */
-      // property apply
-      _applyBuddy: function _applyBuddy(value, old) {
-        if (old != null) {
-          this.removeRelatedBindings(old);
-          this.removeListenerById(this.__tapListenerId__P_54_2);
-          this.__tapListenerId__P_54_2 = null;
-        }
-
-        if (value != null) {
-          value.bind("enabled", this, "enabled");
-          this.__tapListenerId__P_54_2 = this.addListener("tap", function () {
-            // only focus focusable elements [BUG #3555]
-            if (value.isFocusable()) {
-              value.focus.apply(value);
-            } // furthermore toggle if possible [BUG #6881]
-
-
-            if ("toggleValue" in value && typeof value.toggleValue === "function") {
-              value.toggleValue();
-            }
-          }, this);
-        }
-      },
-      // property apply
-      _applyRich: function _applyRich(value) {
-        // Sync with content element
-        this.getContentElement().setRich(value); // Mark text size cache as invalid
-
-        this.__invalidContentSize__P_54_1 = true; // Update layout
-
-        qx.ui.core.queue.Layout.add(this);
-      },
-      // property apply
-      _applyWrap: function _applyWrap(value, old) {
-        if (value && !this.isRich()) {
-          {
-            this.warn("Only rich labels support wrap.");
-          }
-        }
-
-        if (this.isRich()) {
-          // apply the white space style to the label to force it not
-          // to wrap if wrap is set to false [BUG #3732]
-          var whiteSpace = value ? "normal" : "nowrap";
-          this.getContentElement().setStyle("whiteSpace", whiteSpace);
-        }
-      },
-      // property apply
-      _applyBreakWithinWords: function _applyBreakWithinWords(value, old) {
-        if (this.isRich()) {
-          this.getContentElement().setStyle("wordBreak", value ? "break-all" : "normal");
-        }
-      },
-
-      /**
-       * Locale change event handler
-       *
-       * @signature function(e)
-       * @param e {Event} the change event
-       */
-      _onChangeLocale: qx.core.Environment.select("qx.dynlocale", {
-        "true": function _true(e) {
-          var content = this.getValue();
-
-          if (content && content.translate) {
-            this.setValue(content.translate());
-          }
-        },
-        "false": null
-      }),
-
-      /**
-       * Triggers layout recalculation after a web font was loaded
-       *
-       * @param ev {qx.event.type.Data} "changeStatus" event
-       */
-      _onWebFontStatusChange: function _onWebFontStatusChange(ev) {
-        if (ev.getData().valid === true) {
-          // safari has trouble resizing, adding it again fixed the issue [BUG #8786]
-          if (qx.core.Environment.get("browser.name") == "safari" && parseFloat(qx.core.Environment.get("browser.version")) >= 8) {
-            window.setTimeout(function () {
-              this.__invalidContentSize__P_54_1 = true;
-              qx.ui.core.queue.Layout.add(this);
-            }.bind(this), 0);
-          }
-
-          this.__invalidContentSize__P_54_1 = true;
-          qx.ui.core.queue.Layout.add(this);
-        }
-      },
-      // property apply
-      _applyValue: qx.core.Environment.select("qx.dynlocale", {
-        "true": function _true(value, old) {
-          // Sync with content element
-          if (value && value.translate) {
-            this.getContentElement().setValue(value.translate());
-          } else {
-            this.getContentElement().setValue(value);
-          } // Mark text size cache as invalid
-
-
-          this.__invalidContentSize__P_54_1 = true; // Update layout
-
-          qx.ui.core.queue.Layout.add(this);
-        },
-        "false": function _false(value, old) {
-          this.getContentElement().setValue(value); // Mark text size cache as invalid
-
-          this.__invalidContentSize__P_54_1 = true; // Update layout
-
-          qx.ui.core.queue.Layout.add(this);
-        }
-      })
-    },
-
-    /*
-    *****************************************************************************
-       DESTRUCTOR
-    *****************************************************************************
-    */
-    destruct: function destruct() {
-      {
-        qx.locale.Manager.getInstance().removeListener("changeLocale", this._onChangeLocale, this);
-      }
-
-      if (this.__font__P_54_0 && this.__webfontListenerId__P_54_3) {
-        this.__font__P_54_0.removeListenerById(this.__webfontListenerId__P_54_3);
-      }
-
-      this.__font__P_54_0 = null;
-    }
-  });
-  qx.ui.basic.Label.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.theme.manager.Decoration": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Common set of utility methods used by the standard qooxdoo layouts.
-   *
-   * @internal
-   */
-  qx.Class.define("qx.ui.layout.Util", {
-    statics: {
-      /** @type {RegExp} Regular expression to match percent values */
-      PERCENT_VALUE: /[0-9]+(?:\.[0-9]+)?%/,
-
-      /**
-       * Computes the flex offsets needed to reduce the space
-       * difference as much as possible by respecting the
-       * potential of the given elements (being in the range of
-       * their min/max values)
-       *
-       * @param flexibles {Map} Each entry must have these keys:
-       *   <code>id</code>, <code>potential</code> and <code>flex</code>.
-       *   The ID is used in the result map as the key for the user to work
-       *   with later (e.g. upgrade sizes etc. to respect the given offset)
-       *   The potential is an integer value which is the difference of the
-       *   currently interesting direction (e.g. shrinking=width-minWidth, growing=
-       *   maxWidth-width). The flex key holds the flex value of the item.
-       * @param avail {Integer} Full available space to allocate (ignoring used one)
-       * @param used {Integer} Size of already allocated space
-       * @return {Map} A map which contains the calculated offsets under the key
-       *   which is identical to the ID given in the incoming map.
-       */
-      computeFlexOffsets: function computeFlexOffsets(flexibles, avail, used) {
-        var child, key, flexSum, flexStep;
-        var grow = avail > used;
-        var remaining = Math.abs(avail - used);
-        var roundingOffset, currentOffset; // Preprocess data
-
-        var result = {};
-
-        for (key in flexibles) {
-          child = flexibles[key];
-          result[key] = {
-            potential: grow ? child.max - child.value : child.value - child.min,
-            flex: grow ? child.flex : 1 / child.flex,
-            offset: 0
-          };
-        } // Continue as long as we need to do anything
-
-
-        while (remaining != 0) {
-          // Find minimum potential for next correction
-          flexStep = Infinity;
-          flexSum = 0;
-
-          for (key in result) {
-            child = result[key];
-
-            if (child.potential > 0) {
-              flexSum += child.flex;
-              flexStep = Math.min(flexStep, child.potential / child.flex);
-            }
-          } // No potential found, quit here
-
-
-          if (flexSum == 0) {
-            break;
-          } // Respect maximum potential given through remaining space
-          // The parent should always win in such conflicts.
-
-
-          flexStep = Math.min(remaining, flexStep * flexSum) / flexSum; // Start with correction
-
-          roundingOffset = 0;
-
-          for (key in result) {
-            child = result[key];
-
-            if (child.potential > 0) {
-              // Compute offset for this step
-              currentOffset = Math.min(remaining, child.potential, Math.ceil(flexStep * child.flex)); // Fix rounding issues
-
-              roundingOffset += currentOffset - flexStep * child.flex;
-
-              if (roundingOffset >= 1) {
-                roundingOffset -= 1;
-                currentOffset -= 1;
-              } // Update child status
-
-
-              child.potential -= currentOffset;
-
-              if (grow) {
-                child.offset += currentOffset;
-              } else {
-                child.offset -= currentOffset;
-              } // Update parent status
-
-
-              remaining -= currentOffset;
-            }
-          }
-        }
-
-        return result;
-      },
-
-      /**
-       * Computes the offset which needs to be added to the top position
-       * to result in the stated vertical alignment. Also respects
-       * existing margins (without collapsing).
-       *
-       * @param align {String} One of <code>top</code>, <code>center</code> or <code>bottom</code>.
-       * @param width {Integer} The visible width of the widget
-       * @param availWidth {Integer} The available inner width of the parent
-       * @param marginLeft {Integer?0} Optional left margin of the widget
-       * @param marginRight {Integer?0} Optional right margin of the widget
-       * @return {Integer} Computed top coordinate
-       */
-      computeHorizontalAlignOffset: function computeHorizontalAlignOffset(align, width, availWidth, marginLeft, marginRight) {
-        if (marginLeft == null) {
-          marginLeft = 0;
-        }
-
-        if (marginRight == null) {
-          marginRight = 0;
-        }
-
-        var value = 0;
-
-        switch (align) {
-          case "left":
-            value = marginLeft;
-            break;
-
-          case "right":
-            // Align right changes priority to right edge:
-            // To align to the right is more important here than to left.
-            value = availWidth - width - marginRight;
-            break;
-
-          case "center":
-            // Ideal center position
-            value = Math.round((availWidth - width) / 2); // Try to make this possible (with left-right priority)
-
-            if (value < marginLeft) {
-              value = marginLeft;
-            } else if (value < marginRight) {
-              value = Math.max(marginLeft, availWidth - width - marginRight);
-            }
-
-            break;
-        }
-
-        return value;
-      },
-
-      /**
-       * Computes the offset which needs to be added to the top position
-       * to result in the stated vertical alignment. Also respects
-       * existing margins (without collapsing).
-       *
-       * @param align {String} One of <code>top</code>, <code>middle</code> or <code>bottom</code>.
-       * @param height {Integer} The visible height of the widget
-       * @param availHeight {Integer} The available inner height of the parent
-       * @param marginTop {Integer?0} Optional top margin of the widget
-       * @param marginBottom {Integer?0} Optional bottom margin of the widget
-       * @return {Integer} Computed top coordinate
-       */
-      computeVerticalAlignOffset: function computeVerticalAlignOffset(align, height, availHeight, marginTop, marginBottom) {
-        if (marginTop == null) {
-          marginTop = 0;
-        }
-
-        if (marginBottom == null) {
-          marginBottom = 0;
-        }
-
-        var value = 0;
-
-        switch (align) {
-          case "top":
-            value = marginTop;
-            break;
-
-          case "bottom":
-            // Align bottom changes priority to bottom edge:
-            // To align to the bottom is more important here than to top.
-            value = availHeight - height - marginBottom;
-            break;
-
-          case "middle":
-            // Ideal middle position
-            value = Math.round((availHeight - height) / 2); // Try to make this possible (with top-down priority)
-
-            if (value < marginTop) {
-              value = marginTop;
-            } else if (value < marginBottom) {
-              value = Math.max(marginTop, availHeight - height - marginBottom);
-            }
-
-            break;
-        }
-
-        return value;
-      },
-
-      /**
-       * Collapses two margins.
-       *
-       * Supports positive and negative margins.
-       * Collapsing find the largest positive and the largest
-       * negative value. Afterwards the result is computed through the
-       * subtraction of the negative from the positive value.
-       *
-       * @param varargs {arguments} Any number of configured margins
-       * @return {Integer} The collapsed margin
-       */
-      collapseMargins: function collapseMargins(varargs) {
-        var max = 0,
-            min = 0;
-
-        for (var i = 0, l = arguments.length; i < l; i++) {
-          var value = arguments[i];
-
-          if (value < 0) {
-            min = Math.min(min, value);
-          } else if (value > 0) {
-            max = Math.max(max, value);
-          }
-        }
-
-        return max + min;
-      },
-
-      /**
-       * Computes the sum of all horizontal gaps. Normally the
-       * result is used to compute the available width in a widget.
-       *
-       * The method optionally respects margin collapsing as well. In
-       * this mode the spacing is collapsed together with the margins.
-       *
-       * @param children {Array} List of children
-       * @param spacing {Integer?0} Spacing between every child
-       * @param collapse {Boolean?false} Optional margin collapsing mode
-       * @return {Integer} Sum of all gaps in the final layout.
-       */
-      computeHorizontalGaps: function computeHorizontalGaps(children, spacing, collapse) {
-        if (spacing == null) {
-          spacing = 0;
-        }
-
-        var gaps = 0;
-
-        if (collapse) {
-          // Add first child
-          gaps += children[0].getMarginLeft();
-
-          for (var i = 1, l = children.length; i < l; i += 1) {
-            gaps += this.collapseMargins(spacing, children[i - 1].getMarginRight(), children[i].getMarginLeft());
-          } // Add last child
-
-
-          gaps += children[l - 1].getMarginRight();
-        } else {
-          // Simple adding of all margins
-          for (var i = 1, l = children.length; i < l; i += 1) {
-            gaps += children[i].getMarginLeft() + children[i].getMarginRight();
-          } // Add spacing
-
-
-          gaps += spacing * (l - 1);
-        }
-
-        return gaps;
-      },
-
-      /**
-       * Computes the sum of all vertical gaps. Normally the
-       * result is used to compute the available height in a widget.
-       *
-       * The method optionally respects margin collapsing as well. In
-       * this mode the spacing is collapsed together with the margins.
-       *
-       * @param children {Array} List of children
-       * @param spacing {Integer?0} Spacing between every child
-       * @param collapse {Boolean?false} Optional margin collapsing mode
-       * @return {Integer} Sum of all gaps in the final layout.
-       */
-      computeVerticalGaps: function computeVerticalGaps(children, spacing, collapse) {
-        if (spacing == null) {
-          spacing = 0;
-        }
-
-        var gaps = 0;
-
-        if (collapse) {
-          // Add first child
-          gaps += children[0].getMarginTop();
-
-          for (var i = 1, l = children.length; i < l; i += 1) {
-            gaps += this.collapseMargins(spacing, children[i - 1].getMarginBottom(), children[i].getMarginTop());
-          } // Add last child
-
-
-          gaps += children[l - 1].getMarginBottom();
-        } else {
-          // Simple adding of all margins
-          for (var i = 1, l = children.length; i < l; i += 1) {
-            gaps += children[i].getMarginTop() + children[i].getMarginBottom();
-          } // Add spacing
-
-
-          gaps += spacing * (l - 1);
-        }
-
-        return gaps;
-      },
-
-      /**
-       * Computes the gaps together with the configuration of separators.
-       *
-       * @param children {qx.ui.core.LayoutItem[]} List of children
-       * @param spacing {Integer} Configured spacing
-       * @param separator {String|qx.ui.decoration.IDecorator} Separator to render
-       * @return {Integer} Sum of gaps
-       */
-      computeHorizontalSeparatorGaps: function computeHorizontalSeparatorGaps(children, spacing, separator) {
-        var instance = qx.theme.manager.Decoration.getInstance().resolve(separator);
-        var insets = instance.getInsets();
-        var width = insets.left + insets.right;
-        var gaps = 0;
-
-        for (var i = 0, l = children.length; i < l; i++) {
-          var child = children[i];
-          gaps += child.getMarginLeft() + child.getMarginRight();
-        }
-
-        gaps += (spacing + width + spacing) * (l - 1);
-        return gaps;
-      },
-
-      /**
-       * Computes the gaps together with the configuration of separators.
-       *
-       * @param children {qx.ui.core.LayoutItem[]} List of children
-       * @param spacing {Integer} Configured spacing
-       * @param separator {String|qx.ui.decoration.IDecorator} Separator to render
-       * @return {Integer} Sum of gaps
-       */
-      computeVerticalSeparatorGaps: function computeVerticalSeparatorGaps(children, spacing, separator) {
-        var instance = qx.theme.manager.Decoration.getInstance().resolve(separator);
-        var insets = instance.getInsets();
-        var height = insets.top + insets.bottom;
-        var gaps = 0;
-
-        for (var i = 0, l = children.length; i < l; i++) {
-          var child = children[i];
-          gaps += child.getMarginTop() + child.getMarginBottom();
-        }
-
-        gaps += (spacing + height + spacing) * (l - 1);
-        return gaps;
-      },
-
-      /**
-       * Arranges two sizes in one box to best respect their individual limitations.
-       *
-       * Mainly used by split layouts (Split Panes) where the layout is mainly defined
-       * by the outer dimensions.
-       *
-       * @param beginMin {Integer} Minimum size of first widget (from size hint)
-       * @param beginIdeal {Integer} Ideal size of first widget (maybe after dragging the splitter)
-       * @param beginMax {Integer} Maximum size of first widget (from size hint)
-       * @param endMin {Integer} Minimum size of second widget (from size hint)
-       * @param endIdeal {Integer} Ideal size of second widget (maybe after dragging the splitter)
-       * @param endMax {Integer} Maximum size of second widget (from size hint)
-       * @return {Map} Map with the keys <code>begin</code and <code>end</code> with the
-       *   arranged dimensions.
-       */
-      arrangeIdeals: function arrangeIdeals(beginMin, beginIdeal, beginMax, endMin, endIdeal, endMax) {
-        if (beginIdeal < beginMin || endIdeal < endMin) {
-          if (beginIdeal < beginMin && endIdeal < endMin) {
-            // Just increase both, can not rearrange them otherwise
-            // Result into overflowing of the overlapping content
-            // Should normally not happen through auto sizing!
-            beginIdeal = beginMin;
-            endIdeal = endMin;
-          } else if (beginIdeal < beginMin) {
-            // Reduce end, increase begin to min
-            endIdeal -= beginMin - beginIdeal;
-            beginIdeal = beginMin; // Re-check to keep min size of end
-
-            if (endIdeal < endMin) {
-              endIdeal = endMin;
-            }
-          } else if (endIdeal < endMin) {
-            // Reduce begin, increase end to min
-            beginIdeal -= endMin - endIdeal;
-            endIdeal = endMin; // Re-check to keep min size of begin
-
-            if (beginIdeal < beginMin) {
-              beginIdeal = beginMin;
-            }
-          }
-        }
-
-        if (beginIdeal > beginMax || endIdeal > endMax) {
-          if (beginIdeal > beginMax && endIdeal > endMax) {
-            // Just reduce both, can not rearrange them otherwise
-            // Leaves a blank area in the pane!
-            beginIdeal = beginMax;
-            endIdeal = endMax;
-          } else if (beginIdeal > beginMax) {
-            // Increase end, reduce begin to max
-            endIdeal += beginIdeal - beginMax;
-            beginIdeal = beginMax; // Re-check to keep max size of end
-
-            if (endIdeal > endMax) {
-              endIdeal = endMax;
-            }
-          } else if (endIdeal > endMax) {
-            // Increase begin, reduce end to max
-            beginIdeal += endIdeal - endMax;
-            endIdeal = endMax; // Re-check to keep max size of begin
-
-            if (beginIdeal > beginMax) {
-              beginIdeal = beginMax;
-            }
-          }
-        }
-
-        return {
-          begin: beginIdeal,
-          end: endIdeal
-        };
-      }
-    }
-  });
-  qx.ui.layout.Util.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
       "qx.core.Environment": {
         "usage": "dynamic",
         "require": true
@@ -54157,6 +51619,1299 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.ui.table.rowrenderer.Default.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.core.Widget": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.layout.Atom": {
+        "construct": true
+      },
+      "qx.ui.basic.Label": {},
+      "qx.ui.basic.Image": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A multi-purpose widget, which combines a label with an icon.
+   *
+   * The intended purpose of qx.ui.basic.Atom is to easily align the common icon-text
+   * combination in different ways.
+   *
+   * This is useful for all types of buttons, tooltips, ...
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the widget.
+   *
+   * <pre class='javascript'>
+   *   var atom = new qx.ui.basic.Atom("Icon Right", "icon/32/actions/go-next.png");
+   *   this.getRoot().add(atom);
+   * </pre>
+   *
+   * This example creates an atom with the label "Icon Right" and an icon.
+   *
+   * *External Documentation*
+   *
+   * <a href='http://qooxdoo.org/docs/#desktop/widget/atom.md' target='_blank'>
+   * Documentation of this widget in the qooxdoo manual.</a>
+   *
+   *
+   * @childControl label {qx.ui.basic.Label} label part of the atom
+   * @childControl icon {qx.ui.basic.Image} icon part of the atom
+   */
+  qx.Class.define("qx.ui.basic.Atom", {
+    extend: qx.ui.core.Widget,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param label {String} Label to use
+     * @param icon {String?null} Icon to use
+     */
+    construct: function construct(label, icon) {
+      {
+        this.assertArgumentsCount(arguments, 0, 2);
+      }
+      qx.ui.core.Widget.constructor.call(this);
+
+      this._setLayout(new qx.ui.layout.Atom());
+
+      if (label != null) {
+        this.setLabel(label);
+      }
+
+      if (icon !== undefined) {
+        this.setIcon(icon);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      // overridden
+      appearance: {
+        refine: true,
+        init: "atom"
+      },
+
+      /** The label/caption/text of the qx.ui.basic.Atom instance */
+      label: {
+        apply: "_applyLabel",
+        nullable: true,
+        check: "String",
+        event: "changeLabel"
+      },
+
+      /**
+       * Switches between rich HTML and text content. The text mode (<code>false</code>) supports
+       * advanced features like ellipsis when the available space is not
+       * enough. HTML mode (<code>true</code>) supports multi-line content and all the
+       * markup features of HTML content.
+       */
+      rich: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyRich"
+      },
+
+      /** Any URI String supported by qx.ui.basic.Image to display an icon */
+      icon: {
+        check: "String",
+        apply: "_applyIcon",
+        nullable: true,
+        themeable: true,
+        event: "changeIcon"
+      },
+
+      /**
+       * The space between the icon and the label
+       */
+      gap: {
+        check: "Integer",
+        nullable: false,
+        event: "changeGap",
+        apply: "_applyGap",
+        themeable: true,
+        init: 4
+      },
+
+      /**
+       * Configure the visibility of the sub elements/widgets.
+       * Possible values: both, label, icon
+       */
+      show: {
+        init: "both",
+        check: ["both", "label", "icon"],
+        themeable: true,
+        inheritable: true,
+        apply: "_applyShow",
+        event: "changeShow"
+      },
+
+      /**
+       * The position of the icon in relation to the text.
+       * Only useful/needed if text and icon is configured and 'show' is configured as 'both' (default)
+       */
+      iconPosition: {
+        init: "left",
+        check: ["top", "right", "bottom", "left", "top-left", "bottom-left", "top-right", "bottom-right"],
+        themeable: true,
+        apply: "_applyIconPosition"
+      },
+
+      /**
+       * Whether the content should be rendered centrally when to much space
+       * is available. Enabling this property centers in both axis. The behavior
+       * when disabled of the centering depends on the {@link #iconPosition} property.
+       * If the icon position is <code>left</code> or <code>right</code>, the X axis
+       * is not centered, only the Y axis. If the icon position is <code>top</code>
+       * or <code>bottom</code>, the Y axis is not centered. In case of e.g. an
+       * icon position of <code>top-left</code> no axis is centered.
+       */
+      center: {
+        init: false,
+        check: "Boolean",
+        themeable: true,
+        apply: "_applyCenter"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+
+    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
+    members: {
+      // overridden
+      _createChildControlImpl: function _createChildControlImpl(id, hash) {
+        var control;
+
+        switch (id) {
+          case "label":
+            control = new qx.ui.basic.Label(this.getLabel());
+            control.setAnonymous(true);
+            control.setRich(this.getRich());
+            control.setSelectable(this.getSelectable());
+
+            this._add(control);
+
+            if (this.getLabel() == null || this.getShow() === "icon") {
+              control.exclude();
+            }
+
+            break;
+
+          case "icon":
+            control = new qx.ui.basic.Image(this.getIcon());
+            control.setAnonymous(true);
+
+            this._addAt(control, 0);
+
+            if (this.getIcon() == null || this.getShow() === "label") {
+              control.exclude();
+            }
+
+            break;
+        }
+
+        return control || qx.ui.basic.Atom.superclass.prototype._createChildControlImpl.call(this, id);
+      },
+      // overridden
+
+      /**
+       * @lint ignoreReferenceField(_forwardStates)
+       */
+      _forwardStates: {
+        focused: true,
+        hovered: true
+      },
+
+      /**
+       * Updates the visibility of the label
+       */
+      _handleLabel: function _handleLabel() {
+        if (this.getLabel() == null || this.getShow() === "icon") {
+          this._excludeChildControl("label");
+        } else {
+          this._showChildControl("label");
+        }
+      },
+
+      /**
+       * Updates the visibility of the icon
+       */
+      _handleIcon: function _handleIcon() {
+        if (this.getIcon() == null || this.getShow() === "label") {
+          this._excludeChildControl("icon");
+        } else {
+          this._showChildControl("icon");
+        }
+      },
+      // property apply
+      _applyLabel: function _applyLabel(value, old) {
+        var label = this.getChildControl("label", true);
+
+        if (label) {
+          label.setValue(value);
+        }
+
+        this._handleLabel();
+      },
+      // property apply
+      _applyRich: function _applyRich(value, old) {
+        var label = this.getChildControl("label", true);
+
+        if (label) {
+          label.setRich(value);
+        }
+      },
+      // property apply
+      _applyIcon: function _applyIcon(value, old) {
+        var icon = this.getChildControl("icon", true);
+
+        if (icon) {
+          icon.setSource(value);
+        }
+
+        this._handleIcon();
+      },
+      // property apply
+      _applyGap: function _applyGap(value, old) {
+        this._getLayout().setGap(value);
+      },
+      // property apply
+      _applyShow: function _applyShow(value, old) {
+        this._handleLabel();
+
+        this._handleIcon();
+      },
+      // property apply
+      _applyIconPosition: function _applyIconPosition(value, old) {
+        this._getLayout().setIconPosition(value);
+      },
+      // property apply
+      _applyCenter: function _applyCenter(value, old) {
+        this._getLayout().setCenter(value);
+      },
+      // overridden
+      _applySelectable: function _applySelectable(value, old) {
+        qx.ui.basic.Atom.superclass.prototype._applySelectable.call(this, value, old);
+
+        var label = this.getChildControl("label", true);
+
+        if (label) {
+          this.getChildControl("label").setSelectable(value);
+        }
+      }
+    }
+  });
+  qx.ui.basic.Atom.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {},
+      "qx.util.PropertyUtil": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.command.bindEnabled": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * This mixin is included by all widgets, which support an 'execute' like
+   * buttons or menu entries.
+   */
+  qx.Mixin.define("qx.ui.core.MExecutable", {
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /** Fired if the {@link #execute} method is invoked.*/
+      execute: "qx.event.type.Event"
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * A command called if the {@link #execute} method is called, e.g. on a
+       * button tap.
+       */
+      command: {
+        check: "qx.ui.command.Command",
+        apply: "_applyCommand",
+        event: "changeCommand",
+        nullable: true
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __executableBindingIds__P_20_0: null,
+      __semaphore__P_20_1: false,
+      __executeListenerId__P_20_2: null,
+
+      /**
+       * @type {Map} Set of properties, which will by synced from the command to the
+       *    including widget
+       *
+       * @lint ignoreReferenceField(_bindableProperties)
+       */
+      _bindableProperties: qx.core.Environment.select("qx.command.bindEnabled", {
+        "true": ["enabled", "label", "icon", "toolTipText", "value", "menu"],
+        "false": ["label", "icon", "toolTipText", "value", "menu"]
+      }),
+
+      /**
+       * Initiate the execute action.
+       */
+      execute: function execute() {
+        var cmd = this.getCommand();
+
+        if (cmd) {
+          if (this.__semaphore__P_20_1) {
+            this.__semaphore__P_20_1 = false;
+          } else {
+            this.__semaphore__P_20_1 = true;
+            cmd.execute(this);
+          }
+        }
+
+        this.fireEvent("execute");
+      },
+
+      /**
+       * Handler for the execute event of the command.
+       *
+       * @param e {qx.event.type.Event} The execute event of the command.
+       */
+      __onCommandExecute__P_20_3: function __onCommandExecute__P_20_3(e) {
+        if (this.isEnabled()) {
+          if (this.__semaphore__P_20_1) {
+            this.__semaphore__P_20_1 = false;
+            return;
+          }
+
+          if (this.isEnabled()) {
+            this.__semaphore__P_20_1 = true;
+            this.execute();
+          }
+        }
+      },
+      // property apply
+      _applyCommand: function _applyCommand(value, old) {
+        // execute forwarding
+        if (old != null) {
+          old.removeListenerById(this.__executeListenerId__P_20_2);
+        }
+
+        if (value != null) {
+          this.__executeListenerId__P_20_2 = value.addListener("execute", this.__onCommandExecute__P_20_3, this);
+        } // binding stuff
+
+
+        var ids = this.__executableBindingIds__P_20_0;
+
+        if (ids == null) {
+          this.__executableBindingIds__P_20_0 = ids = {};
+        }
+
+        var selfPropertyValue;
+
+        for (var i = 0; i < this._bindableProperties.length; i++) {
+          var property = this._bindableProperties[i]; // remove the old binding
+
+          if (old != null && !old.isDisposed() && ids[property] != null) {
+            old.removeBinding(ids[property]);
+            ids[property] = null;
+          } // add the new binding
+
+
+          if (value != null && qx.Class.hasProperty(this.constructor, property)) {
+            // handle the init value (don't sync the initial null)
+            var cmdPropertyValue = value.get(property);
+
+            if (cmdPropertyValue == null) {
+              selfPropertyValue = this.get(property); // check also for themed values [BUG #5906]
+
+              if (selfPropertyValue == null) {
+                // update the appearance to make sure every themed property is up to date
+                this.$$resyncNeeded = true;
+                this.syncAppearance();
+                selfPropertyValue = qx.util.PropertyUtil.getThemeValue(this, property);
+              }
+            } else {
+              // Reset the self property value [BUG #4534]
+              selfPropertyValue = null;
+            } // set up the binding
+
+
+            ids[property] = value.bind(property, this, property); // reapply the former value
+
+            if (selfPropertyValue) {
+              this.set(property, selfPropertyValue);
+            }
+          }
+        }
+      }
+    },
+    destruct: function destruct() {
+      this._applyCommand(null, this.getCommand());
+
+      this.__executableBindingIds__P_20_0 = null;
+    }
+  });
+  qx.ui.core.MExecutable.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * Form interface for all form widgets which are executable in some way. This
+   * could be a button for example.
+   */
+  qx.Interface.define("qx.ui.form.IExecutable", {
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /**
+       * Fired when the widget is executed. Sets the "data" property of the
+       * event to the object that issued the command.
+       */
+      execute: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /*
+      ---------------------------------------------------------------------------
+        COMMAND PROPERTY
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Set the command of this executable.
+       *
+       * @param command {qx.ui.command.Command} The command.
+       */
+      setCommand: function setCommand(command) {
+        return arguments.length == 1;
+      },
+
+      /**
+       * Return the current set command of this executable.
+       *
+       * @return {qx.ui.command.Command} The current set command.
+       */
+      getCommand: function getCommand() {},
+
+      /**
+       * Fire the "execute" event on the command.
+       */
+      execute: function execute() {}
+    }
+  });
+  qx.ui.form.IExecutable.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.layout.Abstract": {
+        "require": true
+      },
+      "qx.ui.layout.Util": {},
+      "qx.ui.basic.Label": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.debug": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A atom layout. Used to place an image and label in relation
+   * to each other. Useful to create buttons, list items, etc.
+   *
+   * *Features*
+   *
+   * * Gap between icon and text (using {@link #gap})
+   * * Vertical and horizontal mode (using {@link #iconPosition})
+   * * Sorting options to place first child on top/left or bottom/right (using {@link #iconPosition})
+   * * Automatically middles/centers content to the available space
+   * * Auto-sizing
+   * * Supports more than two children (will be processed the same way like the previous ones)
+   *
+   * *Item Properties*
+   *
+   * None
+   *
+   * *Notes*
+   *
+   * * Does not support margins and alignment of {@link qx.ui.core.LayoutItem}.
+   *
+   * *Alternative Names*
+   *
+   * None
+   */
+  qx.Class.define("qx.ui.layout.Atom", {
+    extend: qx.ui.layout.Abstract,
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /** The gap between the icon and the text */
+      gap: {
+        check: "Integer",
+        init: 4,
+        apply: "_applyLayoutChange"
+      },
+
+      /** The position of the icon in relation to the text */
+      iconPosition: {
+        check: ["left", "top", "right", "bottom", "top-left", "bottom-left", "top-right", "bottom-right"],
+        init: "left",
+        apply: "_applyLayoutChange"
+      },
+
+      /**
+       * Whether the content should be rendered centrally when to much space
+       * is available. Enabling this property centers in both axis. The behavior
+       * when disabled of the centering depends on the {@link #iconPosition} property.
+       * If the icon position is <code>left</code> or <code>right</code>, the X axis
+       * is not centered, only the Y axis. If the icon position is <code>top</code>
+       * or <code>bottom</code>, the Y axis is not centered. In case of e.g. an
+       * icon position of <code>top-left</code> no axis is centered.
+       */
+      center: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyLayoutChange"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /*
+      ---------------------------------------------------------------------------
+        LAYOUT INTERFACE
+      ---------------------------------------------------------------------------
+      */
+      // overridden
+      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
+        "true": function _true(item, name, value) {
+          this.assert(false, "The property '" + name + "' is not supported by the Atom layout!");
+        },
+        "false": null
+      }),
+      // overridden
+      renderLayout: function renderLayout(availWidth, availHeight, padding) {
+        var left = padding.left;
+        var top = padding.top;
+        var Util = qx.ui.layout.Util;
+        var iconPosition = this.getIconPosition();
+
+        var children = this._getLayoutChildren();
+
+        var length = children.length;
+        var width, height;
+        var child, hint;
+        var gap = this.getGap();
+        var center = this.getCenter(); // reverse ordering
+
+        var allowedPositions = ["bottom", "right", "top-right", "bottom-right"];
+
+        if (allowedPositions.indexOf(iconPosition) != -1) {
+          var start = length - 1;
+          var end = -1;
+          var increment = -1;
+        } else {
+          var start = 0;
+          var end = length;
+          var increment = 1;
+        } // vertical
+
+
+        if (iconPosition == "top" || iconPosition == "bottom") {
+          if (center) {
+            var allocatedHeight = 0;
+
+            for (var i = start; i != end; i += increment) {
+              height = children[i].getSizeHint().height;
+
+              if (height > 0) {
+                allocatedHeight += height;
+
+                if (i != start) {
+                  allocatedHeight += gap;
+                }
+              }
+            }
+
+            top += Math.round((availHeight - allocatedHeight) / 2);
+          }
+
+          var childTop = top;
+
+          for (var i = start; i != end; i += increment) {
+            child = children[i];
+            hint = child.getSizeHint();
+            width = Math.min(hint.maxWidth, Math.max(availWidth, hint.minWidth));
+            height = hint.height;
+            left = Util.computeHorizontalAlignOffset("center", width, availWidth) + padding.left;
+            child.renderLayout(left, childTop, width, height); // Ignore pseudo invisible elements
+
+            if (height > 0) {
+              childTop = top + height + gap;
+            }
+          }
+        } // horizontal
+        // in this way it also supports shrinking of the first label
+        else {
+          var remainingWidth = availWidth;
+          var shrinkTarget = null;
+          var count = 0;
+
+          for (var i = start; i != end; i += increment) {
+            child = children[i];
+            width = child.getSizeHint().width;
+
+            if (width > 0) {
+              if (!shrinkTarget && child instanceof qx.ui.basic.Label) {
+                shrinkTarget = child;
+              } else {
+                remainingWidth -= width;
+              }
+
+              count++;
+            }
+          }
+
+          if (count > 1) {
+            var gapSum = (count - 1) * gap;
+            remainingWidth -= gapSum;
+          }
+
+          if (shrinkTarget) {
+            var hint = shrinkTarget.getSizeHint();
+            var shrinkTargetWidth = Math.max(hint.minWidth, Math.min(remainingWidth, hint.maxWidth));
+            remainingWidth -= shrinkTargetWidth;
+          }
+
+          if (center && remainingWidth > 0) {
+            left += Math.round(remainingWidth / 2);
+          }
+
+          for (var i = start; i != end; i += increment) {
+            child = children[i];
+            hint = child.getSizeHint();
+            height = Math.min(hint.maxHeight, Math.max(availHeight, hint.minHeight));
+
+            if (child === shrinkTarget) {
+              width = shrinkTargetWidth;
+            } else {
+              width = hint.width;
+            }
+
+            var align = "middle";
+
+            if (iconPosition == "top-left" || iconPosition == "top-right") {
+              align = "top";
+            } else if (iconPosition == "bottom-left" || iconPosition == "bottom-right") {
+              align = "bottom";
+            }
+
+            var childTop = top + Util.computeVerticalAlignOffset(align, hint.height, availHeight);
+            child.renderLayout(left, childTop, width, height); // Ignore pseudo invisible childs for gap e.g.
+            // empty text or unavailable images
+
+            if (width > 0) {
+              left += width + gap;
+            }
+          }
+        }
+      },
+      // overridden
+      _computeSizeHint: function _computeSizeHint() {
+        var children = this._getLayoutChildren();
+
+        var length = children.length;
+        var hint, result; // Fast path for only one child
+
+        if (length === 1) {
+          var hint = children[0].getSizeHint(); // Work on a copy, but do not respect max
+          // values as a Atom can be rendered bigger
+          // than its content.
+
+          result = {
+            width: hint.width,
+            height: hint.height,
+            minWidth: hint.minWidth,
+            minHeight: hint.minHeight
+          };
+        } else {
+          var minWidth = 0,
+              width = 0;
+          var minHeight = 0,
+              height = 0;
+          var iconPosition = this.getIconPosition();
+          var gap = this.getGap();
+
+          if (iconPosition === "top" || iconPosition === "bottom") {
+            var count = 0;
+
+            for (var i = 0; i < length; i++) {
+              hint = children[i].getSizeHint(); // Max of widths
+
+              width = Math.max(width, hint.width);
+              minWidth = Math.max(minWidth, hint.minWidth); // Sum of heights
+
+              if (hint.height > 0) {
+                height += hint.height;
+                minHeight += hint.minHeight;
+                count++;
+              }
+            }
+
+            if (count > 1) {
+              var gapSum = (count - 1) * gap;
+              height += gapSum;
+              minHeight += gapSum;
+            }
+          } else {
+            var count = 0;
+
+            for (var i = 0; i < length; i++) {
+              hint = children[i].getSizeHint(); // Max of heights
+
+              height = Math.max(height, hint.height);
+              minHeight = Math.max(minHeight, hint.minHeight); // Sum of widths
+
+              if (hint.width > 0) {
+                width += hint.width;
+                minWidth += hint.minWidth;
+                count++;
+              }
+            }
+
+            if (count > 1) {
+              var gapSum = (count - 1) * gap;
+              width += gapSum;
+              minWidth += gapSum;
+            }
+          } // Build hint
+
+
+          result = {
+            minWidth: minWidth,
+            width: width,
+            minHeight: minHeight,
+            height: height
+          };
+        }
+
+        return result;
+      }
+    }
+  });
+  qx.ui.layout.Atom.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.basic.Atom": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.core.MExecutable": {
+        "require": true
+      },
+      "qx.ui.form.IExecutable": {
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A Button widget which supports various states and allows it to be used
+   * via the mouse, touch, pen and the keyboard.
+   *
+   * If the user presses the button by clicking on it, or the <code>Enter</code> or
+   * <code>Space</code> keys, the button fires an {@link qx.ui.core.MExecutable#execute} event.
+   *
+   * If the {@link qx.ui.core.MExecutable#command} property is set, the
+   * command is executed as well.
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the widget.
+   *
+   * <pre class='javascript'>
+   *   var button = new qx.ui.form.Button("Hello World");
+   *
+   *   button.addListener("execute", function(e) {
+   *     alert("Button was clicked");
+   *   }, this);
+   *
+   *   this.getRoot().add(button);
+   * </pre>
+   *
+   * This example creates a button with the label "Hello World" and attaches an
+   * event listener to the {@link #execute} event.
+   *
+   * *External Documentation*
+   *
+   * <a href='http://qooxdoo.org/docs/#desktop/widget/button.md' target='_blank'>
+   * Documentation of this widget in the qooxdoo manual.</a>
+   */
+  qx.Class.define("qx.ui.form.Button", {
+    extend: qx.ui.basic.Atom,
+    include: [qx.ui.core.MExecutable],
+    implement: [qx.ui.form.IExecutable],
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param label {String} label of the atom
+     * @param icon {String?null} Icon URL of the atom
+     * @param command {qx.ui.command.Command?null} Command instance to connect with
+     */
+    construct: function construct(label, icon, command) {
+      qx.ui.basic.Atom.constructor.call(this, label, icon);
+
+      if (command != null) {
+        this.setCommand(command);
+      } // ARIA attrs
+
+
+      this.getContentElement().setAttribute("role", "button"); // Add listeners
+
+      this.addListener("pointerover", this._onPointerOver);
+      this.addListener("pointerout", this._onPointerOut);
+      this.addListener("pointerdown", this._onPointerDown);
+      this.addListener("pointerup", this._onPointerUp);
+      this.addListener("tap", this._onTap);
+      this.addListener("keydown", this._onKeyDown);
+      this.addListener("keyup", this._onKeyUp); // Stop events
+
+      this.addListener("dblclick", function (e) {
+        e.stopPropagation();
+      });
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      // overridden
+      appearance: {
+        refine: true,
+        init: "button"
+      },
+      // overridden
+      focusable: {
+        refine: true,
+        init: true
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+
+    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
+    members: {
+      // overridden
+
+      /**
+       * @lint ignoreReferenceField(_forwardStates)
+       */
+      _forwardStates: {
+        focused: true,
+        hovered: true,
+        pressed: true,
+        disabled: true
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        USER API
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Manually press the button
+       */
+      press: function press() {
+        if (this.hasState("abandoned")) {
+          return;
+        }
+
+        this.addState("pressed");
+      },
+
+      /**
+       * Manually release the button
+       */
+      release: function release() {
+        if (this.hasState("pressed")) {
+          this.removeState("pressed");
+        }
+      },
+
+      /**
+       * Completely reset the button (remove all states)
+       */
+      reset: function reset() {
+        this.removeState("pressed");
+        this.removeState("abandoned");
+        this.removeState("hovered");
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        EVENT LISTENERS
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Listener method for "pointerover" event
+       * <ul>
+       * <li>Adds state "hovered"</li>
+       * <li>Removes "abandoned" and adds "pressed" state (if "abandoned" state is set)</li>
+       * </ul>
+       *
+       * @param e {qx.event.type.Pointer} Mouse event
+       */
+      _onPointerOver: function _onPointerOver(e) {
+        if (!this.isEnabled() || e.getTarget() !== this) {
+          return;
+        }
+
+        if (this.hasState("abandoned")) {
+          this.removeState("abandoned");
+          this.addState("pressed");
+        }
+
+        this.addState("hovered");
+      },
+
+      /**
+       * Listener method for "pointerout" event
+       * <ul>
+       * <li>Removes "hovered" state</li>
+       * <li>Adds "abandoned" and removes "pressed" state (if "pressed" state is set)</li>
+       * </ul>
+       *
+       * @param e {qx.event.type.Pointer} Mouse event
+       */
+      _onPointerOut: function _onPointerOut(e) {
+        if (!this.isEnabled() || e.getTarget() !== this) {
+          return;
+        }
+
+        this.removeState("hovered");
+
+        if (this.hasState("pressed")) {
+          this.removeState("pressed");
+          this.addState("abandoned");
+        }
+      },
+
+      /**
+       * Listener method for "pointerdown" event
+       * <ul>
+       * <li>Removes "abandoned" state</li>
+       * <li>Adds "pressed" state</li>
+       * </ul>
+       *
+       * @param e {qx.event.type.Pointer} Mouse event
+       */
+      _onPointerDown: function _onPointerDown(e) {
+        if (!e.isLeftPressed()) {
+          return;
+        }
+
+        e.stopPropagation(); // Activate capturing if the button get a pointerout while
+        // the button is pressed.
+
+        this.capture();
+        this.removeState("abandoned");
+        this.addState("pressed");
+      },
+
+      /**
+       * Listener method for "pointerup" event
+       * <ul>
+       * <li>Removes "pressed" state (if set)</li>
+       * <li>Removes "abandoned" state (if set)</li>
+       * <li>Adds "hovered" state (if "abandoned" state is not set)</li>
+       *</ul>
+       *
+       * @param e {qx.event.type.Pointer} Mouse event
+       */
+      _onPointerUp: function _onPointerUp(e) {
+        this.releaseCapture(); // We must remove the states before executing the command
+        // because in cases were the window lost the focus while
+        // executing we get the capture phase back (mouseout).
+
+        var hasPressed = this.hasState("pressed");
+        var hasAbandoned = this.hasState("abandoned");
+
+        if (hasPressed) {
+          this.removeState("pressed");
+        }
+
+        if (hasAbandoned) {
+          this.removeState("abandoned");
+        }
+
+        e.stopPropagation();
+      },
+
+      /**
+       * Listener method for "tap" event which stops the propagation.
+       *
+       * @param e {qx.event.type.Pointer} Pointer event
+       */
+      _onTap: function _onTap(e) {
+        // "execute" is fired here so that the button can be dragged
+        // without executing it (e.g. in a TabBar with overflow)
+        this.execute();
+        e.stopPropagation();
+      },
+
+      /**
+       * Listener method for "keydown" event.<br/>
+       * Removes "abandoned" and adds "pressed" state
+       * for the keys "Enter" or "Space"
+       *
+       * @param e {Event} Key event
+       */
+      _onKeyDown: function _onKeyDown(e) {
+        switch (e.getKeyIdentifier()) {
+          case "Enter":
+          case "Space":
+            this.removeState("abandoned");
+            this.addState("pressed");
+            e.stopPropagation();
+        }
+      },
+
+      /**
+       * Listener method for "keyup" event.<br/>
+       * Removes "abandoned" and "pressed" state (if "pressed" state is set)
+       * for the keys "Enter" or "Space"
+       *
+       * @param e {Event} Key event
+       */
+      _onKeyUp: function _onKeyUp(e) {
+        switch (e.getKeyIdentifier()) {
+          case "Enter":
+          case "Space":
+            if (this.hasState("pressed")) {
+              this.removeState("abandoned");
+              this.removeState("pressed");
+              this.execute();
+              e.stopPropagation();
+            }
+
+        }
+      }
+    }
+  });
+  qx.ui.form.Button.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -59784,6 +58539,782 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.ui.table.pane.Model.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2017 Martijn Evers, The Netherlands
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martijn Evers (mever)
+  
+  ************************************************************************ */
+
+  /**
+   * Field interface.
+   *
+   * This interface allows any value to be set as long as the following constraint
+   * is met: any value returned by {@link getValue} can be set by {@link setValue}.
+   *
+   * This specifies the interface for handling the model value of a field.
+   * The model value is always in a consistent state (see duration example), and
+   * should only handle model values of a type that correctly represents the
+   * data available through its UI. E.g.: duration can ideally be modeled by a number
+   * of time units, like seconds. When using a date the duration may be
+   * unclear (since Unix time?). Type conversions should be handled by data binding.
+   *
+   * The model value is not necessary what is shown to the end-user
+   * by implementing class. A good example is the {@link qx.ui.form.TextField}
+   * which is able to operate with or without live updating the model value.
+   *
+   * Duration example: a field for duration may use two date pickers for begin
+   * and end dates. When the end date is before the start date the model is in
+   * inconsistent state. getValue should never return such state. And calling
+   * it must result in either null or the last consistent value (depending
+   * on implementation or setting).
+   */
+  qx.Interface.define("qx.ui.form.IField", {
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /** Fired when the model value was modified */
+      changeValue: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /*
+      ---------------------------------------------------------------------------
+        VALUE PROPERTY
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Sets the field model value. Should also update the UI.
+       *
+       * @param value {var|null} Updates the field with the new model value.
+       * @return {null|Error} Should return an error when the type of
+       *  model value is not compatible with the implementing class (the concrete field).
+       */
+      setValue: function setValue(value) {
+        return arguments.length == 1;
+      },
+
+      /**
+       * Resets the model value to its initial value. Should also update the UI.
+       */
+      resetValue: function resetValue() {},
+
+      /**
+       * Returns a consistent and up-to-date model value.
+       *
+       * Note: returned value can also be a promise of type <code>Promise&lt;*|null&gt;</code>.
+       *
+       * @return {var|null} The model value plain or as promise.
+       */
+      getValue: function getValue() {}
+    }
+  });
+  qx.ui.form.IField.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.form.IField": {
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * Form interface for all form widgets which have strings as their primary
+   * data type like textfield's.
+   */
+  qx.Interface.define("qx.ui.form.IStringForm", {
+    extend: qx.ui.form.IField,
+
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /** Fired when the value was modified */
+      changeValue: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /*
+      ---------------------------------------------------------------------------
+        VALUE PROPERTY
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Sets the element's value.
+       *
+       * @param value {String|null} The new value of the element.
+       */
+      setValue: function setValue(value) {
+        return arguments.length == 1;
+      },
+
+      /**
+       * Resets the element's value to its initial value.
+       */
+      resetValue: function resetValue() {},
+
+      /**
+       * The element's user set value.
+       *
+       * @return {String|null} The value.
+       */
+      getValue: function getValue() {}
+    }
+  });
+  qx.ui.form.IStringForm.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.core.Widget": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.form.IStringForm": {
+        "require": true
+      },
+      "qx.locale.Manager": {
+        "construct": true
+      },
+      "qx.bom.client.Css": {
+        "require": true
+      },
+      "qx.bom.client.Html": {
+        "require": true
+      },
+      "qx.html.Label": {},
+      "qx.theme.manager.Color": {},
+      "qx.theme.manager.Font": {},
+      "qx.bom.webfonts.WebFont": {},
+      "qx.bom.Font": {},
+      "qx.ui.core.queue.Layout": {},
+      "qx.bom.Label": {},
+      "qx.bom.client.OperatingSystem": {
+        "require": true
+      },
+      "qx.bom.client.Engine": {
+        "require": true
+      },
+      "qx.bom.client.Browser": {
+        "require": true
+      }
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "css.textoverflow": {
+          "className": "qx.bom.client.Css"
+        },
+        "html.xul": {
+          "className": "qx.bom.client.Html"
+        },
+        "os.name": {
+          "className": "qx.bom.client.OperatingSystem"
+        },
+        "engine.name": {
+          "className": "qx.bom.client.Engine"
+        },
+        "engine.version": {
+          "className": "qx.bom.client.Engine"
+        },
+        "qx.dynlocale": {
+          "load": true
+        },
+        "browser.name": {
+          "className": "qx.bom.client.Browser"
+        },
+        "browser.version": {
+          "className": "qx.bom.client.Browser"
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * The label class brings typical text content to the widget system.
+   *
+   * It supports simple text nodes and complex HTML (rich). The default
+   * content mode is for text only. The mode is changeable through the property
+   * {@link #rich}.
+   *
+   * The label supports heightForWidth when used in HTML mode. This means
+   * that multi line HTML automatically computes the correct preferred height.
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the widget.
+   *
+   * <pre class='javascript'>
+   *   // a simple text label without wrapping and markup support
+   *   var label1 = new qx.ui.basic.Label("Simple text label");
+   *   this.getRoot().add(label1, {left:20, top:10});
+   *
+   *   // a HTML label with automatic line wrapping
+   *   var label2 = new qx.ui.basic.Label().set({
+   *     value: "A <b>long label</b> text with auto-wrapping. This also may contain <b style='color:red'>rich HTML</b> markup.",
+   *     rich : true,
+   *     width: 120
+   *   });
+   *   this.getRoot().add(label2, {left:20, top:50});
+   * </pre>
+   *
+   * The first label in this example is a basic text only label. As such no
+   * automatic wrapping is supported. The second label is a long label containing
+   * HTML markup with automatic line wrapping.
+   *
+   * *External Documentation*
+   *
+   * <a href='http://qooxdoo.org/docs/#desktop/widget/label.md' target='_blank'>
+   * Documentation of this widget in the qooxdoo manual.</a>
+   *
+   * NOTE: Instances of this class must be disposed of after use
+   *
+   */
+  qx.Class.define("qx.ui.basic.Label", {
+    extend: qx.ui.core.Widget,
+    implement: [qx.ui.form.IStringForm],
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param value {String} Text or HTML content to use
+     */
+    construct: function construct(value) {
+      qx.ui.core.Widget.constructor.call(this);
+
+      if (value != null) {
+        this.setValue(value);
+      }
+
+      {
+        qx.locale.Manager.getInstance().addListener("changeLocale", this._onChangeLocale, this);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Switches between rich HTML and text content. The text mode (<code>false</code>) supports
+       * advanced features like ellipsis when the available space is not
+       * enough. HTML mode (<code>true</code>) supports multi-line content and all the
+       * markup features of HTML content.
+       */
+      rich: {
+        check: "Boolean",
+        init: false,
+        event: "changeRich",
+        apply: "_applyRich"
+      },
+
+      /**
+       * Controls whether text wrap is activated or not. But please note, that
+       * this property works only in combination with the property {@link #rich}.
+       * The {@link #wrap} has only an effect if the {@link #rich} property is
+       * set to <code>true</code>, otherwise {@link #wrap} has no effect.
+       */
+      wrap: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyWrap"
+      },
+
+      /**
+       * Controls whether line wrapping can occur in the middle of a word; this is
+       * typically only useful when there is a restricted amount of horizontal space
+       * and words would otherwise overflow beyond the width of the element.  Words
+       * are typically considered as separated by spaces, so "abc/def/ghi" is a 11
+       * character word that would not be split without `breakWithWords` set to true.
+       */
+      breakWithinWords: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyBreakWithinWords"
+      },
+
+      /**
+       * Contains the HTML or text content. Interpretation depends on the value
+       * of {@link #rich}. In text mode entities and other HTML special content
+       * is not supported. But it is possible to use unicode escape sequences
+       * to insert symbols and other non ASCII characters.
+       */
+      value: {
+        check: "String",
+        apply: "_applyValue",
+        event: "changeValue",
+        nullable: true
+      },
+
+      /**
+       * The buddy property can be used to connect the label to another widget.
+       * That causes two things:
+       * <ul>
+       *   <li>The label will always take the same enabled state as the buddy
+       *       widget.
+       *   </li>
+       *   <li>A tap on the label will focus the buddy widget.</li>
+       * </ul>
+       * This is the behavior of the for attribute of HTML:
+       * http://www.w3.org/TR/html401/interact/forms.html#adef-for
+       */
+      buddy: {
+        check: "qx.ui.core.Widget",
+        apply: "_applyBuddy",
+        nullable: true,
+        init: null,
+        dereference: true
+      },
+
+      /** Control the text alignment */
+      textAlign: {
+        check: ["left", "center", "right", "justify"],
+        nullable: true,
+        themeable: true,
+        apply: "_applyTextAlign",
+        event: "changeTextAlign"
+      },
+      // overridden
+      appearance: {
+        refine: true,
+        init: "label"
+      },
+      // overridden
+      selectable: {
+        refine: true,
+        init: false
+      },
+      // overridden
+      allowGrowX: {
+        refine: true,
+        init: false
+      },
+      // overridden
+      allowGrowY: {
+        refine: true,
+        init: false
+      },
+      // overridden
+      allowShrinkY: {
+        refine: true,
+        init: false
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+
+    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
+    members: {
+      __font__P_54_0: null,
+      __invalidContentSize__P_54_1: null,
+      __tapListenerId__P_54_2: null,
+      __webfontListenerId__P_54_3: null,
+
+      /*
+      ---------------------------------------------------------------------------
+        WIDGET API
+      ---------------------------------------------------------------------------
+      */
+      // overridden
+      _getContentHint: function _getContentHint() {
+        if (this.__invalidContentSize__P_54_1) {
+          this.__contentSize__P_54_4 = this.__computeContentSize__P_54_5();
+          delete this.__invalidContentSize__P_54_1;
+        }
+
+        return {
+          width: this.__contentSize__P_54_4.width,
+          height: this.__contentSize__P_54_4.height
+        };
+      },
+      // overridden
+      _hasHeightForWidth: function _hasHeightForWidth() {
+        return this.getRich() && this.getWrap();
+      },
+      // overridden
+      _applySelectable: function _applySelectable(value) {
+        // This is needed for all browsers not having text-overflow:ellipsis
+        // but supporting XUL (firefox < 4)
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=312156
+        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          if (value && !this.isRich()) {
+            {
+              this.warn("Only rich labels are selectable in browsers with Gecko engine!");
+            }
+            return;
+          }
+        }
+
+        qx.ui.basic.Label.superclass.prototype._applySelectable.call(this, value);
+      },
+      // overridden
+      _getContentHeightForWidth: function _getContentHeightForWidth(width) {
+        if (!this.getRich() && !this.getWrap()) {
+          return null;
+        }
+
+        return this.__computeContentSize__P_54_5(width).height;
+      },
+      // overridden
+      _createContentElement: function _createContentElement() {
+        return new qx.html.Label();
+      },
+      // property apply
+      _applyTextAlign: function _applyTextAlign(value, old) {
+        this.getContentElement().setStyle("textAlign", value);
+      },
+      // overridden
+      _applyTextColor: function _applyTextColor(value, old) {
+        if (value) {
+          this.getContentElement().setStyle("color", qx.theme.manager.Color.getInstance().resolve(value));
+        } else {
+          this.getContentElement().removeStyle("color");
+        }
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        LABEL ADDONS
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * @type {Map} Internal fallback of label size when no font is defined
+       *
+       * @lint ignoreReferenceField(__contentSize)
+       */
+      __contentSize__P_54_4: {
+        width: 0,
+        height: 0
+      },
+      // property apply
+      _applyFont: function _applyFont(value, old) {
+        if (old && this.__font__P_54_0 && this.__webfontListenerId__P_54_3) {
+          this.__font__P_54_0.removeListenerById(this.__webfontListenerId__P_54_3);
+
+          this.__webfontListenerId__P_54_3 = null;
+        } // Apply
+
+
+        var styles;
+
+        if (value) {
+          this.__font__P_54_0 = qx.theme.manager.Font.getInstance().resolve(value);
+
+          if (this.__font__P_54_0 instanceof qx.bom.webfonts.WebFont) {
+            if (!this.__font__P_54_0.isValid()) {
+              this.__webfontListenerId__P_54_3 = this.__font__P_54_0.addListener("changeStatus", this._onWebFontStatusChange, this);
+            }
+          }
+
+          styles = this.__font__P_54_0.getStyles();
+        } else {
+          this.__font__P_54_0 = null;
+          styles = qx.bom.Font.getDefaultStyles();
+        } // check if text color already set - if so this local value has higher priority
+
+
+        if (this.getTextColor() != null) {
+          delete styles["color"];
+        }
+
+        this.getContentElement().setStyles(styles); // Invalidate text size
+
+        this.__invalidContentSize__P_54_1 = true; // Update layout
+
+        qx.ui.core.queue.Layout.add(this);
+      },
+
+      /**
+       * Internal utility to compute the content dimensions.
+       *
+       * @param width {Integer?null} Optional width constraint
+       * @return {Map} Map with <code>width</code> and <code>height</code> keys
+       */
+      __computeContentSize__P_54_5: function __computeContentSize__P_54_5(width) {
+        var Label = qx.bom.Label;
+        var font = this.getFont();
+        var styles = font ? this.__font__P_54_0.getStyles() : qx.bom.Font.getDefaultStyles();
+        var content = this.getValue() || "A";
+        var rich = this.getRich();
+
+        if (this.__webfontListenerId__P_54_3) {
+          this.__fixEllipsis__P_54_6();
+        }
+
+        if (rich && this.getBreakWithinWords()) {
+          styles.wordBreak = "break-all";
+        }
+
+        return rich ? Label.getHtmlSize(content, styles, width) : Label.getTextSize(content, styles);
+      },
+
+      /**
+       * Firefox > 9 on OS X will draw an ellipsis on top of the label content even
+       * though there is enough space for the text. Re-applying the content forces
+       * a recalculation and fixes the problem. See qx bug #6293
+       */
+      __fixEllipsis__P_54_6: function __fixEllipsis__P_54_6() {
+        if (!this.getContentElement()) {
+          return;
+        }
+
+        if (qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("engine.name") == "gecko" && parseInt(qx.core.Environment.get("engine.version"), 10) < 16 && parseInt(qx.core.Environment.get("engine.version"), 10) > 9) {
+          var domEl = this.getContentElement().getDomElement();
+
+          if (domEl) {
+            /* eslint-disable-next-line no-self-assign */
+            domEl.innerHTML = domEl.innerHTML;
+          }
+        }
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        PROPERTY APPLIER
+      ---------------------------------------------------------------------------
+      */
+      // property apply
+      _applyBuddy: function _applyBuddy(value, old) {
+        if (old != null) {
+          this.removeRelatedBindings(old);
+          this.removeListenerById(this.__tapListenerId__P_54_2);
+          this.__tapListenerId__P_54_2 = null;
+        }
+
+        if (value != null) {
+          value.bind("enabled", this, "enabled");
+          this.__tapListenerId__P_54_2 = this.addListener("tap", function () {
+            // only focus focusable elements [BUG #3555]
+            if (value.isFocusable()) {
+              value.focus.apply(value);
+            } // furthermore toggle if possible [BUG #6881]
+
+
+            if ("toggleValue" in value && typeof value.toggleValue === "function") {
+              value.toggleValue();
+            }
+          }, this);
+        }
+      },
+      // property apply
+      _applyRich: function _applyRich(value) {
+        // Sync with content element
+        this.getContentElement().setRich(value); // Mark text size cache as invalid
+
+        this.__invalidContentSize__P_54_1 = true; // Update layout
+
+        qx.ui.core.queue.Layout.add(this);
+      },
+      // property apply
+      _applyWrap: function _applyWrap(value, old) {
+        if (value && !this.isRich()) {
+          {
+            this.warn("Only rich labels support wrap.");
+          }
+        }
+
+        if (this.isRich()) {
+          // apply the white space style to the label to force it not
+          // to wrap if wrap is set to false [BUG #3732]
+          var whiteSpace = value ? "normal" : "nowrap";
+          this.getContentElement().setStyle("whiteSpace", whiteSpace);
+        }
+      },
+      // property apply
+      _applyBreakWithinWords: function _applyBreakWithinWords(value, old) {
+        if (this.isRich()) {
+          this.getContentElement().setStyle("wordBreak", value ? "break-all" : "normal");
+        }
+      },
+
+      /**
+       * Locale change event handler
+       *
+       * @signature function(e)
+       * @param e {Event} the change event
+       */
+      _onChangeLocale: qx.core.Environment.select("qx.dynlocale", {
+        "true": function _true(e) {
+          var content = this.getValue();
+
+          if (content && content.translate) {
+            this.setValue(content.translate());
+          }
+        },
+        "false": null
+      }),
+
+      /**
+       * Triggers layout recalculation after a web font was loaded
+       *
+       * @param ev {qx.event.type.Data} "changeStatus" event
+       */
+      _onWebFontStatusChange: function _onWebFontStatusChange(ev) {
+        if (ev.getData().valid === true) {
+          // safari has trouble resizing, adding it again fixed the issue [BUG #8786]
+          if (qx.core.Environment.get("browser.name") == "safari" && parseFloat(qx.core.Environment.get("browser.version")) >= 8) {
+            window.setTimeout(function () {
+              this.__invalidContentSize__P_54_1 = true;
+              qx.ui.core.queue.Layout.add(this);
+            }.bind(this), 0);
+          }
+
+          this.__invalidContentSize__P_54_1 = true;
+          qx.ui.core.queue.Layout.add(this);
+        }
+      },
+      // property apply
+      _applyValue: qx.core.Environment.select("qx.dynlocale", {
+        "true": function _true(value, old) {
+          // Sync with content element
+          if (value && value.translate) {
+            this.getContentElement().setValue(value.translate());
+          } else {
+            this.getContentElement().setValue(value);
+          } // Mark text size cache as invalid
+
+
+          this.__invalidContentSize__P_54_1 = true; // Update layout
+
+          qx.ui.core.queue.Layout.add(this);
+        },
+        "false": function _false(value, old) {
+          this.getContentElement().setValue(value); // Mark text size cache as invalid
+
+          this.__invalidContentSize__P_54_1 = true; // Update layout
+
+          qx.ui.core.queue.Layout.add(this);
+        }
+      })
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      {
+        qx.locale.Manager.getInstance().removeListener("changeLocale", this._onChangeLocale, this);
+      }
+
+      if (this.__font__P_54_0 && this.__webfontListenerId__P_54_3) {
+        this.__font__P_54_0.removeListenerById(this.__webfontListenerId__P_54_3);
+      }
+
+      this.__font__P_54_0 = null;
+    }
+  });
+  qx.ui.basic.Label.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -71579,6 +71110,475 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
         "usage": "dynamic",
         "require": true
       },
+      "qx.theme.manager.Decoration": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Common set of utility methods used by the standard qooxdoo layouts.
+   *
+   * @internal
+   */
+  qx.Class.define("qx.ui.layout.Util", {
+    statics: {
+      /** @type {RegExp} Regular expression to match percent values */
+      PERCENT_VALUE: /[0-9]+(?:\.[0-9]+)?%/,
+
+      /**
+       * Computes the flex offsets needed to reduce the space
+       * difference as much as possible by respecting the
+       * potential of the given elements (being in the range of
+       * their min/max values)
+       *
+       * @param flexibles {Map} Each entry must have these keys:
+       *   <code>id</code>, <code>potential</code> and <code>flex</code>.
+       *   The ID is used in the result map as the key for the user to work
+       *   with later (e.g. upgrade sizes etc. to respect the given offset)
+       *   The potential is an integer value which is the difference of the
+       *   currently interesting direction (e.g. shrinking=width-minWidth, growing=
+       *   maxWidth-width). The flex key holds the flex value of the item.
+       * @param avail {Integer} Full available space to allocate (ignoring used one)
+       * @param used {Integer} Size of already allocated space
+       * @return {Map} A map which contains the calculated offsets under the key
+       *   which is identical to the ID given in the incoming map.
+       */
+      computeFlexOffsets: function computeFlexOffsets(flexibles, avail, used) {
+        var child, key, flexSum, flexStep;
+        var grow = avail > used;
+        var remaining = Math.abs(avail - used);
+        var roundingOffset, currentOffset; // Preprocess data
+
+        var result = {};
+
+        for (key in flexibles) {
+          child = flexibles[key];
+          result[key] = {
+            potential: grow ? child.max - child.value : child.value - child.min,
+            flex: grow ? child.flex : 1 / child.flex,
+            offset: 0
+          };
+        } // Continue as long as we need to do anything
+
+
+        while (remaining != 0) {
+          // Find minimum potential for next correction
+          flexStep = Infinity;
+          flexSum = 0;
+
+          for (key in result) {
+            child = result[key];
+
+            if (child.potential > 0) {
+              flexSum += child.flex;
+              flexStep = Math.min(flexStep, child.potential / child.flex);
+            }
+          } // No potential found, quit here
+
+
+          if (flexSum == 0) {
+            break;
+          } // Respect maximum potential given through remaining space
+          // The parent should always win in such conflicts.
+
+
+          flexStep = Math.min(remaining, flexStep * flexSum) / flexSum; // Start with correction
+
+          roundingOffset = 0;
+
+          for (key in result) {
+            child = result[key];
+
+            if (child.potential > 0) {
+              // Compute offset for this step
+              currentOffset = Math.min(remaining, child.potential, Math.ceil(flexStep * child.flex)); // Fix rounding issues
+
+              roundingOffset += currentOffset - flexStep * child.flex;
+
+              if (roundingOffset >= 1) {
+                roundingOffset -= 1;
+                currentOffset -= 1;
+              } // Update child status
+
+
+              child.potential -= currentOffset;
+
+              if (grow) {
+                child.offset += currentOffset;
+              } else {
+                child.offset -= currentOffset;
+              } // Update parent status
+
+
+              remaining -= currentOffset;
+            }
+          }
+        }
+
+        return result;
+      },
+
+      /**
+       * Computes the offset which needs to be added to the top position
+       * to result in the stated vertical alignment. Also respects
+       * existing margins (without collapsing).
+       *
+       * @param align {String} One of <code>top</code>, <code>center</code> or <code>bottom</code>.
+       * @param width {Integer} The visible width of the widget
+       * @param availWidth {Integer} The available inner width of the parent
+       * @param marginLeft {Integer?0} Optional left margin of the widget
+       * @param marginRight {Integer?0} Optional right margin of the widget
+       * @return {Integer} Computed top coordinate
+       */
+      computeHorizontalAlignOffset: function computeHorizontalAlignOffset(align, width, availWidth, marginLeft, marginRight) {
+        if (marginLeft == null) {
+          marginLeft = 0;
+        }
+
+        if (marginRight == null) {
+          marginRight = 0;
+        }
+
+        var value = 0;
+
+        switch (align) {
+          case "left":
+            value = marginLeft;
+            break;
+
+          case "right":
+            // Align right changes priority to right edge:
+            // To align to the right is more important here than to left.
+            value = availWidth - width - marginRight;
+            break;
+
+          case "center":
+            // Ideal center position
+            value = Math.round((availWidth - width) / 2); // Try to make this possible (with left-right priority)
+
+            if (value < marginLeft) {
+              value = marginLeft;
+            } else if (value < marginRight) {
+              value = Math.max(marginLeft, availWidth - width - marginRight);
+            }
+
+            break;
+        }
+
+        return value;
+      },
+
+      /**
+       * Computes the offset which needs to be added to the top position
+       * to result in the stated vertical alignment. Also respects
+       * existing margins (without collapsing).
+       *
+       * @param align {String} One of <code>top</code>, <code>middle</code> or <code>bottom</code>.
+       * @param height {Integer} The visible height of the widget
+       * @param availHeight {Integer} The available inner height of the parent
+       * @param marginTop {Integer?0} Optional top margin of the widget
+       * @param marginBottom {Integer?0} Optional bottom margin of the widget
+       * @return {Integer} Computed top coordinate
+       */
+      computeVerticalAlignOffset: function computeVerticalAlignOffset(align, height, availHeight, marginTop, marginBottom) {
+        if (marginTop == null) {
+          marginTop = 0;
+        }
+
+        if (marginBottom == null) {
+          marginBottom = 0;
+        }
+
+        var value = 0;
+
+        switch (align) {
+          case "top":
+            value = marginTop;
+            break;
+
+          case "bottom":
+            // Align bottom changes priority to bottom edge:
+            // To align to the bottom is more important here than to top.
+            value = availHeight - height - marginBottom;
+            break;
+
+          case "middle":
+            // Ideal middle position
+            value = Math.round((availHeight - height) / 2); // Try to make this possible (with top-down priority)
+
+            if (value < marginTop) {
+              value = marginTop;
+            } else if (value < marginBottom) {
+              value = Math.max(marginTop, availHeight - height - marginBottom);
+            }
+
+            break;
+        }
+
+        return value;
+      },
+
+      /**
+       * Collapses two margins.
+       *
+       * Supports positive and negative margins.
+       * Collapsing find the largest positive and the largest
+       * negative value. Afterwards the result is computed through the
+       * subtraction of the negative from the positive value.
+       *
+       * @param varargs {arguments} Any number of configured margins
+       * @return {Integer} The collapsed margin
+       */
+      collapseMargins: function collapseMargins(varargs) {
+        var max = 0,
+            min = 0;
+
+        for (var i = 0, l = arguments.length; i < l; i++) {
+          var value = arguments[i];
+
+          if (value < 0) {
+            min = Math.min(min, value);
+          } else if (value > 0) {
+            max = Math.max(max, value);
+          }
+        }
+
+        return max + min;
+      },
+
+      /**
+       * Computes the sum of all horizontal gaps. Normally the
+       * result is used to compute the available width in a widget.
+       *
+       * The method optionally respects margin collapsing as well. In
+       * this mode the spacing is collapsed together with the margins.
+       *
+       * @param children {Array} List of children
+       * @param spacing {Integer?0} Spacing between every child
+       * @param collapse {Boolean?false} Optional margin collapsing mode
+       * @return {Integer} Sum of all gaps in the final layout.
+       */
+      computeHorizontalGaps: function computeHorizontalGaps(children, spacing, collapse) {
+        if (spacing == null) {
+          spacing = 0;
+        }
+
+        var gaps = 0;
+
+        if (collapse) {
+          // Add first child
+          gaps += children[0].getMarginLeft();
+
+          for (var i = 1, l = children.length; i < l; i += 1) {
+            gaps += this.collapseMargins(spacing, children[i - 1].getMarginRight(), children[i].getMarginLeft());
+          } // Add last child
+
+
+          gaps += children[l - 1].getMarginRight();
+        } else {
+          // Simple adding of all margins
+          for (var i = 1, l = children.length; i < l; i += 1) {
+            gaps += children[i].getMarginLeft() + children[i].getMarginRight();
+          } // Add spacing
+
+
+          gaps += spacing * (l - 1);
+        }
+
+        return gaps;
+      },
+
+      /**
+       * Computes the sum of all vertical gaps. Normally the
+       * result is used to compute the available height in a widget.
+       *
+       * The method optionally respects margin collapsing as well. In
+       * this mode the spacing is collapsed together with the margins.
+       *
+       * @param children {Array} List of children
+       * @param spacing {Integer?0} Spacing between every child
+       * @param collapse {Boolean?false} Optional margin collapsing mode
+       * @return {Integer} Sum of all gaps in the final layout.
+       */
+      computeVerticalGaps: function computeVerticalGaps(children, spacing, collapse) {
+        if (spacing == null) {
+          spacing = 0;
+        }
+
+        var gaps = 0;
+
+        if (collapse) {
+          // Add first child
+          gaps += children[0].getMarginTop();
+
+          for (var i = 1, l = children.length; i < l; i += 1) {
+            gaps += this.collapseMargins(spacing, children[i - 1].getMarginBottom(), children[i].getMarginTop());
+          } // Add last child
+
+
+          gaps += children[l - 1].getMarginBottom();
+        } else {
+          // Simple adding of all margins
+          for (var i = 1, l = children.length; i < l; i += 1) {
+            gaps += children[i].getMarginTop() + children[i].getMarginBottom();
+          } // Add spacing
+
+
+          gaps += spacing * (l - 1);
+        }
+
+        return gaps;
+      },
+
+      /**
+       * Computes the gaps together with the configuration of separators.
+       *
+       * @param children {qx.ui.core.LayoutItem[]} List of children
+       * @param spacing {Integer} Configured spacing
+       * @param separator {String|qx.ui.decoration.IDecorator} Separator to render
+       * @return {Integer} Sum of gaps
+       */
+      computeHorizontalSeparatorGaps: function computeHorizontalSeparatorGaps(children, spacing, separator) {
+        var instance = qx.theme.manager.Decoration.getInstance().resolve(separator);
+        var insets = instance.getInsets();
+        var width = insets.left + insets.right;
+        var gaps = 0;
+
+        for (var i = 0, l = children.length; i < l; i++) {
+          var child = children[i];
+          gaps += child.getMarginLeft() + child.getMarginRight();
+        }
+
+        gaps += (spacing + width + spacing) * (l - 1);
+        return gaps;
+      },
+
+      /**
+       * Computes the gaps together with the configuration of separators.
+       *
+       * @param children {qx.ui.core.LayoutItem[]} List of children
+       * @param spacing {Integer} Configured spacing
+       * @param separator {String|qx.ui.decoration.IDecorator} Separator to render
+       * @return {Integer} Sum of gaps
+       */
+      computeVerticalSeparatorGaps: function computeVerticalSeparatorGaps(children, spacing, separator) {
+        var instance = qx.theme.manager.Decoration.getInstance().resolve(separator);
+        var insets = instance.getInsets();
+        var height = insets.top + insets.bottom;
+        var gaps = 0;
+
+        for (var i = 0, l = children.length; i < l; i++) {
+          var child = children[i];
+          gaps += child.getMarginTop() + child.getMarginBottom();
+        }
+
+        gaps += (spacing + height + spacing) * (l - 1);
+        return gaps;
+      },
+
+      /**
+       * Arranges two sizes in one box to best respect their individual limitations.
+       *
+       * Mainly used by split layouts (Split Panes) where the layout is mainly defined
+       * by the outer dimensions.
+       *
+       * @param beginMin {Integer} Minimum size of first widget (from size hint)
+       * @param beginIdeal {Integer} Ideal size of first widget (maybe after dragging the splitter)
+       * @param beginMax {Integer} Maximum size of first widget (from size hint)
+       * @param endMin {Integer} Minimum size of second widget (from size hint)
+       * @param endIdeal {Integer} Ideal size of second widget (maybe after dragging the splitter)
+       * @param endMax {Integer} Maximum size of second widget (from size hint)
+       * @return {Map} Map with the keys <code>begin</code and <code>end</code> with the
+       *   arranged dimensions.
+       */
+      arrangeIdeals: function arrangeIdeals(beginMin, beginIdeal, beginMax, endMin, endIdeal, endMax) {
+        if (beginIdeal < beginMin || endIdeal < endMin) {
+          if (beginIdeal < beginMin && endIdeal < endMin) {
+            // Just increase both, can not rearrange them otherwise
+            // Result into overflowing of the overlapping content
+            // Should normally not happen through auto sizing!
+            beginIdeal = beginMin;
+            endIdeal = endMin;
+          } else if (beginIdeal < beginMin) {
+            // Reduce end, increase begin to min
+            endIdeal -= beginMin - beginIdeal;
+            beginIdeal = beginMin; // Re-check to keep min size of end
+
+            if (endIdeal < endMin) {
+              endIdeal = endMin;
+            }
+          } else if (endIdeal < endMin) {
+            // Reduce begin, increase end to min
+            beginIdeal -= endMin - endIdeal;
+            endIdeal = endMin; // Re-check to keep min size of begin
+
+            if (beginIdeal < beginMin) {
+              beginIdeal = beginMin;
+            }
+          }
+        }
+
+        if (beginIdeal > beginMax || endIdeal > endMax) {
+          if (beginIdeal > beginMax && endIdeal > endMax) {
+            // Just reduce both, can not rearrange them otherwise
+            // Leaves a blank area in the pane!
+            beginIdeal = beginMax;
+            endIdeal = endMax;
+          } else if (beginIdeal > beginMax) {
+            // Increase end, reduce begin to max
+            endIdeal += beginIdeal - beginMax;
+            beginIdeal = beginMax; // Re-check to keep max size of end
+
+            if (endIdeal > endMax) {
+              endIdeal = endMax;
+            }
+          } else if (endIdeal > endMax) {
+            // Increase begin, reduce end to max
+            beginIdeal += endIdeal - endMax;
+            endIdeal = endMax; // Re-check to keep max size of begin
+
+            if (beginIdeal > beginMax) {
+              beginIdeal = beginMax;
+            }
+          }
+        }
+
+        return {
+          begin: beginIdeal,
+          end: endIdeal
+        };
+      }
+    }
+  });
+  qx.ui.layout.Util.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
       "qx.locale.Manager": {
         "usage": "dynamic",
         "require": true
@@ -72053,359 +72053,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.locale.Date.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.dom.Element": {},
-      "qx.bom.client.Css": {
-        "require": true
-      },
-      "qx.bom.client.Html": {
-        "require": true
-      },
-      "qx.bom.element.Style": {},
-      "qx.core.Assert": {},
-      "qx.bom.element.Attribute": {},
-      "qx.bom.element.Dimension": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "css.textoverflow": {
-          "className": "qx.bom.client.Css"
-        },
-        "html.xul": {
-          "className": "qx.bom.client.Html"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Cross browser abstractions to work with labels.
-   */
-  qx.Bootstrap.define("qx.bom.Label", {
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      /** @type {Map} Contains all supported styles */
-      __styles__P_101_0: {
-        fontFamily: 1,
-        fontSize: 1,
-        fontWeight: 1,
-        fontStyle: 1,
-        lineHeight: 1,
-        wordBreak: 1,
-        letterSpacing: 1
-      },
-
-      /**
-       * Generates the helper DOM element for text measuring
-       *
-       * @return {Element} Helper DOM element
-       */
-      __prepareText__P_101_1: function __prepareText__P_101_1() {
-        var el = this.__createMeasureElement__P_101_2(false);
-
-        document.body.insertBefore(el, document.body.firstChild);
-        return this._textElement = el;
-      },
-
-      /**
-       * Generates the helper DOM element for HTML measuring
-       *
-       * @return {Element} Helper DOM element
-       */
-      __prepareHtml__P_101_3: function __prepareHtml__P_101_3() {
-        var el = this.__createMeasureElement__P_101_2(true);
-
-        document.body.insertBefore(el, document.body.firstChild);
-        return this._htmlElement = el;
-      },
-
-      /**
-       * Creates the measure element
-       *
-       * @param html {Boolean?false} Whether HTML markup should be used.
-       * @return {Element} The measure element
-       */
-      __createMeasureElement__P_101_2: function __createMeasureElement__P_101_2(html) {
-        var el = qx.dom.Element.create("div");
-        var style = el.style;
-        style.width = style.height = "auto";
-        style.left = style.top = "-1000px";
-        style.visibility = "hidden";
-        style.position = "absolute";
-        style.overflow = "visible";
-        style.display = "block";
-
-        if (html) {
-          style.whiteSpace = "normal";
-        } else {
-          style.whiteSpace = "nowrap";
-
-          if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-            var inner = document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "label"); // Force style inheritance for font styles to omit usage of
-            // CSS "label" selector, See bug #1349 for details.
-
-            var style = inner.style;
-            style.padding = "0";
-            style.margin = "0";
-            style.width = "auto";
-
-            for (var key in this.__styles__P_101_0) {
-              style[key] = "inherit";
-            }
-
-            el.appendChild(inner);
-          }
-        }
-
-        return el;
-      },
-
-      /**
-       * Returns a map of all styles which should be applied as
-       * a basic set.
-       *
-       * @param html {Boolean?false} Whether HTML markup should be used.
-       * @return {Map} Initial styles which should be applied to a label element.
-       */
-      __getStyles__P_101_4: function __getStyles__P_101_4(html) {
-        var styles = {};
-        styles.overflow = "hidden";
-
-        if (html) {
-          styles.whiteSpace = "normal";
-        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          styles.display = "block";
-        } else {
-          styles.whiteSpace = "nowrap";
-          styles[qx.core.Environment.get("css.textoverflow")] = "ellipsis";
-        }
-
-        return styles;
-      },
-
-      /**
-       * Creates a label.
-       *
-       * The default mode is 'text' which means that the overlapping text is cut off
-       * using ellipsis automatically. Text wrapping is disabled in this mode
-       * as well. Spaces are normalized. Umlauts and other special symbols are only
-       * allowed in unicode mode as normal characters.
-       *
-       * In the HTML mode you can insert any HTML, but loose the capability to cut
-       * of overlapping text. Automatic text wrapping is enabled by default.
-       *
-       * It is not possible to modify the mode afterwards.
-       *
-       * @param content {String} Content of the label
-       * @param html {Boolean?false} Whether HTML markup should be used.
-       * @param win {Window?null} Window to create the element for
-       * @return {Element} The created iframe node
-       */
-      create: function create(content, html, win) {
-        if (!win) {
-          win = window;
-        }
-
-        var el = win.document.createElement("div");
-
-        if (html) {
-          el.useHtml = true;
-        }
-
-        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          // Gecko as of Firefox 2.x and 3.0 does not support ellipsis
-          // for text overflow. We use this feature from XUL instead.
-          var xulel = win.document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "label");
-          var style = xulel.style;
-          style.cursor = "inherit";
-          style.color = "inherit";
-          style.overflow = "hidden";
-          style.maxWidth = "100%";
-          style.padding = "0";
-          style.margin = "0";
-          style.width = "auto"; // Force style inheritance for font styles to omit usage of
-          // CSS "label" selector, See bug #1349 for details.
-
-          for (var key in this.__styles__P_101_0) {
-            xulel.style[key] = "inherit";
-          }
-
-          xulel.setAttribute("crop", "end");
-          el.appendChild(xulel);
-        } else {
-          qx.bom.element.Style.setStyles(el, this.__getStyles__P_101_4(html));
-        }
-
-        if (content) {
-          this.setValue(el, content);
-        }
-
-        return el;
-      },
-
-      /** Sanitizer function */
-      __sanitizer__P_101_5: null,
-
-      /**
-       * Sets a function to sanitize values. It will be used by {@link #setValue}.
-       * The function to sanitize will get the <code>string</code> value and
-       * should return a sanitized / cleared <code>string</code>.
-       *
-       * @param func {Function | null} Function to sanitize / clean HTML code
-       *  from given string parameter
-       */
-      setSanitizer: function setSanitizer(func) {
-        {
-          if (func) {
-            qx.core.Assert.assertFunction(func);
-          }
-        }
-        qx.bom.Label.__sanitizer__P_101_5 = func;
-      },
-
-      /**
-       * Sets the content of the element.
-       *
-       * The possibilities of the value depends on the mode
-       * defined using {@link #create}.
-       *
-       * @param element {Element} DOM element to modify.
-       * @param value {String} Content to insert.
-       */
-      setValue: function setValue(element, value) {
-        value = value || "";
-
-        if (element.useHtml) {
-          if (qx.bom.Label.__sanitizer__P_101_5 && typeof qx.bom.Label.__sanitizer__P_101_5 === "function") {
-            value = qx.bom.Label.__sanitizer__P_101_5(value);
-          }
-
-          element.innerHTML = value;
-        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          element.firstChild.setAttribute("value", value);
-        } else {
-          qx.bom.element.Attribute.set(element, "text", value);
-        }
-      },
-
-      /**
-       * Returns the content of the element.
-       *
-       * @param element {Element} DOM element to query.
-       * @return {String} Content stored in the element.
-       */
-      getValue: function getValue(element) {
-        if (element.useHtml) {
-          return element.innerHTML;
-        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          return element.firstChild.getAttribute("value") || "";
-        } else {
-          return qx.bom.element.Attribute.get(element, "text");
-        }
-      },
-
-      /**
-       * Returns the preferred dimensions of the given HTML content.
-       *
-       * @param content {String} The HTML markup to measure
-       * @param styles {Map?null} Optional styles to apply
-       * @param width {Integer} To support width for height it is possible to limit the width
-       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
-       */
-      getHtmlSize: function getHtmlSize(content, styles, width) {
-        var element = this._htmlElement || this.__prepareHtml__P_101_3(); // apply width
-
-
-        element.style.width = width != undefined ? width + "px" : "auto"; // insert content
-
-        element.innerHTML = content;
-        return this.__measureSize__P_101_6(element, styles);
-      },
-
-      /**
-       * Returns the preferred dimensions of the given text.
-       *
-       * @param text {String} The text to measure
-       * @param styles {Map} Optional styles to apply
-       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
-       */
-      getTextSize: function getTextSize(text, styles) {
-        var element = this._textElement || this.__prepareText__P_101_1();
-
-        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
-          element.firstChild.setAttribute("value", text);
-        } else {
-          qx.bom.element.Attribute.set(element, "text", text);
-        }
-
-        return this.__measureSize__P_101_6(element, styles);
-      },
-
-      /**
-       * Measure the size of the given element
-       *
-       * @param element {Element} The element to measure
-       * @param styles {Map?null} Optional styles to apply
-       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
-       */
-      __measureSize__P_101_6: function __measureSize__P_101_6(element, styles) {
-        // sync styles
-        var keys = this.__styles__P_101_0;
-
-        if (!styles) {
-          styles = {};
-        }
-
-        for (var key in keys) {
-          element.style[key] = styles[key] || "";
-        } // detect size
-
-
-        var size = qx.bom.element.Dimension.getSize(element); // all modern browser are needing one more pixel for width
-
-        size.width++;
-        return size;
-      }
-    }
-  });
-  qx.bom.Label.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -82231,6 +81878,359 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     "dependsOn": {
       "qx.core.Environment": {
         "defer": "load",
+        "require": true
+      },
+      "qx.Bootstrap": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.dom.Element": {},
+      "qx.bom.client.Css": {
+        "require": true
+      },
+      "qx.bom.client.Html": {
+        "require": true
+      },
+      "qx.bom.element.Style": {},
+      "qx.core.Assert": {},
+      "qx.bom.element.Attribute": {},
+      "qx.bom.element.Dimension": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "css.textoverflow": {
+          "className": "qx.bom.client.Css"
+        },
+        "html.xul": {
+          "className": "qx.bom.client.Html"
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Cross browser abstractions to work with labels.
+   */
+  qx.Bootstrap.define("qx.bom.Label", {
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /** @type {Map} Contains all supported styles */
+      __styles__P_101_0: {
+        fontFamily: 1,
+        fontSize: 1,
+        fontWeight: 1,
+        fontStyle: 1,
+        lineHeight: 1,
+        wordBreak: 1,
+        letterSpacing: 1
+      },
+
+      /**
+       * Generates the helper DOM element for text measuring
+       *
+       * @return {Element} Helper DOM element
+       */
+      __prepareText__P_101_1: function __prepareText__P_101_1() {
+        var el = this.__createMeasureElement__P_101_2(false);
+
+        document.body.insertBefore(el, document.body.firstChild);
+        return this._textElement = el;
+      },
+
+      /**
+       * Generates the helper DOM element for HTML measuring
+       *
+       * @return {Element} Helper DOM element
+       */
+      __prepareHtml__P_101_3: function __prepareHtml__P_101_3() {
+        var el = this.__createMeasureElement__P_101_2(true);
+
+        document.body.insertBefore(el, document.body.firstChild);
+        return this._htmlElement = el;
+      },
+
+      /**
+       * Creates the measure element
+       *
+       * @param html {Boolean?false} Whether HTML markup should be used.
+       * @return {Element} The measure element
+       */
+      __createMeasureElement__P_101_2: function __createMeasureElement__P_101_2(html) {
+        var el = qx.dom.Element.create("div");
+        var style = el.style;
+        style.width = style.height = "auto";
+        style.left = style.top = "-1000px";
+        style.visibility = "hidden";
+        style.position = "absolute";
+        style.overflow = "visible";
+        style.display = "block";
+
+        if (html) {
+          style.whiteSpace = "normal";
+        } else {
+          style.whiteSpace = "nowrap";
+
+          if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+            var inner = document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "label"); // Force style inheritance for font styles to omit usage of
+            // CSS "label" selector, See bug #1349 for details.
+
+            var style = inner.style;
+            style.padding = "0";
+            style.margin = "0";
+            style.width = "auto";
+
+            for (var key in this.__styles__P_101_0) {
+              style[key] = "inherit";
+            }
+
+            el.appendChild(inner);
+          }
+        }
+
+        return el;
+      },
+
+      /**
+       * Returns a map of all styles which should be applied as
+       * a basic set.
+       *
+       * @param html {Boolean?false} Whether HTML markup should be used.
+       * @return {Map} Initial styles which should be applied to a label element.
+       */
+      __getStyles__P_101_4: function __getStyles__P_101_4(html) {
+        var styles = {};
+        styles.overflow = "hidden";
+
+        if (html) {
+          styles.whiteSpace = "normal";
+        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          styles.display = "block";
+        } else {
+          styles.whiteSpace = "nowrap";
+          styles[qx.core.Environment.get("css.textoverflow")] = "ellipsis";
+        }
+
+        return styles;
+      },
+
+      /**
+       * Creates a label.
+       *
+       * The default mode is 'text' which means that the overlapping text is cut off
+       * using ellipsis automatically. Text wrapping is disabled in this mode
+       * as well. Spaces are normalized. Umlauts and other special symbols are only
+       * allowed in unicode mode as normal characters.
+       *
+       * In the HTML mode you can insert any HTML, but loose the capability to cut
+       * of overlapping text. Automatic text wrapping is enabled by default.
+       *
+       * It is not possible to modify the mode afterwards.
+       *
+       * @param content {String} Content of the label
+       * @param html {Boolean?false} Whether HTML markup should be used.
+       * @param win {Window?null} Window to create the element for
+       * @return {Element} The created iframe node
+       */
+      create: function create(content, html, win) {
+        if (!win) {
+          win = window;
+        }
+
+        var el = win.document.createElement("div");
+
+        if (html) {
+          el.useHtml = true;
+        }
+
+        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          // Gecko as of Firefox 2.x and 3.0 does not support ellipsis
+          // for text overflow. We use this feature from XUL instead.
+          var xulel = win.document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "label");
+          var style = xulel.style;
+          style.cursor = "inherit";
+          style.color = "inherit";
+          style.overflow = "hidden";
+          style.maxWidth = "100%";
+          style.padding = "0";
+          style.margin = "0";
+          style.width = "auto"; // Force style inheritance for font styles to omit usage of
+          // CSS "label" selector, See bug #1349 for details.
+
+          for (var key in this.__styles__P_101_0) {
+            xulel.style[key] = "inherit";
+          }
+
+          xulel.setAttribute("crop", "end");
+          el.appendChild(xulel);
+        } else {
+          qx.bom.element.Style.setStyles(el, this.__getStyles__P_101_4(html));
+        }
+
+        if (content) {
+          this.setValue(el, content);
+        }
+
+        return el;
+      },
+
+      /** Sanitizer function */
+      __sanitizer__P_101_5: null,
+
+      /**
+       * Sets a function to sanitize values. It will be used by {@link #setValue}.
+       * The function to sanitize will get the <code>string</code> value and
+       * should return a sanitized / cleared <code>string</code>.
+       *
+       * @param func {Function | null} Function to sanitize / clean HTML code
+       *  from given string parameter
+       */
+      setSanitizer: function setSanitizer(func) {
+        {
+          if (func) {
+            qx.core.Assert.assertFunction(func);
+          }
+        }
+        qx.bom.Label.__sanitizer__P_101_5 = func;
+      },
+
+      /**
+       * Sets the content of the element.
+       *
+       * The possibilities of the value depends on the mode
+       * defined using {@link #create}.
+       *
+       * @param element {Element} DOM element to modify.
+       * @param value {String} Content to insert.
+       */
+      setValue: function setValue(element, value) {
+        value = value || "";
+
+        if (element.useHtml) {
+          if (qx.bom.Label.__sanitizer__P_101_5 && typeof qx.bom.Label.__sanitizer__P_101_5 === "function") {
+            value = qx.bom.Label.__sanitizer__P_101_5(value);
+          }
+
+          element.innerHTML = value;
+        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          element.firstChild.setAttribute("value", value);
+        } else {
+          qx.bom.element.Attribute.set(element, "text", value);
+        }
+      },
+
+      /**
+       * Returns the content of the element.
+       *
+       * @param element {Element} DOM element to query.
+       * @return {String} Content stored in the element.
+       */
+      getValue: function getValue(element) {
+        if (element.useHtml) {
+          return element.innerHTML;
+        } else if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          return element.firstChild.getAttribute("value") || "";
+        } else {
+          return qx.bom.element.Attribute.get(element, "text");
+        }
+      },
+
+      /**
+       * Returns the preferred dimensions of the given HTML content.
+       *
+       * @param content {String} The HTML markup to measure
+       * @param styles {Map?null} Optional styles to apply
+       * @param width {Integer} To support width for height it is possible to limit the width
+       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
+       */
+      getHtmlSize: function getHtmlSize(content, styles, width) {
+        var element = this._htmlElement || this.__prepareHtml__P_101_3(); // apply width
+
+
+        element.style.width = width != undefined ? width + "px" : "auto"; // insert content
+
+        element.innerHTML = content;
+        return this.__measureSize__P_101_6(element, styles);
+      },
+
+      /**
+       * Returns the preferred dimensions of the given text.
+       *
+       * @param text {String} The text to measure
+       * @param styles {Map} Optional styles to apply
+       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
+       */
+      getTextSize: function getTextSize(text, styles) {
+        var element = this._textElement || this.__prepareText__P_101_1();
+
+        if (!qx.core.Environment.get("css.textoverflow") && qx.core.Environment.get("html.xul")) {
+          element.firstChild.setAttribute("value", text);
+        } else {
+          qx.bom.element.Attribute.set(element, "text", text);
+        }
+
+        return this.__measureSize__P_101_6(element, styles);
+      },
+
+      /**
+       * Measure the size of the given element
+       *
+       * @param element {Element} The element to measure
+       * @param styles {Map?null} Optional styles to apply
+       * @return {Map} A map with preferred <code>width</code> and <code>height</code>.
+       */
+      __measureSize__P_101_6: function __measureSize__P_101_6(element, styles) {
+        // sync styles
+        var keys = this.__styles__P_101_0;
+
+        if (!styles) {
+          styles = {};
+        }
+
+        for (var key in keys) {
+          element.style[key] = styles[key] || "";
+        } // detect size
+
+
+        var size = qx.bom.element.Dimension.getSize(element); // all modern browser are needing one more pixel for width
+
+        size.width++;
+        return size;
+      }
+    }
+  });
+  qx.bom.Label.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
         "usage": "dynamic",
         "require": true
       },
@@ -90411,7 +90411,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
   });
   qx.theme.indigo.Color.$$dbClassInfo = $$dbClassInfo;
 })();
-//# sourceMappingURL=package-5.js.map?dt=1656680160981
+//# sourceMappingURL=package-5.js.map?dt=1656680582640
 qx.$$packageData['5'] = {
   "locales": {},
   "resources": {},

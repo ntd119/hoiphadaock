@@ -14,9 +14,9 @@
         "index": 323
       },
       "end": {
-        "line": 132,
+        "line": 117,
         "column": 3,
-        "index": 4673
+        "index": 4231
       }
     },
     "jsdoc": {
@@ -44,9 +44,9 @@
           "index": 781
         },
         "end": {
-          "line": 130,
+          "line": 115,
           "column": 5,
-          "index": 4663
+          "index": 4221
         }
       },
       "jsdoc": {

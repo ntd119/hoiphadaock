@@ -10,7 +10,6 @@
       },
       "qx.log.appender.Native": {},
       "qx.log.appender.Console": {},
-      "qx.ui.form.Button": {},
       "qx.ui.table.model.Simple": {},
       "qx.ui.table.Table": {},
       "qx.ui.table.selection.Model": {},
@@ -65,21 +64,7 @@
           Below is your actual application code...
         -------------------------------------------------------------------------
         */
-        // Create a button
-
-        var button1 = new qx.ui.form.Button("Click me", "hoiphadaock/test.png"); // Document is the application root
-
-        var doc = this.getRoot(); // Add button to document at fixed coordinates
-
-        doc.add(button1, {
-          left: 100,
-          top: 50
-        }); // Add an event listener
-
-        button1.addListener("execute", function () {
-          /* eslint no-alert: "off" */
-          alert("Hello World!");
-        }); // table model
+        // table model
 
         var tableModel = new qx.ui.table.model.Simple();
         tableModel.setColumns(["ID", "Number 1", "Number 2", "Image"]);
@@ -130,4 +115,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656680155658
+//# sourceMappingURL=Application.js.map?dt=1656680576723
