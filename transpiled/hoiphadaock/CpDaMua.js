@@ -9,9 +9,9 @@
         "require": true
       },
       "qx.ui.table.model.Simple": {},
+      "qx.io.request.Xhr": {},
       "qx.ui.table.Table": {},
-      "qx.ui.table.selection.Model": {},
-      "qx.io.request.Xhr": {}
+      "qx.ui.table.selection.Model": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -44,15 +44,41 @@
 
         var rowData = [];
         var index = 1;
+        var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
+        request.setAccept("application/json");
+        request.setParser("json");
+        request.addListener("success", function (e) {
+          var req = e.getTarget();
+          var response = req.getResponse();
 
-        for (var key in cpDaMua) {
-          var cp = cpDaMua[key];
-          var giaDaMua = cp["bought"];
-          var nguoiMua = cp["buyer"];
-          rowData.push([index++, key, key, nguoiMua, giaDaMua]);
-        }
+          var _loop = function _loop(key) {
+            filter_data = response.filter(function (x) {
+              return x.NoneSymbol === key;
+            })[0];
+            cp = cpDaMua[key];
+            giaDaMua = cp["bought"];
+            nguoiMua = cp["buyer"];
+            stock_name = filter_data["Name"]; // Giá hiện tại
 
-        tableModel.setData(rowData);
+            giaHienTai = filter_data["Price"] * 1000;
+            console.log(filter_data);
+            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, "", giaHienTai]);
+          };
+
+          for (var key in cpDaMua) {
+            var filter_data;
+            var cp;
+            var giaDaMua;
+            var nguoiMua;
+            var stock_name;
+            var giaHienTai;
+
+            _loop(key);
+          }
+
+          tableModel.setData(rowData);
+        }, this);
+        request.send();
         tableModel.setColumnEditable(1, true);
         tableModel.setColumnEditable(2, true); // table
 
@@ -82,4 +108,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656727731331
+//# sourceMappingURL=CpDaMua.js.map?dt=1656728693108
