@@ -16,7 +16,7 @@
       "end": {
         "line": 104,
         "column": 3,
-        "index": 3789
+        "index": 4002
       }
     },
     "jsdoc": {
@@ -46,7 +46,7 @@
         "end": {
           "line": 102,
           "column": 5,
-          "index": 3777
+          "index": 3990
         }
       },
       "type": "function",

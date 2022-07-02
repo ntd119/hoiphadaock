@@ -39,7 +39,7 @@
       createTable: function createTable() {
         // table model
         var tableModel = new qx.ui.table.model.Simple();
-        tableModel.setColumns(["STT", "Number 1", "Number 2", "Image"]);
+        tableModel.setColumns(["STT", "Mã CK", "Name", "Ai Mua?", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
         var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
         var rowData = [];
 
@@ -96,4 +96,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656723937995
+//# sourceMappingURL=CpDaMua.js.map?dt=1656724636280
