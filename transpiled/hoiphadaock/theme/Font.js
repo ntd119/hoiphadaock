@@ -23,9 +23,16 @@
   ************************************************************************ */
   qx.Theme.define("hoiphadaock.theme.Font", {
     extend: qx.theme.indigo.Font,
-    fonts: {}
+    fonts: {
+      "default": {
+        size: 16,
+        lineHeight: 1.4,
+        family: ["Segoe UI"],
+        color: "#212529"
+      }
+    }
   });
   hoiphadaock.theme.Font.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Font.js.map?dt=1656679405433
+//# sourceMappingURL=Font.js.map?dt=1656765909887
