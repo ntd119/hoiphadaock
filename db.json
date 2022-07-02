@@ -12039,7 +12039,7 @@
       "hasDefer": null
     },
     "hoiphadaock.CpDaMua": {
-      "mtime": "2022-07-02T01:54:48.827Z",
+      "mtime": "2022-07-02T02:08:50.440Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -12052,8 +12052,6 @@
         "qx.ui.table.model.Simple": {},
         "qx.ui.table.Table": {},
         "qx.ui.table.selection.Model": {},
-        "qx.ui.table.cellrenderer.Conditional": {},
-        "qx.ui.table.cellrenderer.Image": {},
         "qx.io.request.Xhr": {}
       },
       "extends": "qx.application.Standalone",
