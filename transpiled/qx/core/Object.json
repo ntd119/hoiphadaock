@@ -3979,6 +3979,7 @@
     "qx.ui.menu.Manager",
     "qx.ui.table.celleditor.AbstractField",
     "qx.ui.window.Manager",
-    "qx.event.AcceleratingTimer"
+    "qx.event.AcceleratingTimer",
+    "qx.io.request.AbstractRequest"
   ]
 }

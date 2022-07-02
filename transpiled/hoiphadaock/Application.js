@@ -14,7 +14,8 @@
       "qx.ui.table.Table": {},
       "qx.ui.table.selection.Model": {},
       "qx.ui.table.cellrenderer.Conditional": {},
-      "qx.ui.table.cellrenderer.Image": {}
+      "qx.ui.table.cellrenderer.Image": {},
+      "qx.io.request.Xhr": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -108,6 +109,15 @@
         table.getTableColumnModel().setDataCellRenderer(2, newRenderer);
         var renderer = new qx.ui.table.cellrenderer.Image();
         table.getTableColumnModel().setDataCellRenderer(3, renderer);
+        var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
+        request.setAccept("application/json");
+        request.setParser("json");
+        request.addListener("success", function (e) {
+          var req = e.getTarget();
+          var response = req.getResponse();
+          console.log(response);
+        }, this);
+        request.send();
         this.getRoot().add(table);
       }
     }
@@ -115,4 +125,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656680662432
+//# sourceMappingURL=Application.js.map?dt=1656723317108

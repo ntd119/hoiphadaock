@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-01T13:04:21.731Z",
+      "mtime": "2022-07-02T00:55:13.869Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -23,7 +23,8 @@
         "qx.ui.table.Table": {},
         "qx.ui.table.selection.Model": {},
         "qx.ui.table.cellrenderer.Conditional": {},
-        "qx.ui.table.cellrenderer.Image": {}
+        "qx.ui.table.cellrenderer.Image": {},
+        "qx.io.request.Xhr": {}
       },
       "extends": "qx.application.Standalone",
       "include": [],
@@ -11781,10 +11782,270 @@
       "include": [],
       "implement": [],
       "hasDefer": null
+    },
+    "qx.io.request.Xhr": {
+      "mtime": "2022-07-01T12:39:19.105Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.core.Environment": {
+          "load": true,
+          "defer": "load"
+        },
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.io.request.AbstractRequest": {
+          "load": true,
+          "construct": true
+        },
+        "qx.lang.Type": {},
+        "qx.bom.request.Xhr": {},
+        "qx.util.Uri": {},
+        "qx.util.Request": {},
+        "qx.Bootstrap": {
+          "load": true
+        },
+        "qx.bom.request.Script": {
+          "load": true
+        },
+        "qx.util.ResponseParser": {},
+        "qx.core.Object": {
+          "load": true
+        },
+        "qx.lang.Function": {
+          "load": true
+        },
+        "qx.event.Emitter": {
+          "load": true
+        }
+      },
+      "extends": "qx.io.request.AbstractRequest",
+      "include": [],
+      "implement": [],
+      "environment": {
+        "provided": [],
+        "required": {
+          "qx.debug.io": {
+            "className": "qx.bom.request.Script"
+          }
+        }
+      },
+      "hasDefer": null
+    },
+    "qx.io.request.AbstractRequest": {
+      "mtime": "2022-07-01T12:39:17.353Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.core.Environment": {
+          "load": true,
+          "defer": "load"
+        },
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.core.Object": {
+          "load": true,
+          "construct": true
+        },
+        "qx.core.IDisposable": {
+          "load": true
+        },
+        "qx.lang.Function": {
+          "construct": true
+        },
+        "qx.lang.Type": {},
+        "qx.Bootstrap": {
+          "load": true
+        },
+        "qx.bom.request.Script": {
+          "load": true
+        },
+        "qx.Promise": {},
+        "qx.lang.String": {},
+        "qx.type.BaseError": {},
+        "qx.lang.Object": {},
+        "qx.event.type.Data": {},
+        "qx.util.Request": {},
+        "qx.core.Assert": {},
+        "qx.util.Serializer": {},
+        "qx.lang.Json": {},
+        "qx.util.Uri": {},
+        "qx.event.Emitter": {
+          "load": true
+        }
+      },
+      "extends": "qx.core.Object",
+      "include": [],
+      "implement": [
+        "qx.core.IDisposable"
+      ],
+      "environment": {
+        "provided": [],
+        "required": {
+          "qx.debug.io": {
+            "className": "qx.bom.request.Script"
+          }
+        }
+      },
+      "hasDefer": null
+    },
+    "qx.bom.request.Xhr": {
+      "mtime": "2022-07-01T12:39:19.104Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.core.Environment": {
+          "load": true,
+          "defer": "load"
+        },
+        "qx.Bootstrap": {
+          "load": true,
+          "usage": "dynamic",
+          "construct": true
+        },
+        "qx.core.IDisposable": {
+          "load": true
+        },
+        "qx.event.Emitter": {
+          "construct": true,
+          "load": true
+        },
+        "qx.bom.request.Script": {
+          "load": true
+        },
+        "qx.util.Request": {},
+        "qx.bom.client.Engine": {
+          "load": true
+        },
+        "qx.bom.client.Browser": {
+          "load": true
+        },
+        "qx.bom.client.Transport": {
+          "load": true
+        }
+      },
+      "extends": "Object",
+      "include": [],
+      "implement": [
+        "qx.core.IDisposable"
+      ],
+      "environment": {
+        "provided": [
+          "qx.debug.io"
+        ],
+        "required": {
+          "qx.debug.io": {
+            "className": "qx.bom.request.Script"
+          },
+          "engine.name": {
+            "className": "qx.bom.client.Engine"
+          },
+          "browser.documentmode": {
+            "className": "qx.bom.client.Browser"
+          },
+          "engine.version": {
+            "className": "qx.bom.client.Engine"
+          },
+          "io.xhr": {
+            "className": "qx.bom.client.Transport"
+          },
+          "browser.version": {
+            "className": "qx.bom.client.Browser"
+          }
+        }
+      },
+      "hasDefer": true
+    },
+    "qx.util.Request": {
+      "mtime": "2022-07-01T12:39:18.663Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Bootstrap": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.util.Uri": {}
+      },
+      "extends": null,
+      "include": [],
+      "implement": [],
+      "hasDefer": null
+    },
+    "qx.bom.request.Script": {
+      "mtime": "2022-07-01T12:39:18.724Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Bootstrap": {
+          "load": true,
+          "usage": "dynamic",
+          "construct": true
+        },
+        "qx.core.IDisposable": {
+          "load": true
+        },
+        "qx.event.Emitter": {
+          "construct": true
+        },
+        "qx.util.Uri": {},
+        "qx.bom.client.Engine": {},
+        "qx.bom.client.Browser": {}
+      },
+      "extends": null,
+      "include": [],
+      "implement": [
+        "qx.core.IDisposable"
+      ],
+      "environment": {
+        "provided": [
+          "qx.debug.io"
+        ],
+        "required": {}
+      },
+      "hasDefer": true
+    },
+    "qx.util.ResponseParser": {
+      "mtime": "2022-07-01T12:39:18.692Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Bootstrap": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.lang.Json": {
+          "load": true
+        },
+        "qx.xml.Document": {
+          "load": true
+        },
+        "qx.core.Assert": {}
+      },
+      "extends": null,
+      "include": [],
+      "implement": [],
+      "hasDefer": null
+    },
+    "qx.util.Serializer": {
+      "mtime": "2022-07-01T12:39:18.764Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.util.PropertyUtil": {},
+        "qx.lang.String": {},
+        "qx.lang.Type": {},
+        "qx.core.Object": {}
+      },
+      "extends": null,
+      "include": [],
+      "implement": [],
+      "hasDefer": null
     }
   },
   "manglePrefixes": {
-    "nextPrefix": 201,
+    "nextPrefix": 206,
     "classPrefixes": {
       "qx.Class": "__P_2_",
       "qx.log.appender.Console": "__P_3_",
@@ -11985,7 +12246,12 @@
       "qx.event.AcceleratingTimer": "__P_198_",
       "qx.ui.toolbar.ToolBar": "__P_199_",
       "qx.ui.form.MForm": "__P_200_",
-      "qx.ui.toolbar.Part": "__P_201_"
+      "qx.ui.toolbar.Part": "__P_201_",
+      "qx.io.request.AbstractRequest": "__P_202_",
+      "qx.bom.request.Xhr": "__P_203_",
+      "qx.bom.request.Script": "__P_204_",
+      "qx.util.ResponseParser": "__P_205_",
+      "qx.util.Serializer": "__P_206_"
     }
   }
 }
