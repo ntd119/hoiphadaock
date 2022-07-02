@@ -853,5 +853,7 @@
     },
     "jsdoc": {}
   },
-  "descendants": []
+  "descendants": [
+    "qx.ui.table.cellrenderer.Html"
+  ]
 }

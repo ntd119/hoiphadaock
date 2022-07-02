@@ -30063,6 +30063,1199 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.util.format.IFormat": {
+        "require": true
+      },
+      "qx.core.IDisposable": {
+        "require": true
+      },
+      "qx.lang.Type": {
+        "construct": true
+      },
+      "qx.locale.Manager": {
+        "construct": true
+      },
+      "qx.locale.Number": {},
+      "qx.lang.String": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+  
+  ************************************************************************ */
+
+  /**
+   * A formatter and parser for numbers.
+   *
+   * NOTE: Instances of this class must be disposed of after use
+   *
+   */
+  qx.Class.define("qx.util.format.NumberFormat", {
+    extend: qx.core.Object,
+    implement: [qx.util.format.IFormat, qx.core.IDisposable],
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param locale {String} optional locale to be used
+     * @throws {Error} If the argument is not a string.
+     */
+    construct: function construct(locale) {
+      qx.core.Object.constructor.call(this);
+
+      if (arguments.length > 0) {
+        if (arguments.length === 1) {
+          if (qx.lang.Type.isString(locale)) {
+            this.setLocale(locale);
+          } else {
+            throw new Error("Wrong argument type. String is expected.");
+          }
+        } else {
+          throw new Error("Wrong number of arguments.");
+        }
+      }
+
+      if (!locale) {
+        this.setLocale(qx.locale.Manager.getInstance().getLocale());
+        {
+          qx.locale.Manager.getInstance().bind("locale", this, "locale");
+        }
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * The minimum number of integer digits (digits before the decimal separator).
+       * Missing digits will be filled up with 0 ("19" -> "0019").
+       */
+      minimumIntegerDigits: {
+        check: "Number",
+        init: 0
+      },
+
+      /**
+       * The maximum number of integer digits (superfluous digits will be cut off
+       * ("1923" -> "23").
+       */
+      maximumIntegerDigits: {
+        check: "Number",
+        nullable: true
+      },
+
+      /**
+       * The minimum number of fraction digits (digits after the decimal separator).
+       * Missing digits will be filled up with 0 ("1.5" -> "1.500")
+       */
+      minimumFractionDigits: {
+        check: "Number",
+        init: 0
+      },
+
+      /**
+       * The maximum number of fraction digits (digits after the decimal separator).
+       * Superfluous digits will cause rounding ("1.8277" -> "1.83")
+       */
+      maximumFractionDigits: {
+        check: "Number",
+        nullable: true
+      },
+
+      /** Whether thousand groupings should be used {e.g. "1,432,234.65"}. */
+      groupingUsed: {
+        check: "Boolean",
+        init: true
+      },
+
+      /** The prefix to put before the number {"EUR " -> "EUR 12.31"}. */
+      prefix: {
+        check: "String",
+        init: "",
+        event: "changeNumberFormat"
+      },
+
+      /** Sets the postfix to put after the number {" %" -> "56.13 %"}. */
+      postfix: {
+        check: "String",
+        init: "",
+        event: "changeNumberFormat"
+      },
+
+      /** Locale used */
+      locale: {
+        check: "String",
+        init: null,
+        event: "changeLocale"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Formats a number.
+       *
+       * @param num {Number} the number to format.
+       * @return {String} the formatted number as a string.
+       */
+      format: function format(num) {
+        // handle special cases
+        if (isNaN(num)) {
+          return "NaN";
+        }
+
+        switch (num) {
+          case Infinity:
+            return "Infinity";
+
+          case -Infinity:
+            return "-Infinity";
+        }
+
+        var negative = num < 0;
+
+        if (negative) {
+          num = -num;
+        }
+
+        if (this.getMaximumFractionDigits() != null) {
+          // Do the rounding
+          var mover = Math.pow(10, this.getMaximumFractionDigits());
+          num = Math.round(num * mover) / mover;
+        }
+
+        var integerDigits = String(Math.floor(num)).length;
+        var numStr = "" + num; // Prepare the integer part
+
+        var integerStr = numStr.substring(0, integerDigits);
+
+        while (integerStr.length < this.getMinimumIntegerDigits()) {
+          integerStr = "0" + integerStr;
+        }
+
+        if (this.getMaximumIntegerDigits() != null && integerStr.length > this.getMaximumIntegerDigits()) {
+          // NOTE: We cut off even though we did rounding before, because there
+          //     may be rounding errors ("12.24000000000001" -> "12.24")
+          integerStr = integerStr.substring(integerStr.length - this.getMaximumIntegerDigits());
+        } // Prepare the fraction part
+
+
+        var fractionStr = numStr.substring(integerDigits + 1);
+
+        while (fractionStr.length < this.getMinimumFractionDigits()) {
+          fractionStr += "0";
+        }
+
+        if (this.getMaximumFractionDigits() != null && fractionStr.length > this.getMaximumFractionDigits()) {
+          // We have already rounded -> Just cut off the rest
+          fractionStr = fractionStr.substring(0, this.getMaximumFractionDigits());
+        } // Add the thousand groupings
+
+
+        if (this.getGroupingUsed()) {
+          var origIntegerStr = integerStr;
+          integerStr = "";
+          var groupPos;
+
+          for (groupPos = origIntegerStr.length; groupPos > 3; groupPos -= 3) {
+            integerStr = "" + qx.locale.Number.getGroupSeparator(this.getLocale()) + origIntegerStr.substring(groupPos - 3, groupPos) + integerStr;
+          }
+
+          integerStr = origIntegerStr.substring(0, groupPos) + integerStr;
+        } // Workaround: prefix and postfix are null even their defaultValue is "" and
+        //             allowNull is set to false?!?
+
+
+        var prefix = this.getPrefix() ? this.getPrefix() : "";
+        var postfix = this.getPostfix() ? this.getPostfix() : ""; // Assemble the number
+
+        var str = prefix + (negative ? "-" : "") + integerStr;
+
+        if (fractionStr.length > 0) {
+          str += "" + qx.locale.Number.getDecimalSeparator(this.getLocale()) + fractionStr;
+        }
+
+        str += postfix;
+        return str;
+      },
+
+      /**
+       * Parses a number.
+       *
+       * @param str {String} the string to parse.
+       * @return {Double} the number.
+       * @throws {Error} If the number string does not match the number format.
+       */
+      parse: function parse(str) {
+        // use the escaped separators for regexp
+        var groupSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getGroupSeparator(this.getLocale()) + "");
+        var decimalSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getDecimalSeparator(this.getLocale()) + "");
+        var regex = new RegExp("^(" + qx.lang.String.escapeRegexpChars(this.getPrefix()) + ")?([-+]){0,1}" + "([0-9]{1,3}(?:" + groupSepEsc + "{0,1}[0-9]{3}){0,}){0,1}" + "(" + decimalSepEsc + "\\d+){0,1}(" + qx.lang.String.escapeRegexpChars(this.getPostfix()) + ")?$");
+        var hit = regex.exec(str);
+
+        if (hit == null) {
+          throw new Error("Number string '" + str + "' does not match the number format");
+        } // hit[1] = potential prefix
+
+
+        var negative = hit[2] == "-";
+        var integerStr = hit[3] || "0";
+        var fractionStr = hit[4]; // hit[5] = potential postfix
+        // Remove the thousand groupings
+
+        integerStr = integerStr.replace(new RegExp(groupSepEsc, "g"), "");
+        var asStr = (negative ? "-" : "") + integerStr;
+
+        if (fractionStr != null && fractionStr.length != 0) {
+          // Remove the leading decimal separator from the fractions string
+          fractionStr = fractionStr.replace(new RegExp(decimalSepEsc), "");
+          asStr += "." + fractionStr;
+        }
+
+        return parseFloat(asStr);
+      }
+    },
+    destruct: function destruct() {
+      {
+        qx.locale.Manager.getInstance().removeRelatedBindings(this);
+      }
+    }
+  });
+  qx.util.format.NumberFormat.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+  
+  ************************************************************************ */
+
+  /**
+   * A cell renderer for data cells.
+   */
+  qx.Interface.define("qx.ui.table.ICellRenderer", {
+    members: {
+      /**
+       * Creates the HTML for a data cell.
+       *
+       * The cellInfo map contains the following properties:
+       * <ul>
+       * <li>value (var): the cell's value.</li>
+       * <li>rowData (var): contains the row data for the row, the cell belongs to.
+       *   The kind of this object depends on the table model, see
+       *   {@link qx.ui.table.ITableModel#getRowData}</li>
+       * <li>row (int): the model index of the row the cell belongs to.</li>
+       * <li>col (int): the model index of the column the cell belongs to.</li>
+       * <li>table (qx.ui.table.Table): the table the cell belongs to.</li>
+       * <li>xPos (int): the x position of the cell in the table pane.</li>
+       * <li>selected (boolean): whether the cell is selected.</li>
+       * <li>focusedRow (boolean): whether the cell is in the same row as the
+       *   focused cell.</li>
+       * <li>editable (boolean): whether the cell is editable.</li>
+       * <li>style (string): The CSS styles that should be applied to the outer HTML
+       *   element.</li>
+       * <li>styleLeft (string): The left position of the cell.</li>
+       * <li>styleWidth (string): The cell's width (pixel).</li>
+       * <li>styleHeight (string): The cell's height (pixel).</li>
+       * </ul>
+       *
+       * @param cellInfo {Map} A map containing the information about the cell to
+       *     create.
+       * @param htmlArr {String[]} Target string container. The HTML of the data
+       *     cell should be appended to this array.
+       *
+       * @return {Boolean|undefined}
+       *   A return value of <i>true</i> specifies that no additional cells in
+       *   the row shall be rendered. This may be used, for example, for
+       *   separator rows or for other special rendering purposes. Traditional
+       *   cell renderers had no defined return value, so returned nothing
+       *   (undefined). If this method returns either false or nothing, then
+       *   rendering continues with the next cell in the row, which the normal
+       *   mode of operation.
+       */
+      createDataCellHtml: function createDataCellHtml(cellInfo, htmlArr) {
+        return true;
+      }
+    }
+  });
+  qx.ui.table.ICellRenderer.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.bom.Stylesheet": {
+        "require": true
+      },
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.table.ICellRenderer": {
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.theme.manager.Meta": {
+        "construct": true
+      },
+      "qx.theme.manager.Color": {},
+      "qx.bom.element.Style": {},
+      "qx.bom.client.Css": {
+        "require": true
+      },
+      "qx.bom.element.BoxSizing": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.dyntheme": {
+          "load": true
+        },
+        "css.boxsizing": {
+          "className": "qx.bom.client.Css"
+        },
+        "css.boxmodel": {
+          "className": "qx.bom.client.Css"
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * An abstract data cell renderer that does the basic coloring
+   * (borders, selected look, ...).
+   *
+   * @require(qx.bom.Stylesheet)
+   */
+  qx.Class.define("qx.ui.table.cellrenderer.Abstract", {
+    type: "abstract",
+    implement: qx.ui.table.ICellRenderer,
+    extend: qx.core.Object,
+    construct: function construct() {
+      qx.core.Object.constructor.call(this);
+      var cr = qx.ui.table.cellrenderer.Abstract;
+
+      if (!cr.__clazz__P_183_0) {
+        cr.__clazz__P_183_0 = qx.ui.table.cellrenderer.Abstract;
+
+        this._createStyleSheet(); // add dynamic theme listener
+
+
+        {
+          qx.theme.manager.Meta.getInstance().addListener("changeTheme", this._onChangeTheme, this);
+        }
+      }
+    },
+    properties: {
+      /**
+       * The default cell style. The value of this property will be provided
+       * to the cell renderer as cellInfo.style.
+       */
+      defaultCellStyle: {
+        init: null,
+        check: "String",
+        nullable: true
+      }
+    },
+    members: {
+      /**
+       * Handler for the theme change.
+       * @signature function()
+       */
+      _onChangeTheme: qx.core.Environment.select("qx.dyntheme", {
+        "true": function _true() {
+          qx.bom.Stylesheet.removeAllRules(qx.ui.table.cellrenderer.Abstract.__clazz__P_183_0.stylesheet);
+
+          this._createStyleSheet();
+        },
+        "false": null
+      }),
+
+      /**
+       * the sum of the horizontal insets. This is needed to compute the box model
+       * independent size
+       */
+      _insetX: 13,
+      // paddingLeft + paddingRight + borderRight
+
+      /**
+       * the sum of the vertical insets. This is needed to compute the box model
+       * independent size
+       */
+      _insetY: 0,
+
+      /**
+       * Creates the style sheet used for the table cells.
+       */
+      _createStyleSheet: function _createStyleSheet() {
+        var colorMgr = qx.theme.manager.Color.getInstance();
+        var stylesheet = ".qooxdoo-table-cell {" + qx.bom.element.Style.compile({
+          position: "absolute",
+          top: "0px",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          borderRight: "1px solid " + colorMgr.resolve("table-column-line"),
+          padding: "0px 6px",
+          cursor: "default",
+          textOverflow: "ellipsis",
+          userSelect: "none"
+        }) + "} " + ".qooxdoo-table-cell-right { text-align:right } " + ".qooxdoo-table-cell-italic { font-style:italic} " + ".qooxdoo-table-cell-bold { font-weight:bold } ";
+
+        if (qx.core.Environment.get("css.boxsizing")) {
+          stylesheet += ".qooxdoo-table-cell {" + qx.bom.element.BoxSizing.compile("content-box") + "}";
+        }
+
+        qx.ui.table.cellrenderer.Abstract.__clazz__P_183_0.stylesheet = qx.bom.Stylesheet.createElement(stylesheet);
+      },
+
+      /**
+       * Get a string of the cell element's HTML classes.
+       *
+       * This method may be overridden by sub classes.
+       *
+       * @param cellInfo {Map} cellInfo of the cell
+       * @return {String} The table cell HTML classes as string.
+       */
+      _getCellClass: function _getCellClass(cellInfo) {
+        return "qooxdoo-table-cell";
+      },
+
+      /**
+       * Returns the CSS styles that should be applied to the main div of this
+       * cell.
+       *
+       * This method may be overridden by sub classes.
+       *
+       * @param cellInfo {Map} The information about the cell.
+       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       * @return {var} the CSS styles of the main div.
+       */
+      _getCellStyle: function _getCellStyle(cellInfo) {
+        return cellInfo.style || "";
+      },
+
+      /**
+       * Retrieve any extra attributes the cell renderer wants applied to this
+       * cell.
+       *
+       * @param cellInfo {Map} The information about the cell.
+       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       *
+       * @return {String}
+       *   The extra attributes to be applied to this cell.
+       */
+      _getCellAttributes: function _getCellAttributes(cellInfo) {
+        var cellId = "qooxdoo-table-cell-" + cellInfo.table.toHashCode() + "-" + cellInfo.row + "-" + cellInfo.col;
+        var readOnly = cellInfo.editable !== null && cellInfo.editable !== undefined ? !cellInfo.editable : true;
+        return "id=" + cellId + " role=gridcell aria-readonly=" + readOnly;
+      },
+
+      /**
+       * Returns the HTML that should be used inside the main div of this cell.
+       *
+       * This method may be overridden by sub classes.
+       *
+       * @param cellInfo {Map} The information about the cell.
+       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       * @return {String} the inner HTML of the cell.
+       */
+      _getContentHtml: function _getContentHtml(cellInfo) {
+        return cellInfo.value || "";
+      },
+
+      /**
+       * Get the cell size taking the box model into account
+       *
+       * @param width {Integer} The cell's (border-box) width in pixel
+       * @param height {Integer} The cell's (border-box) height in pixel
+       * @param insetX {Integer} The cell's horizontal insets, i.e. the sum of
+       *    horizontal paddings and borders
+       * @param insetY {Integer} The cell's vertical insets, i.e. the sum of
+       *    vertical paddings and borders
+       * @return {String} The CSS style string for the cell size
+       */
+      _getCellSizeStyle: function _getCellSizeStyle(width, height, insetX, insetY) {
+        var style = "";
+
+        if (qx.core.Environment.get("css.boxmodel") == "content") {
+          width -= insetX;
+          height -= insetY;
+        }
+
+        style += "width:" + Math.max(width, 0) + "px;";
+        style += "height:" + Math.max(height, 0) + "px;";
+        return style;
+      },
+      // interface implementation
+      createDataCellHtml: function createDataCellHtml(cellInfo, htmlArr) {
+        htmlArr.push('<div class="', this._getCellClass(cellInfo), '" style="', "left:", cellInfo.styleLeft, "px;", this._getCellSizeStyle(cellInfo.styleWidth, cellInfo.styleHeight, this._insetX, this._insetY), this._getCellStyle(cellInfo), '" ', 'data-qx-table-cell-row="', cellInfo.row, '" ', 'data-qx-table-cell-col="', cellInfo.col, '" ', this._getCellAttributes(cellInfo), ">" + this._getContentHtml(cellInfo), "</div>");
+      }
+    },
+    destruct: function destruct() {
+      // remove dynamic theme listener
+      {
+        qx.theme.manager.Meta.getInstance().removeListener("changeTheme", this._onChangeTheme, this);
+      }
+    }
+  });
+  qx.ui.table.cellrenderer.Abstract.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.table.cellrenderer.Abstract": {
+        "require": true
+      },
+      "qx.bom.String": {},
+      "qx.util.format.NumberFormat": {},
+      "qx.util.format.DateFormat": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+  
+  ************************************************************************ */
+
+  /**
+   * The default data cell renderer.
+   */
+  qx.Class.define("qx.ui.table.cellrenderer.Default", {
+    extend: qx.ui.table.cellrenderer.Abstract,
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      STYLEFLAG_ALIGN_RIGHT: 1,
+      STYLEFLAG_BOLD: 2,
+      STYLEFLAG_ITALIC: 4,
+      _numberFormat: null
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Whether the alignment should automatically be set according to the cell value.
+       * If true numbers will be right-aligned.
+       */
+      useAutoAlign: {
+        check: "Boolean",
+        init: true
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Determines the styles to apply to the cell
+       *
+       * @param cellInfo {Map} cellInfo of the cell
+       *     See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       * @return {Integer} the sum of any of the STYLEFLAGS defined below
+       */
+      _getStyleFlags: function _getStyleFlags(cellInfo) {
+        if (this.getUseAutoAlign()) {
+          if (typeof cellInfo.value == "number") {
+            return qx.ui.table.cellrenderer.Default.STYLEFLAG_ALIGN_RIGHT;
+          }
+        }
+
+        return 0;
+      },
+      // overridden
+      _getCellClass: function _getCellClass(cellInfo) {
+        var cellClass = qx.ui.table.cellrenderer.Default.superclass.prototype._getCellClass.call(this, cellInfo);
+
+        if (!cellClass) {
+          return "";
+        }
+
+        var stylesToApply = this._getStyleFlags(cellInfo);
+
+        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_ALIGN_RIGHT) {
+          cellClass += " qooxdoo-table-cell-right";
+        }
+
+        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_BOLD) {
+          cellClass += " qooxdoo-table-cell-bold";
+        }
+
+        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_ITALIC) {
+          cellClass += " qooxdoo-table-cell-italic";
+        }
+
+        return cellClass;
+      },
+      // overridden
+      _getContentHtml: function _getContentHtml(cellInfo) {
+        return qx.bom.String.escape(this._formatValue(cellInfo));
+      },
+
+      /**
+       * Formats a value.
+       *
+       * @param cellInfo {Map} A map containing the information about the cell to
+       *          create. This map has the same structure as in
+       *          {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       * @return {String} the formatted value.
+       */
+      _formatValue: function _formatValue(cellInfo) {
+        var value = cellInfo.value;
+        var res;
+
+        if (value == null) {
+          return "";
+        }
+
+        if (typeof value == "string") {
+          return value;
+        } else if (typeof value == "number") {
+          if (!qx.ui.table.cellrenderer.Default._numberFormat) {
+            qx.ui.table.cellrenderer.Default._numberFormat = new qx.util.format.NumberFormat();
+
+            qx.ui.table.cellrenderer.Default._numberFormat.setMaximumFractionDigits(2);
+          }
+
+          res = qx.ui.table.cellrenderer.Default._numberFormat.format(value);
+        } else if (value instanceof Date) {
+          res = qx.util.format.DateFormat.getDateInstance().format(value);
+        } else {
+          res = value.toString();
+        }
+
+        return res;
+      }
+    }
+  });
+  qx.ui.table.cellrenderer.Default.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.util.format.NumberFormat": {
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.table.cellrenderer.Default": {
+        "construct": true,
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2007 by Tartan Solutions, Inc, http://www.tartansolutions.com
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+  
+     Authors:
+       * Dan Hummon
+  
+  ************************************************************************ */
+
+  /**
+   * The conditional cell renderer allows special per cell formatting based on
+   * conditions on the cell's value.
+   *
+   * @require(qx.util.format.NumberFormat)
+   */
+  qx.Class.define("qx.ui.table.cellrenderer.Conditional", {
+    extend: qx.ui.table.cellrenderer.Default,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param align {String|null}
+     *   The default text alignment to format the cell with by default.
+     *
+     * @param color {String|null}
+     *   The default font color to format the cell with by default.
+     *
+     * @param style {String|null}
+     *   The default font style to format the cell with by default.
+     *
+     * @param weight {String|null}
+     *   The default font weight to format the cell with by default.
+     */
+    construct: function construct(align, color, style, weight) {
+      qx.ui.table.cellrenderer.Default.constructor.call(this);
+      this.numericAllowed = ["==", "!=", ">", "<", ">=", "<="];
+      this.betweenAllowed = ["between", "!between"];
+      this.conditions = [];
+      this.__defaultTextAlign__P_166_0 = align || "";
+      this.__defaultColor__P_166_1 = color || "";
+      this.__defaultFontStyle__P_166_2 = style || "";
+      this.__defaultFontWeight__P_166_3 = weight || "";
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __defaultTextAlign__P_166_0: null,
+      __defaultColor__P_166_1: null,
+      __defaultFontStyle__P_166_2: null,
+      __defaultFontWeight__P_166_3: null,
+
+      /**
+       * Applies the cell styles to the style map.
+       * @param condition {Array} The matched condition
+       * @param style {Map} map of already applied styles.
+       */
+      __applyFormatting__P_166_4: function __applyFormatting__P_166_4(condition, style) {
+        if (condition[1] != null) {
+          style["text-align"] = condition[1];
+        }
+
+        if (condition[2] != null) {
+          style["color"] = condition[2];
+        }
+
+        if (condition[3] != null) {
+          style["font-style"] = condition[3];
+        }
+
+        if (condition[4] != null) {
+          style["font-weight"] = condition[4];
+        }
+      },
+
+      /**
+       * The addNumericCondition method is used to add a basic numeric condition to
+       * the cell renderer.
+       *
+       * Note: Passing null is different from passing an empty string in the align,
+       * color, style and weight arguments. Null will allow pre-existing formatting
+       * to pass through, where an empty string will clear it back to the default
+       * formatting set in the constructor.
+       *
+       *
+       * @param condition {String} The type of condition. Accepted strings are "==", "!=", ">", "<", ">=",
+       *     and "<=".
+       * @param value1 {Integer} The value to compare against.
+       * @param align {String|null} The text alignment to format the cell with if the condition matches.
+       * @param color {String|null} The font color to format the cell with if the condition matches.
+       * @param style {String|null} The font style to format the cell with if the condition matches.
+       * @param weight {String|null} The font weight to format the cell with if the condition matches.
+       * @param target {String|null} The text value of the column to compare against. If this is null,
+       *     comparisons will be against the contents of this cell.
+       * @throws {Error} If the condition can not be recognized or value is null.
+       */
+      addNumericCondition: function addNumericCondition(condition, value1, align, color, style, weight, target) {
+        var temp = null;
+
+        if (this.numericAllowed.includes(condition)) {
+          if (value1 != null) {
+            temp = [condition, align, color, style, weight, value1, target];
+          }
+        }
+
+        if (temp != null) {
+          this.conditions.push(temp);
+        } else {
+          throw new Error("Condition not recognized or value is null!");
+        }
+      },
+
+      /**
+       * The addBetweenCondition method is used to add a between condition to the
+       * cell renderer.
+       *
+       * Note: Passing null is different from passing an empty string in the align,
+       * color, style and weight arguments. Null will allow pre-existing formatting
+       * to pass through, where an empty string will clear it back to the default
+       * formatting set in the constructor.
+       *
+       *
+       * @param condition {String} The type of condition. Accepted strings are "between" and "!between".
+       * @param value1 {Integer} The first value to compare against.
+       * @param value2 {Integer} The second value to compare against.
+       * @param align {String|null} The text alignment to format the cell with if the condition matches.
+       * @param color {String|null} The font color to format the cell with if the condition matches.
+       * @param style {String|null} The font style to format the cell with if the condition matches.
+       * @param weight {String|null} The font weight to format the cell with if the condition matches.
+       * @param target {String|null} The text value of the column to compare against. If this is null,
+       *     comparisons will be against the contents of this cell.
+       * @throws {Error} If the condition can not be recognized or value is null.
+       */
+      addBetweenCondition: function addBetweenCondition(condition, value1, value2, align, color, style, weight, target) {
+        if (this.betweenAllowed.includes(condition)) {
+          if (value1 != null && value2 != null) {
+            var temp = [condition, align, color, style, weight, value1, value2, target];
+          }
+        }
+
+        if (temp != null) {
+          this.conditions.push(temp);
+        } else {
+          throw new Error("Condition not recognized or value1/value2 is null!");
+        }
+      },
+
+      /**
+       * The addRegex method is used to add a regular expression condition to the
+       * cell renderer.
+       *
+       * Note: Passing null is different from passing an empty string in the align,
+       * color, style and weight arguments. Null will allow pre-existing formatting
+       * to pass through, where an empty string will clear it back to the default
+       * formatting set in the constructor.
+       *
+       *
+       * @param regex {String} The regular expression to match against.
+       * @param align {String|null} The text alignment to format the cell with if the condition matches.
+       * @param color {String|null} The font color to format the cell with if the condition matches.
+       * @param style {String|null} The font style to format the cell with if the condition matches.
+       * @param weight {String|null} The font weight to format the cell with if the condition matches.
+       * @param target {String|null} The text value of the column to compare against. If this is null,
+       *     comparisons will be against the contents of this cell.
+       * @throws {Error} If the regex is null.
+       */
+      addRegex: function addRegex(regex, align, color, style, weight, target) {
+        if (regex != null) {
+          var temp = ["regex", align, color, style, weight, regex, target];
+        }
+
+        if (temp != null) {
+          this.conditions.push(temp);
+        } else {
+          throw new Error("regex cannot be null!");
+        }
+      },
+
+      /**
+       * Overridden; called whenever the cell updates. The cell will iterate through
+       * each available condition and apply formatting for those that
+       * match. Multiple conditions can match, but later conditions will override
+       * earlier ones. Conditions with null values will stack with other conditions
+       * that apply to that value.
+       *
+       * @param cellInfo {Map} The information about the cell.
+       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
+       * @return {Map}
+       */
+      _getCellStyle: function _getCellStyle(cellInfo) {
+        var tableModel = cellInfo.table.getTableModel();
+        var i;
+        var cond_test;
+        var compareValue;
+        var style = {
+          "text-align": this.__defaultTextAlign__P_166_0,
+          color: this.__defaultColor__P_166_1,
+          "font-style": this.__defaultFontStyle__P_166_2,
+          "font-weight": this.__defaultFontWeight__P_166_3
+        };
+
+        for (i in this.conditions) {
+          cond_test = false;
+
+          if (this.numericAllowed.includes(this.conditions[i][0])) {
+            if (this.conditions[i][6] == null) {
+              compareValue = cellInfo.value;
+            } else {
+              compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
+            }
+
+            switch (this.conditions[i][0]) {
+              case "==":
+                if (compareValue == this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case "!=":
+                if (compareValue != this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case ">":
+                if (compareValue > this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case "<":
+                if (compareValue < this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case ">=":
+                if (compareValue >= this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case "<=":
+                if (compareValue <= this.conditions[i][5]) {
+                  cond_test = true;
+                }
+
+                break;
+            }
+          } else if (this.betweenAllowed.includes(this.conditions[i][0])) {
+            if (this.conditions[i][7] == null) {
+              compareValue = cellInfo.value;
+            } else {
+              compareValue = tableModel.getValueById(this.conditions[i][7], cellInfo.row);
+            }
+
+            switch (this.conditions[i][0]) {
+              case "between":
+                if (compareValue >= this.conditions[i][5] && compareValue <= this.conditions[i][6]) {
+                  cond_test = true;
+                }
+
+                break;
+
+              case "!between":
+                if (compareValue < this.conditions[i][5] || compareValue > this.conditions[i][6]) {
+                  cond_test = true;
+                }
+
+                break;
+            }
+          } else if (this.conditions[i][0] == "regex") {
+            if (this.conditions[i][6] == null) {
+              compareValue = cellInfo.value;
+            } else {
+              compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
+            }
+
+            var the_pattern = new RegExp(this.conditions[i][5], "g");
+            cond_test = the_pattern.test(compareValue);
+          } // Apply formatting, if any.
+
+
+          if (cond_test == true) {
+            this.__applyFormatting__P_166_4(this.conditions[i], style);
+          }
+        }
+
+        var styleString = [];
+
+        for (var key in style) {
+          if (style[key]) {
+            styleString.push(key, ":", style[key], ";");
+          }
+        }
+
+        return styleString.join("");
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.numericAllowed = this.betweenAllowed = this.conditions = null;
+    }
+  });
+  qx.ui.table.cellrenderer.Conditional.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.table.cellrenderer.Conditional": {
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2007 OpenHex SPRL, http://www.openhex.org
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Dirk Wellmann (dw(at)piponline.net)
+  
+  ************************************************************************ */
+
+  /**
+   * This Cellrender is for transparent use, without escaping! Use this Cellrender
+   * to output plain HTML content.
+   */
+  qx.Class.define("qx.ui.table.cellrenderer.Html", {
+    extend: qx.ui.table.cellrenderer.Conditional,
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      // overridden
+      _getContentHtml: function _getContentHtml(cellInfo) {
+        return cellInfo.value || "";
+      },
+      // overridden
+      _getCellClass: function _getCellClass(cellInfo) {
+        return "qooxdoo-table-cell";
+      }
+    }
+  });
+  qx.ui.table.cellrenderer.Html.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
       "qx.Bootstrap": {
         "usage": "dynamic",
         "require": true
@@ -47321,493 +48514,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
   ************************************************************************ */
 
   /**
-   * A cell renderer for data cells.
-   */
-  qx.Interface.define("qx.ui.table.ICellRenderer", {
-    members: {
-      /**
-       * Creates the HTML for a data cell.
-       *
-       * The cellInfo map contains the following properties:
-       * <ul>
-       * <li>value (var): the cell's value.</li>
-       * <li>rowData (var): contains the row data for the row, the cell belongs to.
-       *   The kind of this object depends on the table model, see
-       *   {@link qx.ui.table.ITableModel#getRowData}</li>
-       * <li>row (int): the model index of the row the cell belongs to.</li>
-       * <li>col (int): the model index of the column the cell belongs to.</li>
-       * <li>table (qx.ui.table.Table): the table the cell belongs to.</li>
-       * <li>xPos (int): the x position of the cell in the table pane.</li>
-       * <li>selected (boolean): whether the cell is selected.</li>
-       * <li>focusedRow (boolean): whether the cell is in the same row as the
-       *   focused cell.</li>
-       * <li>editable (boolean): whether the cell is editable.</li>
-       * <li>style (string): The CSS styles that should be applied to the outer HTML
-       *   element.</li>
-       * <li>styleLeft (string): The left position of the cell.</li>
-       * <li>styleWidth (string): The cell's width (pixel).</li>
-       * <li>styleHeight (string): The cell's height (pixel).</li>
-       * </ul>
-       *
-       * @param cellInfo {Map} A map containing the information about the cell to
-       *     create.
-       * @param htmlArr {String[]} Target string container. The HTML of the data
-       *     cell should be appended to this array.
-       *
-       * @return {Boolean|undefined}
-       *   A return value of <i>true</i> specifies that no additional cells in
-       *   the row shall be rendered. This may be used, for example, for
-       *   separator rows or for other special rendering purposes. Traditional
-       *   cell renderers had no defined return value, so returned nothing
-       *   (undefined). If this method returns either false or nothing, then
-       *   rendering continues with the next cell in the row, which the normal
-       *   mode of operation.
-       */
-      createDataCellHtml: function createDataCellHtml(cellInfo, htmlArr) {
-        return true;
-      }
-    }
-  });
-  qx.ui.table.ICellRenderer.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.bom.Stylesheet": {
-        "require": true
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.table.ICellRenderer": {
-        "require": true
-      },
-      "qx.core.Object": {
-        "construct": true,
-        "require": true
-      },
-      "qx.theme.manager.Meta": {
-        "construct": true
-      },
-      "qx.theme.manager.Color": {},
-      "qx.bom.element.Style": {},
-      "qx.bom.client.Css": {
-        "require": true
-      },
-      "qx.bom.element.BoxSizing": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "qx.dyntheme": {
-          "load": true
-        },
-        "css.boxsizing": {
-          "className": "qx.bom.client.Css"
-        },
-        "css.boxmodel": {
-          "className": "qx.bom.client.Css"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2006 STZ-IDA, Germany, http://www.stz-ida.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Til Schneider (til132)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * An abstract data cell renderer that does the basic coloring
-   * (borders, selected look, ...).
-   *
-   * @require(qx.bom.Stylesheet)
-   */
-  qx.Class.define("qx.ui.table.cellrenderer.Abstract", {
-    type: "abstract",
-    implement: qx.ui.table.ICellRenderer,
-    extend: qx.core.Object,
-    construct: function construct() {
-      qx.core.Object.constructor.call(this);
-      var cr = qx.ui.table.cellrenderer.Abstract;
-
-      if (!cr.__clazz__P_183_0) {
-        cr.__clazz__P_183_0 = qx.ui.table.cellrenderer.Abstract;
-
-        this._createStyleSheet(); // add dynamic theme listener
-
-
-        {
-          qx.theme.manager.Meta.getInstance().addListener("changeTheme", this._onChangeTheme, this);
-        }
-      }
-    },
-    properties: {
-      /**
-       * The default cell style. The value of this property will be provided
-       * to the cell renderer as cellInfo.style.
-       */
-      defaultCellStyle: {
-        init: null,
-        check: "String",
-        nullable: true
-      }
-    },
-    members: {
-      /**
-       * Handler for the theme change.
-       * @signature function()
-       */
-      _onChangeTheme: qx.core.Environment.select("qx.dyntheme", {
-        "true": function _true() {
-          qx.bom.Stylesheet.removeAllRules(qx.ui.table.cellrenderer.Abstract.__clazz__P_183_0.stylesheet);
-
-          this._createStyleSheet();
-        },
-        "false": null
-      }),
-
-      /**
-       * the sum of the horizontal insets. This is needed to compute the box model
-       * independent size
-       */
-      _insetX: 13,
-      // paddingLeft + paddingRight + borderRight
-
-      /**
-       * the sum of the vertical insets. This is needed to compute the box model
-       * independent size
-       */
-      _insetY: 0,
-
-      /**
-       * Creates the style sheet used for the table cells.
-       */
-      _createStyleSheet: function _createStyleSheet() {
-        var colorMgr = qx.theme.manager.Color.getInstance();
-        var stylesheet = ".qooxdoo-table-cell {" + qx.bom.element.Style.compile({
-          position: "absolute",
-          top: "0px",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-          borderRight: "1px solid " + colorMgr.resolve("table-column-line"),
-          padding: "0px 6px",
-          cursor: "default",
-          textOverflow: "ellipsis",
-          userSelect: "none"
-        }) + "} " + ".qooxdoo-table-cell-right { text-align:right } " + ".qooxdoo-table-cell-italic { font-style:italic} " + ".qooxdoo-table-cell-bold { font-weight:bold } ";
-
-        if (qx.core.Environment.get("css.boxsizing")) {
-          stylesheet += ".qooxdoo-table-cell {" + qx.bom.element.BoxSizing.compile("content-box") + "}";
-        }
-
-        qx.ui.table.cellrenderer.Abstract.__clazz__P_183_0.stylesheet = qx.bom.Stylesheet.createElement(stylesheet);
-      },
-
-      /**
-       * Get a string of the cell element's HTML classes.
-       *
-       * This method may be overridden by sub classes.
-       *
-       * @param cellInfo {Map} cellInfo of the cell
-       * @return {String} The table cell HTML classes as string.
-       */
-      _getCellClass: function _getCellClass(cellInfo) {
-        return "qooxdoo-table-cell";
-      },
-
-      /**
-       * Returns the CSS styles that should be applied to the main div of this
-       * cell.
-       *
-       * This method may be overridden by sub classes.
-       *
-       * @param cellInfo {Map} The information about the cell.
-       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
-       * @return {var} the CSS styles of the main div.
-       */
-      _getCellStyle: function _getCellStyle(cellInfo) {
-        return cellInfo.style || "";
-      },
-
-      /**
-       * Retrieve any extra attributes the cell renderer wants applied to this
-       * cell.
-       *
-       * @param cellInfo {Map} The information about the cell.
-       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
-       *
-       * @return {String}
-       *   The extra attributes to be applied to this cell.
-       */
-      _getCellAttributes: function _getCellAttributes(cellInfo) {
-        var cellId = "qooxdoo-table-cell-" + cellInfo.table.toHashCode() + "-" + cellInfo.row + "-" + cellInfo.col;
-        var readOnly = cellInfo.editable !== null && cellInfo.editable !== undefined ? !cellInfo.editable : true;
-        return "id=" + cellId + " role=gridcell aria-readonly=" + readOnly;
-      },
-
-      /**
-       * Returns the HTML that should be used inside the main div of this cell.
-       *
-       * This method may be overridden by sub classes.
-       *
-       * @param cellInfo {Map} The information about the cell.
-       *          See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
-       * @return {String} the inner HTML of the cell.
-       */
-      _getContentHtml: function _getContentHtml(cellInfo) {
-        return cellInfo.value || "";
-      },
-
-      /**
-       * Get the cell size taking the box model into account
-       *
-       * @param width {Integer} The cell's (border-box) width in pixel
-       * @param height {Integer} The cell's (border-box) height in pixel
-       * @param insetX {Integer} The cell's horizontal insets, i.e. the sum of
-       *    horizontal paddings and borders
-       * @param insetY {Integer} The cell's vertical insets, i.e. the sum of
-       *    vertical paddings and borders
-       * @return {String} The CSS style string for the cell size
-       */
-      _getCellSizeStyle: function _getCellSizeStyle(width, height, insetX, insetY) {
-        var style = "";
-
-        if (qx.core.Environment.get("css.boxmodel") == "content") {
-          width -= insetX;
-          height -= insetY;
-        }
-
-        style += "width:" + Math.max(width, 0) + "px;";
-        style += "height:" + Math.max(height, 0) + "px;";
-        return style;
-      },
-      // interface implementation
-      createDataCellHtml: function createDataCellHtml(cellInfo, htmlArr) {
-        htmlArr.push('<div class="', this._getCellClass(cellInfo), '" style="', "left:", cellInfo.styleLeft, "px;", this._getCellSizeStyle(cellInfo.styleWidth, cellInfo.styleHeight, this._insetX, this._insetY), this._getCellStyle(cellInfo), '" ', 'data-qx-table-cell-row="', cellInfo.row, '" ', 'data-qx-table-cell-col="', cellInfo.col, '" ', this._getCellAttributes(cellInfo), ">" + this._getContentHtml(cellInfo), "</div>");
-      }
-    },
-    destruct: function destruct() {
-      // remove dynamic theme listener
-      {
-        qx.theme.manager.Meta.getInstance().removeListener("changeTheme", this._onChangeTheme, this);
-      }
-    }
-  });
-  qx.ui.table.cellrenderer.Abstract.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.ui.table.cellrenderer.Abstract": {
-        "require": true
-      },
-      "qx.bom.String": {},
-      "qx.util.format.NumberFormat": {},
-      "qx.util.format.DateFormat": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2006 STZ-IDA, Germany, http://www.stz-ida.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Til Schneider (til132)
-  
-  ************************************************************************ */
-
-  /**
-   * The default data cell renderer.
-   */
-  qx.Class.define("qx.ui.table.cellrenderer.Default", {
-    extend: qx.ui.table.cellrenderer.Abstract,
-
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      STYLEFLAG_ALIGN_RIGHT: 1,
-      STYLEFLAG_BOLD: 2,
-      STYLEFLAG_ITALIC: 4,
-      _numberFormat: null
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      /**
-       * Whether the alignment should automatically be set according to the cell value.
-       * If true numbers will be right-aligned.
-       */
-      useAutoAlign: {
-        check: "Boolean",
-        init: true
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /**
-       * Determines the styles to apply to the cell
-       *
-       * @param cellInfo {Map} cellInfo of the cell
-       *     See {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
-       * @return {Integer} the sum of any of the STYLEFLAGS defined below
-       */
-      _getStyleFlags: function _getStyleFlags(cellInfo) {
-        if (this.getUseAutoAlign()) {
-          if (typeof cellInfo.value == "number") {
-            return qx.ui.table.cellrenderer.Default.STYLEFLAG_ALIGN_RIGHT;
-          }
-        }
-
-        return 0;
-      },
-      // overridden
-      _getCellClass: function _getCellClass(cellInfo) {
-        var cellClass = qx.ui.table.cellrenderer.Default.superclass.prototype._getCellClass.call(this, cellInfo);
-
-        if (!cellClass) {
-          return "";
-        }
-
-        var stylesToApply = this._getStyleFlags(cellInfo);
-
-        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_ALIGN_RIGHT) {
-          cellClass += " qooxdoo-table-cell-right";
-        }
-
-        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_BOLD) {
-          cellClass += " qooxdoo-table-cell-bold";
-        }
-
-        if (stylesToApply & qx.ui.table.cellrenderer.Default.STYLEFLAG_ITALIC) {
-          cellClass += " qooxdoo-table-cell-italic";
-        }
-
-        return cellClass;
-      },
-      // overridden
-      _getContentHtml: function _getContentHtml(cellInfo) {
-        return qx.bom.String.escape(this._formatValue(cellInfo));
-      },
-
-      /**
-       * Formats a value.
-       *
-       * @param cellInfo {Map} A map containing the information about the cell to
-       *          create. This map has the same structure as in
-       *          {@link qx.ui.table.cellrenderer.Abstract#createDataCellHtml}.
-       * @return {String} the formatted value.
-       */
-      _formatValue: function _formatValue(cellInfo) {
-        var value = cellInfo.value;
-        var res;
-
-        if (value == null) {
-          return "";
-        }
-
-        if (typeof value == "string") {
-          return value;
-        } else if (typeof value == "number") {
-          if (!qx.ui.table.cellrenderer.Default._numberFormat) {
-            qx.ui.table.cellrenderer.Default._numberFormat = new qx.util.format.NumberFormat();
-
-            qx.ui.table.cellrenderer.Default._numberFormat.setMaximumFractionDigits(2);
-          }
-
-          res = qx.ui.table.cellrenderer.Default._numberFormat.format(value);
-        } else if (value instanceof Date) {
-          res = qx.util.format.DateFormat.getDateInstance().format(value);
-        } else {
-          res = value.toString();
-        }
-
-        return res;
-      }
-    }
-  });
-  qx.ui.table.cellrenderer.Default.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Interface": {
-        "usage": "dynamic",
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2006 STZ-IDA, Germany, http://www.stz-ida.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Til Schneider (til132)
-  
-  ************************************************************************ */
-
-  /**
    * A factory creating widgets to use for editing table cells.
    */
   qx.Interface.define("qx.ui.table.ICellEditorFactory", {
@@ -53519,6 +54225,755 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.ui.table.IColumnMenuItem.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.locale.Manager": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Andreas Ecker (ecker)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Provides information about locale-dependent number formatting (like the decimal
+   * separator).
+   *
+   * @cldr()
+   */
+  qx.Class.define("qx.locale.Number", {
+    statics: {
+      /**
+       * Get decimal separator for number formatting
+       *
+       * @param locale {String} optional locale to be used
+       * @return {String} decimal separator.
+       */
+      getDecimalSeparator: function getDecimalSeparator(locale) {
+        return qx.locale.Manager.getInstance().localize("cldr_number_decimal_separator", [], locale);
+      },
+
+      /**
+       * Get thousand grouping separator for number formatting
+       *
+       * @param locale {String} optional locale to be used
+       * @return {String} group separator.
+       */
+      getGroupSeparator: function getGroupSeparator(locale) {
+        return qx.locale.Manager.getInstance().localize("cldr_number_group_separator", [], locale);
+      },
+
+      /**
+       * Get percent format string
+       *
+       * @param locale {String} optional locale to be used
+       * @return {String} percent format string.
+       */
+      getPercentFormat: function getPercentFormat(locale) {
+        return qx.locale.Manager.getInstance().localize("cldr_number_percent_format", [], locale);
+      }
+    }
+  });
+  qx.locale.Number.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Bootstrap": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.util.StringEscape": {},
+      "qx.lang.Object": {
+        "defer": "runtime"
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A Collection of utility functions to escape and unescape strings.
+   */
+  qx.Bootstrap.define("qx.bom.String", {
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /** Mapping of HTML entity names to the corresponding char code */
+      TO_CHARCODE: {
+        quot: 34,
+        // " - double-quote
+        amp: 38,
+        // &
+        lt: 60,
+        // <
+        gt: 62,
+        // >
+        // http://www.w3.org/TR/REC-html40/sgml/entities.html
+        // ISO 8859-1 characters
+        nbsp: 160,
+        // no-break space
+        iexcl: 161,
+        // inverted exclamation mark
+        cent: 162,
+        // cent sign
+        pound: 163,
+        // pound sterling sign
+        curren: 164,
+        // general currency sign
+        yen: 165,
+        // yen sign
+        brvbar: 166,
+        // broken (vertical) bar
+        sect: 167,
+        // section sign
+        uml: 168,
+        // umlaut (dieresis)
+        copy: 169,
+        // copyright sign
+        ordf: 170,
+        // ordinal indicator, feminine
+        laquo: 171,
+        // angle quotation mark, left
+        not: 172,
+        // not sign
+        shy: 173,
+        // soft hyphen
+        reg: 174,
+        // registered sign
+        macr: 175,
+        // macron
+        deg: 176,
+        // degree sign
+        plusmn: 177,
+        // plus-or-minus sign
+        sup2: 178,
+        // superscript two
+        sup3: 179,
+        // superscript three
+        acute: 180,
+        // acute accent
+        micro: 181,
+        // micro sign
+        para: 182,
+        // pilcrow (paragraph sign)
+        middot: 183,
+        // middle dot
+        cedil: 184,
+        // cedilla
+        sup1: 185,
+        // superscript one
+        ordm: 186,
+        // ordinal indicator, masculine
+        raquo: 187,
+        // angle quotation mark, right
+        frac14: 188,
+        // fraction one-quarter
+        frac12: 189,
+        // fraction one-half
+        frac34: 190,
+        // fraction three-quarters
+        iquest: 191,
+        // inverted question mark
+        Agrave: 192,
+        // capital A, grave accent
+        Aacute: 193,
+        // capital A, acute accent
+        Acirc: 194,
+        // capital A, circumflex accent
+        Atilde: 195,
+        // capital A, tilde
+        Auml: 196,
+        // capital A, dieresis or umlaut mark
+        Aring: 197,
+        // capital A, ring
+        AElig: 198,
+        // capital AE diphthong (ligature)
+        Ccedil: 199,
+        // capital C, cedilla
+        Egrave: 200,
+        // capital E, grave accent
+        Eacute: 201,
+        // capital E, acute accent
+        Ecirc: 202,
+        // capital E, circumflex accent
+        Euml: 203,
+        // capital E, dieresis or umlaut mark
+        Igrave: 204,
+        // capital I, grave accent
+        Iacute: 205,
+        // capital I, acute accent
+        Icirc: 206,
+        // capital I, circumflex accent
+        Iuml: 207,
+        // capital I, dieresis or umlaut mark
+        ETH: 208,
+        // capital Eth, Icelandic
+        Ntilde: 209,
+        // capital N, tilde
+        Ograve: 210,
+        // capital O, grave accent
+        Oacute: 211,
+        // capital O, acute accent
+        Ocirc: 212,
+        // capital O, circumflex accent
+        Otilde: 213,
+        // capital O, tilde
+        Ouml: 214,
+        // capital O, dieresis or umlaut mark
+        times: 215,
+        // multiply sign
+        Oslash: 216,
+        // capital O, slash
+        Ugrave: 217,
+        // capital U, grave accent
+        Uacute: 218,
+        // capital U, acute accent
+        Ucirc: 219,
+        // capital U, circumflex accent
+        Uuml: 220,
+        // capital U, dieresis or umlaut mark
+        Yacute: 221,
+        // capital Y, acute accent
+        THORN: 222,
+        // capital THORN, Icelandic
+        szlig: 223,
+        // small sharp s, German (sz ligature)
+        agrave: 224,
+        // small a, grave accent
+        aacute: 225,
+        // small a, acute accent
+        acirc: 226,
+        // small a, circumflex accent
+        atilde: 227,
+        // small a, tilde
+        auml: 228,
+        // small a, dieresis or umlaut mark
+        aring: 229,
+        // small a, ring
+        aelig: 230,
+        // small ae diphthong (ligature)
+        ccedil: 231,
+        // small c, cedilla
+        egrave: 232,
+        // small e, grave accent
+        eacute: 233,
+        // small e, acute accent
+        ecirc: 234,
+        // small e, circumflex accent
+        euml: 235,
+        // small e, dieresis or umlaut mark
+        igrave: 236,
+        // small i, grave accent
+        iacute: 237,
+        // small i, acute accent
+        icirc: 238,
+        // small i, circumflex accent
+        iuml: 239,
+        // small i, dieresis or umlaut mark
+        eth: 240,
+        // small eth, Icelandic
+        ntilde: 241,
+        // small n, tilde
+        ograve: 242,
+        // small o, grave accent
+        oacute: 243,
+        // small o, acute accent
+        ocirc: 244,
+        // small o, circumflex accent
+        otilde: 245,
+        // small o, tilde
+        ouml: 246,
+        // small o, dieresis or umlaut mark
+        divide: 247,
+        // divide sign
+        oslash: 248,
+        // small o, slash
+        ugrave: 249,
+        // small u, grave accent
+        uacute: 250,
+        // small u, acute accent
+        ucirc: 251,
+        // small u, circumflex accent
+        uuml: 252,
+        // small u, dieresis or umlaut mark
+        yacute: 253,
+        // small y, acute accent
+        thorn: 254,
+        // small thorn, Icelandic
+        yuml: 255,
+        // small y, dieresis or umlaut mark
+        // Latin Extended-B
+        fnof: 402,
+        // latin small f with hook = function= florin, U+0192 ISOtech
+        // Greek
+        Alpha: 913,
+        // greek capital letter alpha, U+0391
+        Beta: 914,
+        // greek capital letter beta, U+0392
+        Gamma: 915,
+        // greek capital letter gamma,U+0393 ISOgrk3
+        Delta: 916,
+        // greek capital letter delta,U+0394 ISOgrk3
+        Epsilon: 917,
+        // greek capital letter epsilon, U+0395
+        Zeta: 918,
+        // greek capital letter zeta, U+0396
+        Eta: 919,
+        // greek capital letter eta, U+0397
+        Theta: 920,
+        // greek capital letter theta,U+0398 ISOgrk3
+        Iota: 921,
+        // greek capital letter iota, U+0399
+        Kappa: 922,
+        // greek capital letter kappa, U+039A
+        Lambda: 923,
+        // greek capital letter lambda,U+039B ISOgrk3
+        Mu: 924,
+        // greek capital letter mu, U+039C
+        Nu: 925,
+        // greek capital letter nu, U+039D
+        Xi: 926,
+        // greek capital letter xi, U+039E ISOgrk3
+        Omicron: 927,
+        // greek capital letter omicron, U+039F
+        Pi: 928,
+        // greek capital letter pi, U+03A0 ISOgrk3
+        Rho: 929,
+        // greek capital letter rho, U+03A1
+        // there is no Sigmaf, and no U+03A2 character either
+        Sigma: 931,
+        // greek capital letter sigma,U+03A3 ISOgrk3
+        Tau: 932,
+        // greek capital letter tau, U+03A4
+        Upsilon: 933,
+        // greek capital letter upsilon,U+03A5 ISOgrk3
+        Phi: 934,
+        // greek capital letter phi,U+03A6 ISOgrk3
+        Chi: 935,
+        // greek capital letter chi, U+03A7
+        Psi: 936,
+        // greek capital letter psi,U+03A8 ISOgrk3
+        Omega: 937,
+        // greek capital letter omega,U+03A9 ISOgrk3
+        alpha: 945,
+        // greek small letter alpha,U+03B1 ISOgrk3
+        beta: 946,
+        // greek small letter beta, U+03B2 ISOgrk3
+        gamma: 947,
+        // greek small letter gamma,U+03B3 ISOgrk3
+        delta: 948,
+        // greek small letter delta,U+03B4 ISOgrk3
+        epsilon: 949,
+        // greek small letter epsilon,U+03B5 ISOgrk3
+        zeta: 950,
+        // greek small letter zeta, U+03B6 ISOgrk3
+        eta: 951,
+        // greek small letter eta, U+03B7 ISOgrk3
+        theta: 952,
+        // greek small letter theta,U+03B8 ISOgrk3
+        iota: 953,
+        // greek small letter iota, U+03B9 ISOgrk3
+        kappa: 954,
+        // greek small letter kappa,U+03BA ISOgrk3
+        lambda: 955,
+        // greek small letter lambda,U+03BB ISOgrk3
+        mu: 956,
+        // greek small letter mu, U+03BC ISOgrk3
+        nu: 957,
+        // greek small letter nu, U+03BD ISOgrk3
+        xi: 958,
+        // greek small letter xi, U+03BE ISOgrk3
+        omicron: 959,
+        // greek small letter omicron, U+03BF NEW
+        pi: 960,
+        // greek small letter pi, U+03C0 ISOgrk3
+        rho: 961,
+        // greek small letter rho, U+03C1 ISOgrk3
+        sigmaf: 962,
+        // greek small letter final sigma,U+03C2 ISOgrk3
+        sigma: 963,
+        // greek small letter sigma,U+03C3 ISOgrk3
+        tau: 964,
+        // greek small letter tau, U+03C4 ISOgrk3
+        upsilon: 965,
+        // greek small letter upsilon,U+03C5 ISOgrk3
+        phi: 966,
+        // greek small letter phi, U+03C6 ISOgrk3
+        chi: 967,
+        // greek small letter chi, U+03C7 ISOgrk3
+        psi: 968,
+        // greek small letter psi, U+03C8 ISOgrk3
+        omega: 969,
+        // greek small letter omega,U+03C9 ISOgrk3
+        thetasym: 977,
+        // greek small letter theta symbol,U+03D1 NEW
+        upsih: 978,
+        // greek upsilon with hook symbol,U+03D2 NEW
+        piv: 982,
+        // greek pi symbol, U+03D6 ISOgrk3
+        // General Punctuation
+        bull: 8226,
+        // bullet = black small circle,U+2022 ISOpub
+        // bullet is NOT the same as bullet operator, U+2219
+        hellip: 8230,
+        // horizontal ellipsis = three dot leader,U+2026 ISOpub
+        prime: 8242,
+        // prime = minutes = feet, U+2032 ISOtech
+        Prime: 8243,
+        // double prime = seconds = inches,U+2033 ISOtech
+        oline: 8254,
+        // overline = spacing overscore,U+203E NEW
+        frasl: 8260,
+        // fraction slash, U+2044 NEW
+        // Letterlike Symbols
+        weierp: 8472,
+        // script capital P = power set= Weierstrass p, U+2118 ISOamso
+        image: 8465,
+        // blackletter capital I = imaginary part,U+2111 ISOamso
+        real: 8476,
+        // blackletter capital R = real part symbol,U+211C ISOamso
+        trade: 8482,
+        // trade mark sign, U+2122 ISOnum
+        alefsym: 8501,
+        // alef symbol = first transfinite cardinal,U+2135 NEW
+        // alef symbol is NOT the same as hebrew letter alef,U+05D0 although the same glyph could be used to depict both characters
+        // Arrows
+        larr: 8592,
+        // leftwards arrow, U+2190 ISOnum
+        uarr: 8593,
+        // upwards arrow, U+2191 ISOnum-->
+        rarr: 8594,
+        // rightwards arrow, U+2192 ISOnum
+        darr: 8595,
+        // downwards arrow, U+2193 ISOnum
+        harr: 8596,
+        // left right arrow, U+2194 ISOamsa
+        crarr: 8629,
+        // downwards arrow with corner leftwards= carriage return, U+21B5 NEW
+        lArr: 8656,
+        // leftwards double arrow, U+21D0 ISOtech
+        // ISO 10646 does not say that lArr is the same as the 'is implied by' arrow but also does not have any other character for that function. So ? lArr can be used for 'is implied by' as ISOtech suggests
+        uArr: 8657,
+        // upwards double arrow, U+21D1 ISOamsa
+        rArr: 8658,
+        // rightwards double arrow,U+21D2 ISOtech
+        // ISO 10646 does not say this is the 'implies' character but does not have another character with this function so ?rArr can be used for 'implies' as ISOtech suggests
+        dArr: 8659,
+        // downwards double arrow, U+21D3 ISOamsa
+        hArr: 8660,
+        // left right double arrow,U+21D4 ISOamsa
+        // Mathematical Operators
+        forall: 8704,
+        // for all, U+2200 ISOtech
+        part: 8706,
+        // partial differential, U+2202 ISOtech
+        exist: 8707,
+        // there exists, U+2203 ISOtech
+        empty: 8709,
+        // empty set = null set = diameter,U+2205 ISOamso
+        nabla: 8711,
+        // nabla = backward difference,U+2207 ISOtech
+        isin: 8712,
+        // element of, U+2208 ISOtech
+        notin: 8713,
+        // not an element of, U+2209 ISOtech
+        ni: 8715,
+        // contains as member, U+220B ISOtech
+        // should there be a more memorable name than 'ni'?
+        prod: 8719,
+        // n-ary product = product sign,U+220F ISOamsb
+        // prod is NOT the same character as U+03A0 'greek capital letter pi' though the same glyph might be used for both
+        sum: 8721,
+        // n-ary summation, U+2211 ISOamsb
+        // sum is NOT the same character as U+03A3 'greek capital letter sigma' though the same glyph might be used for both
+        minus: 8722,
+        // minus sign, U+2212 ISOtech
+        lowast: 8727,
+        // asterisk operator, U+2217 ISOtech
+        radic: 8730,
+        // square root = radical sign,U+221A ISOtech
+        prop: 8733,
+        // proportional to, U+221D ISOtech
+        infin: 8734,
+        // infinity, U+221E ISOtech
+        ang: 8736,
+        // angle, U+2220 ISOamso
+        and: 8743,
+        // logical and = wedge, U+2227 ISOtech
+        or: 8744,
+        // logical or = vee, U+2228 ISOtech
+        cap: 8745,
+        // intersection = cap, U+2229 ISOtech
+        cup: 8746,
+        // union = cup, U+222A ISOtech
+        "int": 8747,
+        // integral, U+222B ISOtech
+        there4: 8756,
+        // therefore, U+2234 ISOtech
+        sim: 8764,
+        // tilde operator = varies with = similar to,U+223C ISOtech
+        // tilde operator is NOT the same character as the tilde, U+007E,although the same glyph might be used to represent both
+        cong: 8773,
+        // approximately equal to, U+2245 ISOtech
+        asymp: 8776,
+        // almost equal to = asymptotic to,U+2248 ISOamsr
+        ne: 8800,
+        // not equal to, U+2260 ISOtech
+        equiv: 8801,
+        // identical to, U+2261 ISOtech
+        le: 8804,
+        // less-than or equal to, U+2264 ISOtech
+        ge: 8805,
+        // greater-than or equal to,U+2265 ISOtech
+        sub: 8834,
+        // subset of, U+2282 ISOtech
+        sup: 8835,
+        // superset of, U+2283 ISOtech
+        // note that nsup, 'not a superset of, U+2283' is not covered by the Symbol font encoding and is not included. Should it be, for symmetry?It is in ISOamsn  --> <!ENTITY nsub": 8836,  //not a subset of, U+2284 ISOamsn
+        sube: 8838,
+        // subset of or equal to, U+2286 ISOtech
+        supe: 8839,
+        // superset of or equal to,U+2287 ISOtech
+        oplus: 8853,
+        // circled plus = direct sum,U+2295 ISOamsb
+        otimes: 8855,
+        // circled times = vector product,U+2297 ISOamsb
+        perp: 8869,
+        // up tack = orthogonal to = perpendicular,U+22A5 ISOtech
+        sdot: 8901,
+        // dot operator, U+22C5 ISOamsb
+        // dot operator is NOT the same character as U+00B7 middle dot
+        // Miscellaneous Technical
+        lceil: 8968,
+        // left ceiling = apl upstile,U+2308 ISOamsc
+        rceil: 8969,
+        // right ceiling, U+2309 ISOamsc
+        lfloor: 8970,
+        // left floor = apl downstile,U+230A ISOamsc
+        rfloor: 8971,
+        // right floor, U+230B ISOamsc
+        lang: 9001,
+        // left-pointing angle bracket = bra,U+2329 ISOtech
+        // lang is NOT the same character as U+003C 'less than' or U+2039 'single left-pointing angle quotation mark'
+        rang: 9002,
+        // right-pointing angle bracket = ket,U+232A ISOtech
+        // rang is NOT the same character as U+003E 'greater than' or U+203A 'single right-pointing angle quotation mark'
+        // Geometric Shapes
+        loz: 9674,
+        // lozenge, U+25CA ISOpub
+        // Miscellaneous Symbols
+        spades: 9824,
+        // black spade suit, U+2660 ISOpub
+        // black here seems to mean filled as opposed to hollow
+        clubs: 9827,
+        // black club suit = shamrock,U+2663 ISOpub
+        hearts: 9829,
+        // black heart suit = valentine,U+2665 ISOpub
+        diams: 9830,
+        // black diamond suit, U+2666 ISOpub
+        // Latin Extended-A
+        OElig: 338,
+        //  -- latin capital ligature OE,U+0152 ISOlat2
+        oelig: 339,
+        //  -- latin small ligature oe, U+0153 ISOlat2
+        // ligature is a misnomer, this is a separate character in some languages
+        Scaron: 352,
+        //  -- latin capital letter S with caron,U+0160 ISOlat2
+        scaron: 353,
+        //  -- latin small letter s with caron,U+0161 ISOlat2
+        Yuml: 376,
+        //  -- latin capital letter Y with diaeresis,U+0178 ISOlat2
+        // Spacing Modifier Letters
+        circ: 710,
+        //  -- modifier letter circumflex accent,U+02C6 ISOpub
+        tilde: 732,
+        // small tilde, U+02DC ISOdia
+        // General Punctuation
+        ensp: 8194,
+        // en space, U+2002 ISOpub
+        emsp: 8195,
+        // em space, U+2003 ISOpub
+        thinsp: 8201,
+        // thin space, U+2009 ISOpub
+        zwnj: 8204,
+        // zero width non-joiner,U+200C NEW RFC 2070
+        zwj: 8205,
+        // zero width joiner, U+200D NEW RFC 2070
+        lrm: 8206,
+        // left-to-right mark, U+200E NEW RFC 2070
+        rlm: 8207,
+        // right-to-left mark, U+200F NEW RFC 2070
+        ndash: 8211,
+        // en dash, U+2013 ISOpub
+        mdash: 8212,
+        // em dash, U+2014 ISOpub
+        lsquo: 8216,
+        // left single quotation mark,U+2018 ISOnum
+        rsquo: 8217,
+        // right single quotation mark,U+2019 ISOnum
+        sbquo: 8218,
+        // single low-9 quotation mark, U+201A NEW
+        ldquo: 8220,
+        // left double quotation mark,U+201C ISOnum
+        rdquo: 8221,
+        // right double quotation mark,U+201D ISOnum
+        bdquo: 8222,
+        // double low-9 quotation mark, U+201E NEW
+        dagger: 8224,
+        // dagger, U+2020 ISOpub
+        Dagger: 8225,
+        // double dagger, U+2021 ISOpub
+        permil: 8240,
+        // per mille sign, U+2030 ISOtech
+        lsaquo: 8249,
+        // single left-pointing angle quotation mark,U+2039 ISO proposed
+        // lsaquo is proposed but not yet ISO standardized
+        rsaquo: 8250,
+        // single right-pointing angle quotation mark,U+203A ISO proposed
+        // rsaquo is proposed but not yet ISO standardized
+        euro: 8364 //  -- euro sign, U+20AC NEW
+
+      },
+
+      /**
+       * Escapes the characters in a <code>String</code> using HTML entities.
+       *
+       * For example: <tt>"bread" & "butter"</tt> => <tt>&amp;quot;bread&amp;quot; &amp;amp; &amp;quot;butter&amp;quot;</tt>.
+       * Supports all known HTML 4.0 entities, including funky accents.
+       *
+       * * <a href="http://www.w3.org/TR/REC-html32#latin1">HTML 3.2 Character Entities for ISO Latin-1</a>
+       * * <a href="http://www.w3.org/TR/REC-html40/sgml/entities.html">HTML 4.0 Character entity references</a>
+       * * <a href="http://www.w3.org/TR/html401/charset.html#h-5.3">HTML 4.01 Character References</a>
+       * * <a href="http://www.w3.org/TR/html401/charset.html#code-position">HTML 4.01 Code positions</a>
+       *
+       * @param str {String} the String to escape
+       * @return {String} a new escaped String
+       * @see #unescape
+       */
+      escape: function escape(str) {
+        return qx.util.StringEscape.escape(str, qx.bom.String.FROM_CHARCODE);
+      },
+
+      /**
+       * Unescapes a string containing entity escapes to a string
+       * containing the actual Unicode characters corresponding to the
+       * escapes. Supports HTML 4.0 entities.
+       *
+       * For example, the string "&amp;lt;Fran&amp;ccedil;ais&amp;gt;"
+       * will become "&lt;Fran&ccedil;ais&gt;"
+       *
+       * If an entity is unrecognized, it is left alone, and inserted
+       * verbatim into the result string. e.g. "&amp;gt;&amp;zzzz;x" will
+       * become "&gt;&amp;zzzz;x".
+       *
+       * @param str {String} the String to unescape, may be null
+       * @return {var} a new unescaped String
+       * @see #escape
+       */
+      unescape: function unescape(str) {
+        return qx.util.StringEscape.unescape(str, qx.bom.String.TO_CHARCODE);
+      },
+
+      /**
+       * Converts a plain text string into HTML.
+       * This is similar to {@link #escape} but converts new lines to
+       * <tt>&lt:br&gt:</tt> and preserves whitespaces.
+       *
+       * @param str {String} the String to convert
+       * @return {String} a new converted String
+       * @see #escape
+       */
+      fromText: function fromText(str) {
+        return qx.bom.String.escape(str).replace(/(  |\n)/g, function (chr) {
+          var map = {
+            "  ": " &nbsp;",
+            "\n": "<br>"
+          };
+          return map[chr] || chr;
+        });
+      },
+
+      /**
+       * Converts HTML to plain text.
+       *
+       * * Strips all HTML tags
+       * * converts <tt>&lt:br&gt:</tt> to new line
+       * * unescapes HTML entities
+       *
+       * @param str {String} HTML string to converts
+       * @return {String} plain text representation of the HTML string
+       */
+      toText: function toText(str) {
+        return qx.bom.String.unescape(str.replace(/\s+|<([^>])+>/gi, function (chr) //return qx.bom.String.unescape(str.replace(/<\/?[^>]+(>|$)/gi, function(chr)
+        {
+          if (chr.indexOf("<br") === 0) {
+            return "\n";
+          } else if (chr.length > 0 && chr.replace(/^\s*/, "").replace(/\s*$/, "") == "") {
+            return " ";
+          } else {
+            return "";
+          }
+        }));
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DEFER
+    *****************************************************************************
+    */
+    defer: function defer(statics) {
+      /** Mapping of char codes to HTML entity names */
+      statics.FROM_CHARCODE = qx.lang.Object.invert(statics.TO_CHARCODE);
+    }
+  });
+  qx.bom.String.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -60145,979 +61600,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.util.StringEscape": {},
-      "qx.lang.Object": {
-        "defer": "runtime"
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * A Collection of utility functions to escape and unescape strings.
-   */
-  qx.Bootstrap.define("qx.bom.String", {
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      /** Mapping of HTML entity names to the corresponding char code */
-      TO_CHARCODE: {
-        quot: 34,
-        // " - double-quote
-        amp: 38,
-        // &
-        lt: 60,
-        // <
-        gt: 62,
-        // >
-        // http://www.w3.org/TR/REC-html40/sgml/entities.html
-        // ISO 8859-1 characters
-        nbsp: 160,
-        // no-break space
-        iexcl: 161,
-        // inverted exclamation mark
-        cent: 162,
-        // cent sign
-        pound: 163,
-        // pound sterling sign
-        curren: 164,
-        // general currency sign
-        yen: 165,
-        // yen sign
-        brvbar: 166,
-        // broken (vertical) bar
-        sect: 167,
-        // section sign
-        uml: 168,
-        // umlaut (dieresis)
-        copy: 169,
-        // copyright sign
-        ordf: 170,
-        // ordinal indicator, feminine
-        laquo: 171,
-        // angle quotation mark, left
-        not: 172,
-        // not sign
-        shy: 173,
-        // soft hyphen
-        reg: 174,
-        // registered sign
-        macr: 175,
-        // macron
-        deg: 176,
-        // degree sign
-        plusmn: 177,
-        // plus-or-minus sign
-        sup2: 178,
-        // superscript two
-        sup3: 179,
-        // superscript three
-        acute: 180,
-        // acute accent
-        micro: 181,
-        // micro sign
-        para: 182,
-        // pilcrow (paragraph sign)
-        middot: 183,
-        // middle dot
-        cedil: 184,
-        // cedilla
-        sup1: 185,
-        // superscript one
-        ordm: 186,
-        // ordinal indicator, masculine
-        raquo: 187,
-        // angle quotation mark, right
-        frac14: 188,
-        // fraction one-quarter
-        frac12: 189,
-        // fraction one-half
-        frac34: 190,
-        // fraction three-quarters
-        iquest: 191,
-        // inverted question mark
-        Agrave: 192,
-        // capital A, grave accent
-        Aacute: 193,
-        // capital A, acute accent
-        Acirc: 194,
-        // capital A, circumflex accent
-        Atilde: 195,
-        // capital A, tilde
-        Auml: 196,
-        // capital A, dieresis or umlaut mark
-        Aring: 197,
-        // capital A, ring
-        AElig: 198,
-        // capital AE diphthong (ligature)
-        Ccedil: 199,
-        // capital C, cedilla
-        Egrave: 200,
-        // capital E, grave accent
-        Eacute: 201,
-        // capital E, acute accent
-        Ecirc: 202,
-        // capital E, circumflex accent
-        Euml: 203,
-        // capital E, dieresis or umlaut mark
-        Igrave: 204,
-        // capital I, grave accent
-        Iacute: 205,
-        // capital I, acute accent
-        Icirc: 206,
-        // capital I, circumflex accent
-        Iuml: 207,
-        // capital I, dieresis or umlaut mark
-        ETH: 208,
-        // capital Eth, Icelandic
-        Ntilde: 209,
-        // capital N, tilde
-        Ograve: 210,
-        // capital O, grave accent
-        Oacute: 211,
-        // capital O, acute accent
-        Ocirc: 212,
-        // capital O, circumflex accent
-        Otilde: 213,
-        // capital O, tilde
-        Ouml: 214,
-        // capital O, dieresis or umlaut mark
-        times: 215,
-        // multiply sign
-        Oslash: 216,
-        // capital O, slash
-        Ugrave: 217,
-        // capital U, grave accent
-        Uacute: 218,
-        // capital U, acute accent
-        Ucirc: 219,
-        // capital U, circumflex accent
-        Uuml: 220,
-        // capital U, dieresis or umlaut mark
-        Yacute: 221,
-        // capital Y, acute accent
-        THORN: 222,
-        // capital THORN, Icelandic
-        szlig: 223,
-        // small sharp s, German (sz ligature)
-        agrave: 224,
-        // small a, grave accent
-        aacute: 225,
-        // small a, acute accent
-        acirc: 226,
-        // small a, circumflex accent
-        atilde: 227,
-        // small a, tilde
-        auml: 228,
-        // small a, dieresis or umlaut mark
-        aring: 229,
-        // small a, ring
-        aelig: 230,
-        // small ae diphthong (ligature)
-        ccedil: 231,
-        // small c, cedilla
-        egrave: 232,
-        // small e, grave accent
-        eacute: 233,
-        // small e, acute accent
-        ecirc: 234,
-        // small e, circumflex accent
-        euml: 235,
-        // small e, dieresis or umlaut mark
-        igrave: 236,
-        // small i, grave accent
-        iacute: 237,
-        // small i, acute accent
-        icirc: 238,
-        // small i, circumflex accent
-        iuml: 239,
-        // small i, dieresis or umlaut mark
-        eth: 240,
-        // small eth, Icelandic
-        ntilde: 241,
-        // small n, tilde
-        ograve: 242,
-        // small o, grave accent
-        oacute: 243,
-        // small o, acute accent
-        ocirc: 244,
-        // small o, circumflex accent
-        otilde: 245,
-        // small o, tilde
-        ouml: 246,
-        // small o, dieresis or umlaut mark
-        divide: 247,
-        // divide sign
-        oslash: 248,
-        // small o, slash
-        ugrave: 249,
-        // small u, grave accent
-        uacute: 250,
-        // small u, acute accent
-        ucirc: 251,
-        // small u, circumflex accent
-        uuml: 252,
-        // small u, dieresis or umlaut mark
-        yacute: 253,
-        // small y, acute accent
-        thorn: 254,
-        // small thorn, Icelandic
-        yuml: 255,
-        // small y, dieresis or umlaut mark
-        // Latin Extended-B
-        fnof: 402,
-        // latin small f with hook = function= florin, U+0192 ISOtech
-        // Greek
-        Alpha: 913,
-        // greek capital letter alpha, U+0391
-        Beta: 914,
-        // greek capital letter beta, U+0392
-        Gamma: 915,
-        // greek capital letter gamma,U+0393 ISOgrk3
-        Delta: 916,
-        // greek capital letter delta,U+0394 ISOgrk3
-        Epsilon: 917,
-        // greek capital letter epsilon, U+0395
-        Zeta: 918,
-        // greek capital letter zeta, U+0396
-        Eta: 919,
-        // greek capital letter eta, U+0397
-        Theta: 920,
-        // greek capital letter theta,U+0398 ISOgrk3
-        Iota: 921,
-        // greek capital letter iota, U+0399
-        Kappa: 922,
-        // greek capital letter kappa, U+039A
-        Lambda: 923,
-        // greek capital letter lambda,U+039B ISOgrk3
-        Mu: 924,
-        // greek capital letter mu, U+039C
-        Nu: 925,
-        // greek capital letter nu, U+039D
-        Xi: 926,
-        // greek capital letter xi, U+039E ISOgrk3
-        Omicron: 927,
-        // greek capital letter omicron, U+039F
-        Pi: 928,
-        // greek capital letter pi, U+03A0 ISOgrk3
-        Rho: 929,
-        // greek capital letter rho, U+03A1
-        // there is no Sigmaf, and no U+03A2 character either
-        Sigma: 931,
-        // greek capital letter sigma,U+03A3 ISOgrk3
-        Tau: 932,
-        // greek capital letter tau, U+03A4
-        Upsilon: 933,
-        // greek capital letter upsilon,U+03A5 ISOgrk3
-        Phi: 934,
-        // greek capital letter phi,U+03A6 ISOgrk3
-        Chi: 935,
-        // greek capital letter chi, U+03A7
-        Psi: 936,
-        // greek capital letter psi,U+03A8 ISOgrk3
-        Omega: 937,
-        // greek capital letter omega,U+03A9 ISOgrk3
-        alpha: 945,
-        // greek small letter alpha,U+03B1 ISOgrk3
-        beta: 946,
-        // greek small letter beta, U+03B2 ISOgrk3
-        gamma: 947,
-        // greek small letter gamma,U+03B3 ISOgrk3
-        delta: 948,
-        // greek small letter delta,U+03B4 ISOgrk3
-        epsilon: 949,
-        // greek small letter epsilon,U+03B5 ISOgrk3
-        zeta: 950,
-        // greek small letter zeta, U+03B6 ISOgrk3
-        eta: 951,
-        // greek small letter eta, U+03B7 ISOgrk3
-        theta: 952,
-        // greek small letter theta,U+03B8 ISOgrk3
-        iota: 953,
-        // greek small letter iota, U+03B9 ISOgrk3
-        kappa: 954,
-        // greek small letter kappa,U+03BA ISOgrk3
-        lambda: 955,
-        // greek small letter lambda,U+03BB ISOgrk3
-        mu: 956,
-        // greek small letter mu, U+03BC ISOgrk3
-        nu: 957,
-        // greek small letter nu, U+03BD ISOgrk3
-        xi: 958,
-        // greek small letter xi, U+03BE ISOgrk3
-        omicron: 959,
-        // greek small letter omicron, U+03BF NEW
-        pi: 960,
-        // greek small letter pi, U+03C0 ISOgrk3
-        rho: 961,
-        // greek small letter rho, U+03C1 ISOgrk3
-        sigmaf: 962,
-        // greek small letter final sigma,U+03C2 ISOgrk3
-        sigma: 963,
-        // greek small letter sigma,U+03C3 ISOgrk3
-        tau: 964,
-        // greek small letter tau, U+03C4 ISOgrk3
-        upsilon: 965,
-        // greek small letter upsilon,U+03C5 ISOgrk3
-        phi: 966,
-        // greek small letter phi, U+03C6 ISOgrk3
-        chi: 967,
-        // greek small letter chi, U+03C7 ISOgrk3
-        psi: 968,
-        // greek small letter psi, U+03C8 ISOgrk3
-        omega: 969,
-        // greek small letter omega,U+03C9 ISOgrk3
-        thetasym: 977,
-        // greek small letter theta symbol,U+03D1 NEW
-        upsih: 978,
-        // greek upsilon with hook symbol,U+03D2 NEW
-        piv: 982,
-        // greek pi symbol, U+03D6 ISOgrk3
-        // General Punctuation
-        bull: 8226,
-        // bullet = black small circle,U+2022 ISOpub
-        // bullet is NOT the same as bullet operator, U+2219
-        hellip: 8230,
-        // horizontal ellipsis = three dot leader,U+2026 ISOpub
-        prime: 8242,
-        // prime = minutes = feet, U+2032 ISOtech
-        Prime: 8243,
-        // double prime = seconds = inches,U+2033 ISOtech
-        oline: 8254,
-        // overline = spacing overscore,U+203E NEW
-        frasl: 8260,
-        // fraction slash, U+2044 NEW
-        // Letterlike Symbols
-        weierp: 8472,
-        // script capital P = power set= Weierstrass p, U+2118 ISOamso
-        image: 8465,
-        // blackletter capital I = imaginary part,U+2111 ISOamso
-        real: 8476,
-        // blackletter capital R = real part symbol,U+211C ISOamso
-        trade: 8482,
-        // trade mark sign, U+2122 ISOnum
-        alefsym: 8501,
-        // alef symbol = first transfinite cardinal,U+2135 NEW
-        // alef symbol is NOT the same as hebrew letter alef,U+05D0 although the same glyph could be used to depict both characters
-        // Arrows
-        larr: 8592,
-        // leftwards arrow, U+2190 ISOnum
-        uarr: 8593,
-        // upwards arrow, U+2191 ISOnum-->
-        rarr: 8594,
-        // rightwards arrow, U+2192 ISOnum
-        darr: 8595,
-        // downwards arrow, U+2193 ISOnum
-        harr: 8596,
-        // left right arrow, U+2194 ISOamsa
-        crarr: 8629,
-        // downwards arrow with corner leftwards= carriage return, U+21B5 NEW
-        lArr: 8656,
-        // leftwards double arrow, U+21D0 ISOtech
-        // ISO 10646 does not say that lArr is the same as the 'is implied by' arrow but also does not have any other character for that function. So ? lArr can be used for 'is implied by' as ISOtech suggests
-        uArr: 8657,
-        // upwards double arrow, U+21D1 ISOamsa
-        rArr: 8658,
-        // rightwards double arrow,U+21D2 ISOtech
-        // ISO 10646 does not say this is the 'implies' character but does not have another character with this function so ?rArr can be used for 'implies' as ISOtech suggests
-        dArr: 8659,
-        // downwards double arrow, U+21D3 ISOamsa
-        hArr: 8660,
-        // left right double arrow,U+21D4 ISOamsa
-        // Mathematical Operators
-        forall: 8704,
-        // for all, U+2200 ISOtech
-        part: 8706,
-        // partial differential, U+2202 ISOtech
-        exist: 8707,
-        // there exists, U+2203 ISOtech
-        empty: 8709,
-        // empty set = null set = diameter,U+2205 ISOamso
-        nabla: 8711,
-        // nabla = backward difference,U+2207 ISOtech
-        isin: 8712,
-        // element of, U+2208 ISOtech
-        notin: 8713,
-        // not an element of, U+2209 ISOtech
-        ni: 8715,
-        // contains as member, U+220B ISOtech
-        // should there be a more memorable name than 'ni'?
-        prod: 8719,
-        // n-ary product = product sign,U+220F ISOamsb
-        // prod is NOT the same character as U+03A0 'greek capital letter pi' though the same glyph might be used for both
-        sum: 8721,
-        // n-ary summation, U+2211 ISOamsb
-        // sum is NOT the same character as U+03A3 'greek capital letter sigma' though the same glyph might be used for both
-        minus: 8722,
-        // minus sign, U+2212 ISOtech
-        lowast: 8727,
-        // asterisk operator, U+2217 ISOtech
-        radic: 8730,
-        // square root = radical sign,U+221A ISOtech
-        prop: 8733,
-        // proportional to, U+221D ISOtech
-        infin: 8734,
-        // infinity, U+221E ISOtech
-        ang: 8736,
-        // angle, U+2220 ISOamso
-        and: 8743,
-        // logical and = wedge, U+2227 ISOtech
-        or: 8744,
-        // logical or = vee, U+2228 ISOtech
-        cap: 8745,
-        // intersection = cap, U+2229 ISOtech
-        cup: 8746,
-        // union = cup, U+222A ISOtech
-        "int": 8747,
-        // integral, U+222B ISOtech
-        there4: 8756,
-        // therefore, U+2234 ISOtech
-        sim: 8764,
-        // tilde operator = varies with = similar to,U+223C ISOtech
-        // tilde operator is NOT the same character as the tilde, U+007E,although the same glyph might be used to represent both
-        cong: 8773,
-        // approximately equal to, U+2245 ISOtech
-        asymp: 8776,
-        // almost equal to = asymptotic to,U+2248 ISOamsr
-        ne: 8800,
-        // not equal to, U+2260 ISOtech
-        equiv: 8801,
-        // identical to, U+2261 ISOtech
-        le: 8804,
-        // less-than or equal to, U+2264 ISOtech
-        ge: 8805,
-        // greater-than or equal to,U+2265 ISOtech
-        sub: 8834,
-        // subset of, U+2282 ISOtech
-        sup: 8835,
-        // superset of, U+2283 ISOtech
-        // note that nsup, 'not a superset of, U+2283' is not covered by the Symbol font encoding and is not included. Should it be, for symmetry?It is in ISOamsn  --> <!ENTITY nsub": 8836,  //not a subset of, U+2284 ISOamsn
-        sube: 8838,
-        // subset of or equal to, U+2286 ISOtech
-        supe: 8839,
-        // superset of or equal to,U+2287 ISOtech
-        oplus: 8853,
-        // circled plus = direct sum,U+2295 ISOamsb
-        otimes: 8855,
-        // circled times = vector product,U+2297 ISOamsb
-        perp: 8869,
-        // up tack = orthogonal to = perpendicular,U+22A5 ISOtech
-        sdot: 8901,
-        // dot operator, U+22C5 ISOamsb
-        // dot operator is NOT the same character as U+00B7 middle dot
-        // Miscellaneous Technical
-        lceil: 8968,
-        // left ceiling = apl upstile,U+2308 ISOamsc
-        rceil: 8969,
-        // right ceiling, U+2309 ISOamsc
-        lfloor: 8970,
-        // left floor = apl downstile,U+230A ISOamsc
-        rfloor: 8971,
-        // right floor, U+230B ISOamsc
-        lang: 9001,
-        // left-pointing angle bracket = bra,U+2329 ISOtech
-        // lang is NOT the same character as U+003C 'less than' or U+2039 'single left-pointing angle quotation mark'
-        rang: 9002,
-        // right-pointing angle bracket = ket,U+232A ISOtech
-        // rang is NOT the same character as U+003E 'greater than' or U+203A 'single right-pointing angle quotation mark'
-        // Geometric Shapes
-        loz: 9674,
-        // lozenge, U+25CA ISOpub
-        // Miscellaneous Symbols
-        spades: 9824,
-        // black spade suit, U+2660 ISOpub
-        // black here seems to mean filled as opposed to hollow
-        clubs: 9827,
-        // black club suit = shamrock,U+2663 ISOpub
-        hearts: 9829,
-        // black heart suit = valentine,U+2665 ISOpub
-        diams: 9830,
-        // black diamond suit, U+2666 ISOpub
-        // Latin Extended-A
-        OElig: 338,
-        //  -- latin capital ligature OE,U+0152 ISOlat2
-        oelig: 339,
-        //  -- latin small ligature oe, U+0153 ISOlat2
-        // ligature is a misnomer, this is a separate character in some languages
-        Scaron: 352,
-        //  -- latin capital letter S with caron,U+0160 ISOlat2
-        scaron: 353,
-        //  -- latin small letter s with caron,U+0161 ISOlat2
-        Yuml: 376,
-        //  -- latin capital letter Y with diaeresis,U+0178 ISOlat2
-        // Spacing Modifier Letters
-        circ: 710,
-        //  -- modifier letter circumflex accent,U+02C6 ISOpub
-        tilde: 732,
-        // small tilde, U+02DC ISOdia
-        // General Punctuation
-        ensp: 8194,
-        // en space, U+2002 ISOpub
-        emsp: 8195,
-        // em space, U+2003 ISOpub
-        thinsp: 8201,
-        // thin space, U+2009 ISOpub
-        zwnj: 8204,
-        // zero width non-joiner,U+200C NEW RFC 2070
-        zwj: 8205,
-        // zero width joiner, U+200D NEW RFC 2070
-        lrm: 8206,
-        // left-to-right mark, U+200E NEW RFC 2070
-        rlm: 8207,
-        // right-to-left mark, U+200F NEW RFC 2070
-        ndash: 8211,
-        // en dash, U+2013 ISOpub
-        mdash: 8212,
-        // em dash, U+2014 ISOpub
-        lsquo: 8216,
-        // left single quotation mark,U+2018 ISOnum
-        rsquo: 8217,
-        // right single quotation mark,U+2019 ISOnum
-        sbquo: 8218,
-        // single low-9 quotation mark, U+201A NEW
-        ldquo: 8220,
-        // left double quotation mark,U+201C ISOnum
-        rdquo: 8221,
-        // right double quotation mark,U+201D ISOnum
-        bdquo: 8222,
-        // double low-9 quotation mark, U+201E NEW
-        dagger: 8224,
-        // dagger, U+2020 ISOpub
-        Dagger: 8225,
-        // double dagger, U+2021 ISOpub
-        permil: 8240,
-        // per mille sign, U+2030 ISOtech
-        lsaquo: 8249,
-        // single left-pointing angle quotation mark,U+2039 ISO proposed
-        // lsaquo is proposed but not yet ISO standardized
-        rsaquo: 8250,
-        // single right-pointing angle quotation mark,U+203A ISO proposed
-        // rsaquo is proposed but not yet ISO standardized
-        euro: 8364 //  -- euro sign, U+20AC NEW
-
-      },
-
-      /**
-       * Escapes the characters in a <code>String</code> using HTML entities.
-       *
-       * For example: <tt>"bread" & "butter"</tt> => <tt>&amp;quot;bread&amp;quot; &amp;amp; &amp;quot;butter&amp;quot;</tt>.
-       * Supports all known HTML 4.0 entities, including funky accents.
-       *
-       * * <a href="http://www.w3.org/TR/REC-html32#latin1">HTML 3.2 Character Entities for ISO Latin-1</a>
-       * * <a href="http://www.w3.org/TR/REC-html40/sgml/entities.html">HTML 4.0 Character entity references</a>
-       * * <a href="http://www.w3.org/TR/html401/charset.html#h-5.3">HTML 4.01 Character References</a>
-       * * <a href="http://www.w3.org/TR/html401/charset.html#code-position">HTML 4.01 Code positions</a>
-       *
-       * @param str {String} the String to escape
-       * @return {String} a new escaped String
-       * @see #unescape
-       */
-      escape: function escape(str) {
-        return qx.util.StringEscape.escape(str, qx.bom.String.FROM_CHARCODE);
-      },
-
-      /**
-       * Unescapes a string containing entity escapes to a string
-       * containing the actual Unicode characters corresponding to the
-       * escapes. Supports HTML 4.0 entities.
-       *
-       * For example, the string "&amp;lt;Fran&amp;ccedil;ais&amp;gt;"
-       * will become "&lt;Fran&ccedil;ais&gt;"
-       *
-       * If an entity is unrecognized, it is left alone, and inserted
-       * verbatim into the result string. e.g. "&amp;gt;&amp;zzzz;x" will
-       * become "&gt;&amp;zzzz;x".
-       *
-       * @param str {String} the String to unescape, may be null
-       * @return {var} a new unescaped String
-       * @see #escape
-       */
-      unescape: function unescape(str) {
-        return qx.util.StringEscape.unescape(str, qx.bom.String.TO_CHARCODE);
-      },
-
-      /**
-       * Converts a plain text string into HTML.
-       * This is similar to {@link #escape} but converts new lines to
-       * <tt>&lt:br&gt:</tt> and preserves whitespaces.
-       *
-       * @param str {String} the String to convert
-       * @return {String} a new converted String
-       * @see #escape
-       */
-      fromText: function fromText(str) {
-        return qx.bom.String.escape(str).replace(/(  |\n)/g, function (chr) {
-          var map = {
-            "  ": " &nbsp;",
-            "\n": "<br>"
-          };
-          return map[chr] || chr;
-        });
-      },
-
-      /**
-       * Converts HTML to plain text.
-       *
-       * * Strips all HTML tags
-       * * converts <tt>&lt:br&gt:</tt> to new line
-       * * unescapes HTML entities
-       *
-       * @param str {String} HTML string to converts
-       * @return {String} plain text representation of the HTML string
-       */
-      toText: function toText(str) {
-        return qx.bom.String.unescape(str.replace(/\s+|<([^>])+>/gi, function (chr) //return qx.bom.String.unescape(str.replace(/<\/?[^>]+(>|$)/gi, function(chr)
-        {
-          if (chr.indexOf("<br") === 0) {
-            return "\n";
-          } else if (chr.length > 0 && chr.replace(/^\s*/, "").replace(/\s*$/, "") == "") {
-            return " ";
-          } else {
-            return "";
-          }
-        }));
-      }
-    },
-
-    /*
-    *****************************************************************************
-       DEFER
-    *****************************************************************************
-    */
-    defer: function defer(statics) {
-      /** Mapping of char codes to HTML entity names */
-      statics.FROM_CHARCODE = qx.lang.Object.invert(statics.TO_CHARCODE);
-    }
-  });
-  qx.bom.String.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.Object": {
-        "construct": true,
-        "require": true
-      },
-      "qx.util.format.IFormat": {
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.lang.Type": {
-        "construct": true
-      },
-      "qx.locale.Manager": {
-        "construct": true
-      },
-      "qx.locale.Number": {},
-      "qx.lang.String": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2006 STZ-IDA, Germany, http://www.stz-ida.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Til Schneider (til132)
-  
-  ************************************************************************ */
-
-  /**
-   * A formatter and parser for numbers.
-   *
-   * NOTE: Instances of this class must be disposed of after use
-   *
-   */
-  qx.Class.define("qx.util.format.NumberFormat", {
-    extend: qx.core.Object,
-    implement: [qx.util.format.IFormat, qx.core.IDisposable],
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-
-    /**
-     * @param locale {String} optional locale to be used
-     * @throws {Error} If the argument is not a string.
-     */
-    construct: function construct(locale) {
-      qx.core.Object.constructor.call(this);
-
-      if (arguments.length > 0) {
-        if (arguments.length === 1) {
-          if (qx.lang.Type.isString(locale)) {
-            this.setLocale(locale);
-          } else {
-            throw new Error("Wrong argument type. String is expected.");
-          }
-        } else {
-          throw new Error("Wrong number of arguments.");
-        }
-      }
-
-      if (!locale) {
-        this.setLocale(qx.locale.Manager.getInstance().getLocale());
-        {
-          qx.locale.Manager.getInstance().bind("locale", this, "locale");
-        }
-      }
-    },
-
-    /*
-    *****************************************************************************
-       PROPERTIES
-    *****************************************************************************
-    */
-    properties: {
-      /**
-       * The minimum number of integer digits (digits before the decimal separator).
-       * Missing digits will be filled up with 0 ("19" -> "0019").
-       */
-      minimumIntegerDigits: {
-        check: "Number",
-        init: 0
-      },
-
-      /**
-       * The maximum number of integer digits (superfluous digits will be cut off
-       * ("1923" -> "23").
-       */
-      maximumIntegerDigits: {
-        check: "Number",
-        nullable: true
-      },
-
-      /**
-       * The minimum number of fraction digits (digits after the decimal separator).
-       * Missing digits will be filled up with 0 ("1.5" -> "1.500")
-       */
-      minimumFractionDigits: {
-        check: "Number",
-        init: 0
-      },
-
-      /**
-       * The maximum number of fraction digits (digits after the decimal separator).
-       * Superfluous digits will cause rounding ("1.8277" -> "1.83")
-       */
-      maximumFractionDigits: {
-        check: "Number",
-        nullable: true
-      },
-
-      /** Whether thousand groupings should be used {e.g. "1,432,234.65"}. */
-      groupingUsed: {
-        check: "Boolean",
-        init: true
-      },
-
-      /** The prefix to put before the number {"EUR " -> "EUR 12.31"}. */
-      prefix: {
-        check: "String",
-        init: "",
-        event: "changeNumberFormat"
-      },
-
-      /** Sets the postfix to put after the number {" %" -> "56.13 %"}. */
-      postfix: {
-        check: "String",
-        init: "",
-        event: "changeNumberFormat"
-      },
-
-      /** Locale used */
-      locale: {
-        check: "String",
-        init: null,
-        event: "changeLocale"
-      }
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /**
-       * Formats a number.
-       *
-       * @param num {Number} the number to format.
-       * @return {String} the formatted number as a string.
-       */
-      format: function format(num) {
-        // handle special cases
-        if (isNaN(num)) {
-          return "NaN";
-        }
-
-        switch (num) {
-          case Infinity:
-            return "Infinity";
-
-          case -Infinity:
-            return "-Infinity";
-        }
-
-        var negative = num < 0;
-
-        if (negative) {
-          num = -num;
-        }
-
-        if (this.getMaximumFractionDigits() != null) {
-          // Do the rounding
-          var mover = Math.pow(10, this.getMaximumFractionDigits());
-          num = Math.round(num * mover) / mover;
-        }
-
-        var integerDigits = String(Math.floor(num)).length;
-        var numStr = "" + num; // Prepare the integer part
-
-        var integerStr = numStr.substring(0, integerDigits);
-
-        while (integerStr.length < this.getMinimumIntegerDigits()) {
-          integerStr = "0" + integerStr;
-        }
-
-        if (this.getMaximumIntegerDigits() != null && integerStr.length > this.getMaximumIntegerDigits()) {
-          // NOTE: We cut off even though we did rounding before, because there
-          //     may be rounding errors ("12.24000000000001" -> "12.24")
-          integerStr = integerStr.substring(integerStr.length - this.getMaximumIntegerDigits());
-        } // Prepare the fraction part
-
-
-        var fractionStr = numStr.substring(integerDigits + 1);
-
-        while (fractionStr.length < this.getMinimumFractionDigits()) {
-          fractionStr += "0";
-        }
-
-        if (this.getMaximumFractionDigits() != null && fractionStr.length > this.getMaximumFractionDigits()) {
-          // We have already rounded -> Just cut off the rest
-          fractionStr = fractionStr.substring(0, this.getMaximumFractionDigits());
-        } // Add the thousand groupings
-
-
-        if (this.getGroupingUsed()) {
-          var origIntegerStr = integerStr;
-          integerStr = "";
-          var groupPos;
-
-          for (groupPos = origIntegerStr.length; groupPos > 3; groupPos -= 3) {
-            integerStr = "" + qx.locale.Number.getGroupSeparator(this.getLocale()) + origIntegerStr.substring(groupPos - 3, groupPos) + integerStr;
-          }
-
-          integerStr = origIntegerStr.substring(0, groupPos) + integerStr;
-        } // Workaround: prefix and postfix are null even their defaultValue is "" and
-        //             allowNull is set to false?!?
-
-
-        var prefix = this.getPrefix() ? this.getPrefix() : "";
-        var postfix = this.getPostfix() ? this.getPostfix() : ""; // Assemble the number
-
-        var str = prefix + (negative ? "-" : "") + integerStr;
-
-        if (fractionStr.length > 0) {
-          str += "" + qx.locale.Number.getDecimalSeparator(this.getLocale()) + fractionStr;
-        }
-
-        str += postfix;
-        return str;
-      },
-
-      /**
-       * Parses a number.
-       *
-       * @param str {String} the string to parse.
-       * @return {Double} the number.
-       * @throws {Error} If the number string does not match the number format.
-       */
-      parse: function parse(str) {
-        // use the escaped separators for regexp
-        var groupSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getGroupSeparator(this.getLocale()) + "");
-        var decimalSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getDecimalSeparator(this.getLocale()) + "");
-        var regex = new RegExp("^(" + qx.lang.String.escapeRegexpChars(this.getPrefix()) + ")?([-+]){0,1}" + "([0-9]{1,3}(?:" + groupSepEsc + "{0,1}[0-9]{3}){0,}){0,1}" + "(" + decimalSepEsc + "\\d+){0,1}(" + qx.lang.String.escapeRegexpChars(this.getPostfix()) + ")?$");
-        var hit = regex.exec(str);
-
-        if (hit == null) {
-          throw new Error("Number string '" + str + "' does not match the number format");
-        } // hit[1] = potential prefix
-
-
-        var negative = hit[2] == "-";
-        var integerStr = hit[3] || "0";
-        var fractionStr = hit[4]; // hit[5] = potential postfix
-        // Remove the thousand groupings
-
-        integerStr = integerStr.replace(new RegExp(groupSepEsc, "g"), "");
-        var asStr = (negative ? "-" : "") + integerStr;
-
-        if (fractionStr != null && fractionStr.length != 0) {
-          // Remove the leading decimal separator from the fractions string
-          fractionStr = fractionStr.replace(new RegExp(decimalSepEsc), "");
-          asStr += "." + fractionStr;
-        }
-
-        return parseFloat(asStr);
-      }
-    },
-    destruct: function destruct() {
-      {
-        qx.locale.Manager.getInstance().removeRelatedBindings(this);
-      }
-    }
-  });
-  qx.util.format.NumberFormat.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
       "qx.core.Environment": {
         "defer": "load",
         "usage": "dynamic",
@@ -67440,6 +67922,116 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.Bootstrap": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Generic escaping and unescaping of DOM strings.
+   *
+   * {@link qx.bom.String} for (un)escaping of HTML strings.
+   * {@link qx.xml.String} for (un)escaping of XML strings.
+   */
+  qx.Bootstrap.define("qx.util.StringEscape", {
+    statics: {
+      /**
+       * generic escaping method
+       *
+       * @param str {String} string to escape
+       * @param charCodeToEntities {Map} entity to charcode map
+       * @return {String} escaped string
+       */
+      escape: function escape(str, charCodeToEntities) {
+        var entity,
+            result = "";
+
+        for (var i = 0, l = str.length; i < l; i++) {
+          var chr = str.charAt(i);
+          var code = str.codePointAt(i);
+          i += String.fromCodePoint(code).length - 1;
+
+          if (charCodeToEntities[code]) {
+            entity = "&" + charCodeToEntities[code] + ";";
+          } else {
+            if (code > 0x7f) {
+              entity = "&#" + code + ";";
+            } else {
+              entity = chr;
+            }
+          }
+
+          result += entity;
+        }
+
+        return result;
+      },
+
+      /**
+       * generic unescaping method
+       *
+       * @param str {String} string to unescape
+       * @param entitiesToCharCode {Map} charcode to entity map
+       * @return {String} unescaped string
+       */
+      unescape: function unescape(str, entitiesToCharCode) {
+        return str.replace(/&[#\w]+;/gi, function (entity) {
+          var chr = entity;
+          var entity = entity.substring(1, entity.length - 1);
+          var code = entitiesToCharCode[entity];
+
+          if (code) {
+            chr = String.fromCharCode(code);
+          } else {
+            if (entity.charAt(0) == "#") {
+              if (entity.charAt(1).toUpperCase() == "X") {
+                code = entity.substring(2); // match hex number
+
+                if (code.match(/^[0-9A-Fa-f]+$/gi)) {
+                  chr = String.fromCodePoint(parseInt(code, 16));
+                }
+              } else {
+                code = entity.substring(1); // match integer
+
+                if (code.match(/^\d+$/gi)) {
+                  chr = String.fromCodePoint(parseInt(code, 10));
+                }
+              }
+            }
+          }
+
+          return chr;
+        });
+      }
+    }
+  });
+  qx.util.StringEscape.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
       "qx.Class": {
         "usage": "dynamic",
         "require": true
@@ -70558,190 +71150,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Generic escaping and unescaping of DOM strings.
-   *
-   * {@link qx.bom.String} for (un)escaping of HTML strings.
-   * {@link qx.xml.String} for (un)escaping of XML strings.
-   */
-  qx.Bootstrap.define("qx.util.StringEscape", {
-    statics: {
-      /**
-       * generic escaping method
-       *
-       * @param str {String} string to escape
-       * @param charCodeToEntities {Map} entity to charcode map
-       * @return {String} escaped string
-       */
-      escape: function escape(str, charCodeToEntities) {
-        var entity,
-            result = "";
-
-        for (var i = 0, l = str.length; i < l; i++) {
-          var chr = str.charAt(i);
-          var code = str.codePointAt(i);
-          i += String.fromCodePoint(code).length - 1;
-
-          if (charCodeToEntities[code]) {
-            entity = "&" + charCodeToEntities[code] + ";";
-          } else {
-            if (code > 0x7f) {
-              entity = "&#" + code + ";";
-            } else {
-              entity = chr;
-            }
-          }
-
-          result += entity;
-        }
-
-        return result;
-      },
-
-      /**
-       * generic unescaping method
-       *
-       * @param str {String} string to unescape
-       * @param entitiesToCharCode {Map} charcode to entity map
-       * @return {String} unescaped string
-       */
-      unescape: function unescape(str, entitiesToCharCode) {
-        return str.replace(/&[#\w]+;/gi, function (entity) {
-          var chr = entity;
-          var entity = entity.substring(1, entity.length - 1);
-          var code = entitiesToCharCode[entity];
-
-          if (code) {
-            chr = String.fromCharCode(code);
-          } else {
-            if (entity.charAt(0) == "#") {
-              if (entity.charAt(1).toUpperCase() == "X") {
-                code = entity.substring(2); // match hex number
-
-                if (code.match(/^[0-9A-Fa-f]+$/gi)) {
-                  chr = String.fromCodePoint(parseInt(code, 16));
-                }
-              } else {
-                code = entity.substring(1); // match integer
-
-                if (code.match(/^\d+$/gi)) {
-                  chr = String.fromCodePoint(parseInt(code, 10));
-                }
-              }
-            }
-          }
-
-          return chr;
-        });
-      }
-    }
-  });
-  qx.util.StringEscape.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.locale.Manager": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Andreas Ecker (ecker)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Provides information about locale-dependent number formatting (like the decimal
-   * separator).
-   *
-   * @cldr()
-   */
-  qx.Class.define("qx.locale.Number", {
-    statics: {
-      /**
-       * Get decimal separator for number formatting
-       *
-       * @param locale {String} optional locale to be used
-       * @return {String} decimal separator.
-       */
-      getDecimalSeparator: function getDecimalSeparator(locale) {
-        return qx.locale.Manager.getInstance().localize("cldr_number_decimal_separator", [], locale);
-      },
-
-      /**
-       * Get thousand grouping separator for number formatting
-       *
-       * @param locale {String} optional locale to be used
-       * @return {String} group separator.
-       */
-      getGroupSeparator: function getGroupSeparator(locale) {
-        return qx.locale.Manager.getInstance().localize("cldr_number_group_separator", [], locale);
-      },
-
-      /**
-       * Get percent format string
-       *
-       * @param locale {String} optional locale to be used
-       * @return {String} percent format string.
-       */
-      getPercentFormat: function getPercentFormat(locale) {
-        return qx.locale.Manager.getInstance().localize("cldr_number_percent_format", [], locale);
-      }
-    }
-  });
-  qx.locale.Number.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
       "qx.Class": {
         "usage": "dynamic",
         "require": true
@@ -72924,7 +73332,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
   });
   qx.theme.indigo.Color.$$dbClassInfo = $$dbClassInfo;
 })();
-//# sourceMappingURL=package-7.js.map?dt=1656729077191
+//# sourceMappingURL=package-7.js.map?dt=1656760636324
 qx.$$packageData['7'] = {
   "locales": {},
   "resources": {},

@@ -11,7 +11,8 @@
       "qx.ui.table.model.Simple": {},
       "qx.io.request.Xhr": {},
       "qx.ui.table.Table": {},
-      "qx.ui.table.selection.Model": {}
+      "qx.ui.table.selection.Model": {},
+      "qx.ui.table.cellrenderer.Html": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -37,7 +38,7 @@
       createTable: function createTable() {
         // table model
         var tableModel = new qx.ui.table.model.Simple();
-        tableModel.setColumns(["STT", "Mã CK", "Name", "Ai Mua?", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
+        tableModel.setColumns(["STT", "Mã CK", "Name", "Người mua", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
         var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
 
         var cpDaMua = this._read_file();
@@ -63,8 +64,15 @@
             giaHienTai = filter_data["Price"] * 1000; // Lãi/lỗ
 
             percent_change = parseFloat((giaHienTai - giaDaMua) / giaDaMua * 100).toFixed(2);
+            color = "#00E11A";
+
+            if (percent_change < 0) {
+              color = "#F33232";
+            }
+
+            percent_change_html = "<div style='background-color: " + color + ";'>" + percent_change + "%</div>";
             console.log(filter_data);
-            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, percent_change + "%", giaHienTai]);
+            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, percent_change_html, giaHienTai]);
           };
 
           for (var key in cpDaMua) {
@@ -75,6 +83,8 @@
             var stock_name;
             var giaHienTai;
             var percent_change;
+            var color;
+            var percent_change_html;
 
             _loop(key);
           }
@@ -89,6 +99,7 @@
         table.setMetaColumnCounts([1, -1]);
         var selectionMode = qx.ui.table.selection.Model.MULTIPLE_INTERVAL_SELECTION;
         table.getSelectionModel().setSelectionMode(selectionMode);
+        table.getTableColumnModel().setDataCellRenderer(5, new qx.ui.table.cellrenderer.Html());
         return table;
       },
       call_api: function call_api() {
@@ -111,4 +122,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656729071375
+//# sourceMappingURL=CpDaMua.js.map?dt=1656760631163
