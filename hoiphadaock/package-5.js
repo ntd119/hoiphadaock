@@ -14701,6 +14701,3139 @@ function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len 
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.core.DragDropScrolling": {
+        "construct": true
+      },
+      "qx.Class": {},
+      "qx.ui.core.scroll.MScrollBarFactory": {},
+      "qx.ui.core.Widget": {},
+      "qx.event.Timer": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2013 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Richard Sternagel (rsternagel)
+  
+  ************************************************************************ */
+
+  /**
+   * Provides scrolling ability during drag session to the widget.
+   */
+  qx.Mixin.define("qx.ui.core.MDragDropScrolling", {
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      var widget = this;
+
+      if (this instanceof qx.ui.core.DragDropScrolling) {
+        widget = this._getWidget();
+      }
+
+      widget.addListener("drag", this.__onDrag__P_169_0, this);
+      widget.addListener("dragend", this.__onDragend__P_169_1, this);
+      this.__xDirs__P_169_2 = ["left", "right"];
+      this.__yDirs__P_169_3 = ["top", "bottom"];
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /** The threshold for the x-axis (in pixel) to activate scrolling at the edges. */
+      dragScrollThresholdX: {
+        check: "Integer",
+        init: 30
+      },
+
+      /** The threshold for the y-axis (in pixel) to activate scrolling at the edges. */
+      dragScrollThresholdY: {
+        check: "Integer",
+        init: 30
+      },
+
+      /** The factor for slowing down the scrolling. */
+      dragScrollSlowDownFactor: {
+        check: "Float",
+        init: 0.1
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __dragScrollTimer__P_169_4: null,
+      __xDirs__P_169_2: null,
+      __yDirs__P_169_3: null,
+
+      /**
+       * Finds the first scrollable parent (in the parent chain).
+       *
+       * @param widget {qx.ui.core.LayoutItem} The widget to start from.
+       * @return {qx.ui.core.Widget} A scrollable widget.
+       */
+      _findScrollableParent: function _findScrollableParent(widget) {
+        var cur = widget;
+
+        if (cur === null) {
+          return null;
+        }
+
+        while (cur.getLayoutParent()) {
+          cur = cur.getLayoutParent();
+
+          if (this._isScrollable(cur)) {
+            return cur;
+          }
+        }
+
+        return null;
+      },
+
+      /**
+       * Whether the widget is scrollable.
+       *
+       * @param widget {qx.ui.core.Widget} The widget to check.
+       * @return {Boolean} Whether the widget is scrollable.
+       */
+      _isScrollable: function _isScrollable(widget) {
+        return qx.Class.hasMixin(widget.constructor, qx.ui.core.scroll.MScrollBarFactory);
+      },
+
+      /**
+       * Gets the bounds of the given scrollable.
+       *
+       * @param scrollable {qx.ui.core.Widget} Scrollable which has scrollbar child controls.
+       * @return {Map} A map with all four bounds (e.g. {"left":0, "top":20, "right":0, "bottom":80}).
+       */
+      _getBounds: function _getBounds(scrollable) {
+        var bounds = scrollable.getContentLocation(); // the scrollable may dictate a nested widget for more precise bounds
+
+        if (scrollable.getScrollAreaContainer) {
+          bounds = scrollable.getScrollAreaContainer().getContentLocation();
+        }
+
+        return bounds;
+      },
+
+      /**
+       * Gets the edge type or null if the pointer isn't within one of the thresholds.
+       *
+       * @param diff {Map} Difference map with all for edgeTypes.
+       * @param thresholdX {Number} x-axis threshold.
+       * @param thresholdY {Number} y-axis threshold.
+       * @return {String} One of the four edgeTypes ('left', 'right', 'top', 'bottom').
+       */
+      _getEdgeType: function _getEdgeType(diff, thresholdX, thresholdY) {
+        if (diff.left * -1 <= thresholdX && diff.left < 0) {
+          return "left";
+        } else if (diff.top * -1 <= thresholdY && diff.top < 0) {
+          return "top";
+        } else if (diff.right <= thresholdX && diff.right > 0) {
+          return "right";
+        } else if (diff.bottom <= thresholdY && diff.bottom > 0) {
+          return "bottom";
+        } else {
+          return null;
+        }
+      },
+
+      /**
+       * Gets the axis ('x' or 'y') by the edge type.
+       *
+       * @param edgeType {String} One of the four edgeTypes ('left', 'right', 'top', 'bottom').
+       * @throws {Error} If edgeType is not one of the distinct four ones.
+       * @return {String} Returns 'y' or 'x'.
+       */
+      _getAxis: function _getAxis(edgeType) {
+        if (this.__xDirs__P_169_2.indexOf(edgeType) !== -1) {
+          return "x";
+        } else if (this.__yDirs__P_169_3.indexOf(edgeType) !== -1) {
+          return "y";
+        } else {
+          throw new Error("Invalid edge type given (" + edgeType + "). Must be: 'left', 'right', 'top' or 'bottom'");
+        }
+      },
+
+      /**
+       * Gets the threshold amount by edge type.
+       *
+       * @param edgeType {String} One of the four edgeTypes ('left', 'right', 'top', 'bottom').
+       * @return {Number} The threshold of the x or y axis.
+       */
+      _getThresholdByEdgeType: function _getThresholdByEdgeType(edgeType) {
+        if (this.__xDirs__P_169_2.indexOf(edgeType) !== -1) {
+          return this.getDragScrollThresholdX();
+        } else if (this.__yDirs__P_169_3.indexOf(edgeType) !== -1) {
+          return this.getDragScrollThresholdY();
+        }
+      },
+
+      /**
+       * Whether the scrollbar is visible.
+       *
+       * @param scrollable {qx.ui.core.Widget} Scrollable which has scrollbar child controls.
+       * @param axis {String} Can be 'y' or 'x'.
+       * @return {Boolean} Whether the scrollbar is visible.
+       */
+      _isScrollbarVisible: function _isScrollbarVisible(scrollable, axis) {
+        if (scrollable && scrollable._isChildControlVisible) {
+          return scrollable._isChildControlVisible("scrollbar-" + axis);
+        } else {
+          return false;
+        }
+      },
+
+      /**
+       * Whether the scrollbar is exceeding it's maximum position.
+       *
+       * @param scrollbar {qx.ui.core.scroll.IScrollBar} Scrollbar to check.
+       * @param axis {String} Can be 'y' or 'x'.
+       * @param amount {Number} Amount to scroll which may be negative.
+       * @return {Boolean} Whether the amount will exceed the scrollbar max position.
+       */
+      _isScrollbarExceedingMaxPos: function _isScrollbarExceedingMaxPos(scrollbar, axis, amount) {
+        var newPos = 0;
+
+        if (!scrollbar) {
+          return true;
+        }
+
+        newPos = scrollbar.getPosition() + amount;
+        return newPos > scrollbar.getMaximum() || newPos < 0;
+      },
+
+      /**
+       * Calculates the threshold exceedance (which may be negative).
+       *
+       * @param diff {Number} Difference value of one edgeType.
+       * @param threshold {Number} x-axis or y-axis threshold.
+       * @return {Number} Threshold exceedance amount (positive or negative).
+       */
+      _calculateThresholdExceedance: function _calculateThresholdExceedance(diff, threshold) {
+        var amount = threshold - Math.abs(diff);
+        return diff < 0 ? amount * -1 : amount;
+      },
+
+      /**
+       * Calculates the scroll amount (which may be negative).
+       * The amount is influenced by the scrollbar size (bigger = faster)
+       * the exceedanceAmount (bigger = faster) and the slowDownFactor.
+       *
+       * @param scrollbarSize {Number} Size of the scrollbar.
+       * @param exceedanceAmount {Number} Threshold exceedance amount (positive or negative).
+       * @return {Number} Scroll amount (positive or negative).
+       */
+      _calculateScrollAmount: function _calculateScrollAmount(scrollbarSize, exceedanceAmount) {
+        return Math.floor(scrollbarSize / 100 * exceedanceAmount * this.getDragScrollSlowDownFactor());
+      },
+
+      /**
+       * Scrolls the given scrollable on the given axis for the given amount.
+       *
+       * @param scrollable {qx.ui.core.Widget} Scrollable which has scrollbar child controls.
+       * @param axis {String} Can be 'y' or 'x'.
+       * @param exceedanceAmount {Number} Threshold exceedance amount (positive or negative).
+       */
+      _scrollBy: function _scrollBy(scrollable, axis, exceedanceAmount) {
+        var scrollbar = scrollable.getChildControl("scrollbar-" + axis, true);
+
+        if (!scrollbar) {
+          return;
+        }
+
+        var bounds = scrollbar.getBounds(),
+            scrollbarSize = axis === "x" ? bounds.width : bounds.height,
+            amount = this._calculateScrollAmount(scrollbarSize, exceedanceAmount);
+
+        if (this._isScrollbarExceedingMaxPos(scrollbar, axis, amount)) {
+          this.__dragScrollTimer__P_169_4.stop();
+        }
+
+        scrollbar.scrollBy(amount);
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+      EVENT HANDLERS
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Event handler for the drag event.
+       *
+       * @param e {qx.event.type.Drag} The drag event instance.
+       */
+      __onDrag__P_169_0: function __onDrag__P_169_0(e) {
+        if (this.__dragScrollTimer__P_169_4) {
+          // stop last scroll action
+          this.__dragScrollTimer__P_169_4.stop();
+        }
+
+        var target;
+
+        if (e.getOriginalTarget() instanceof qx.ui.core.Widget) {
+          target = e.getOriginalTarget();
+        } else {
+          target = qx.ui.core.Widget.getWidgetByElement(e.getOriginalTarget());
+        }
+
+        if (!target) {
+          return;
+        }
+
+        var scrollable;
+
+        if (this._isScrollable(target)) {
+          scrollable = target;
+        } else {
+          scrollable = this._findScrollableParent(target);
+        }
+
+        while (scrollable) {
+          var bounds = this._getBounds(scrollable),
+              xPos = e.getDocumentLeft(),
+              yPos = e.getDocumentTop(),
+              diff = {
+            left: bounds.left - xPos,
+            right: bounds.right - xPos,
+            top: bounds.top - yPos,
+            bottom: bounds.bottom - yPos
+          },
+              edgeType = null,
+              axis = "",
+              exceedanceAmount = 0;
+
+          edgeType = this._getEdgeType(diff, this.getDragScrollThresholdX(), this.getDragScrollThresholdY());
+
+          if (!edgeType) {
+            scrollable = this._findScrollableParent(scrollable);
+            continue;
+          }
+
+          axis = this._getAxis(edgeType);
+
+          if (this._isScrollbarVisible(scrollable, axis)) {
+            exceedanceAmount = this._calculateThresholdExceedance(diff[edgeType], this._getThresholdByEdgeType(edgeType));
+
+            if (this.__dragScrollTimer__P_169_4) {
+              this.__dragScrollTimer__P_169_4.dispose();
+            }
+
+            this.__dragScrollTimer__P_169_4 = new qx.event.Timer(50);
+
+            this.__dragScrollTimer__P_169_4.addListener("interval", function (scrollable, axis, amount) {
+              this._scrollBy(scrollable, axis, amount);
+            }.bind(this, scrollable, axis, exceedanceAmount));
+
+            this.__dragScrollTimer__P_169_4.start();
+
+            e.stopPropagation();
+            return;
+          } else {
+            scrollable = this._findScrollableParent(scrollable);
+          }
+        }
+      },
+
+      /**
+       * Event handler for the dragend event.
+       *
+       * @param e {qx.event.type.Drag} The drag event instance.
+       */
+      __onDragend__P_169_1: function __onDragend__P_169_1(e) {
+        if (this.__dragScrollTimer__P_169_4) {
+          this.__dragScrollTimer__P_169_4.stop();
+        }
+      }
+    },
+    destruct: function destruct() {
+      if (this.__dragScrollTimer__P_169_4) {
+        this.__dragScrollTimer__P_169_4.dispose();
+      }
+    }
+  });
+  qx.ui.core.MDragDropScrolling.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.core.MDragDropScrolling": {
+        "require": true
+      },
+      "qx.core.Init": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2014 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Mustafa Sak (msak)
+  
+  ************************************************************************ */
+
+  /**
+   * Provides scrolling ability during drag session to the widget.
+   */
+  qx.Class.define("qx.ui.core.DragDropScrolling", {
+    extend: qx.core.Object,
+    include: [qx.ui.core.MDragDropScrolling],
+    construct: function construct(widget) {
+      qx.core.Object.constructor.call(this);
+      this._widget = widget;
+    },
+    members: {
+      _widget: null,
+
+      /**
+       * Returns the root widget whose children will have scroll on drag session
+       * behavior. Widget was set on constructor or will be application root by
+       * default.
+       *
+       * @return {qx.ui.core.Widget} The root widget whose children will have
+       * scroll on drag session
+       */
+      _getWidget: function _getWidget() {
+        return this._widget || qx.core.Init.getApplication().getRoot();
+      }
+    }
+  });
+  qx.ui.core.DragDropScrolling.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.core.Widget": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.core.MDragDropScrolling": {
+        "require": true
+      },
+      "qx.ui.layout.VBox": {
+        "construct": true
+      },
+      "qx.ui.container.Composite": {
+        "construct": true
+      },
+      "qx.ui.layout.HBox": {
+        "construct": true
+      },
+      "qx.ui.table.rowrenderer.Default": {
+        "construct": true
+      },
+      "qx.locale.Manager": {
+        "construct": true
+      },
+      "qx.ui.table.columnmenu.Button": {},
+      "qx.ui.table.selection.Manager": {},
+      "qx.ui.table.selection.Model": {},
+      "qx.ui.table.columnmodel.Basic": {},
+      "qx.ui.table.pane.Pane": {},
+      "qx.ui.table.pane.Header": {},
+      "qx.ui.table.pane.Scroller": {},
+      "qx.ui.table.pane.Model": {},
+      "qx.ui.basic.Label": {},
+      "qx.ui.table.model.Simple": {},
+      "qx.event.Registration": {},
+      "qx.log.Logger": {},
+      "qx.ui.table.pane.FocusIndicator": {},
+      "qx.lang.Number": {},
+      "qx.event.Timer": {},
+      "qx.core.Assert": {},
+      "qx.ui.table.IColumnMenuItem": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+       * Fabian Jakobs (fjakobs)
+       * Jonathan Weiß (jonathan_rass)
+  
+  ************************************************************************ */
+
+  /**
+   * Table
+   *
+   * A detailed description can be found in the package description
+   * {@link qx.ui.table}.
+   *
+   * @childControl statusbar {qx.ui.basic.Label} label to show the status of the table
+   * @childControl column-button {qx.ui.table.columnmenu.Button} button to open the column menu
+   */
+  qx.Class.define("qx.ui.table.Table", {
+    extend: qx.ui.core.Widget,
+    include: qx.ui.core.MDragDropScrolling,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param tableModel {qx.ui.table.ITableModel ? null}
+     *   The table model to read the data from.
+     *
+     * @param custom {Map ? null}
+     *   A map provided to override the various supplemental classes allocated
+     *   within this constructor.  Each property must be a function which
+     *   returns an object instance, as indicated by shown the defaults listed
+     *   here:
+     *
+     *   <dl>
+     *     <dt>initiallyHiddenColumns</dt>
+     *       <dd>
+     *         {Array?}
+     *         A list of column numbers that should be initially invisible. Any
+     *         column not mentioned will be initially visible, and if no array
+     *         is provided, all columns will be initially visible.
+     *       </dd>
+     *     <dt>selectionManager</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.selection.Manager(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>selectionModel</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.selection.Model(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tableColumnModel</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.columnmodel.Basic(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePaneModel</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.pane.Model(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePane</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.pane.Pane(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePaneHeader</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.pane.Header(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePaneScroller</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.pane.Scroller(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePaneModel</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.pane.Model(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>columnMenu</dt>
+     *       <dd><pre class='javascript'>
+     *         function()
+     *         {
+     *           return new qx.ui.table.columnmenu.Button();
+     *         }
+     *       </pre></dd>
+     *   </dl>
+     */
+    construct: function construct(tableModel, custom) {
+      qx.ui.core.Widget.constructor.call(this); //
+      // Use default objects if custom objects are not specified
+      //
+
+      if (!custom) {
+        custom = {};
+      }
+
+      if (custom.initiallyHiddenColumns) {
+        this.setInitiallyHiddenColumns(custom.initiallyHiddenColumns);
+      }
+
+      if (custom.selectionManager) {
+        this.setNewSelectionManager(custom.selectionManager);
+      }
+
+      if (custom.selectionModel) {
+        this.setNewSelectionModel(custom.selectionModel);
+      }
+
+      if (custom.tableColumnModel) {
+        this.setNewTableColumnModel(custom.tableColumnModel);
+      }
+
+      if (custom.tablePane) {
+        this.setNewTablePane(custom.tablePane);
+      }
+
+      if (custom.tablePaneHeader) {
+        this.setNewTablePaneHeader(custom.tablePaneHeader);
+      }
+
+      if (custom.tablePaneScroller) {
+        this.setNewTablePaneScroller(custom.tablePaneScroller);
+      }
+
+      if (custom.tablePaneModel) {
+        this.setNewTablePaneModel(custom.tablePaneModel);
+      }
+
+      if (custom.columnMenu) {
+        this.setNewColumnMenu(custom.columnMenu);
+      }
+
+      this._setLayout(new qx.ui.layout.VBox()); // Create the child widgets
+
+
+      this.__scrollerParent__P_164_0 = new qx.ui.container.Composite(new qx.ui.layout.HBox());
+
+      this._add(this.__scrollerParent__P_164_0, {
+        flex: 1
+      }); // Allocate a default data row renderer
+
+
+      this.setDataRowRenderer(new qx.ui.table.rowrenderer.Default(this)); // Create the models
+
+      this.__selectionManager__P_164_1 = this.getNewSelectionManager()(this);
+      this.setSelectionModel(this.getNewSelectionModel()(this));
+      this.setTableModel(tableModel || this.getEmptyTableModel()); // create the main meta column
+
+      this.setMetaColumnCounts([-1]); // Make focusable
+
+      this.setTabIndex(1);
+      this.addListener("keydown", this._onKeyDown);
+      this.addListener("focus", this._onFocusChanged);
+      this.addListener("blur", this._onFocusChanged); // attach the resize listener to the last child of the layout. This
+      // ensures that all other children are laid out before
+
+      var spacer = new qx.ui.core.Widget().set({
+        height: 0
+      });
+
+      this._add(spacer);
+
+      spacer.addListener("resize", this._onResize, this);
+      this.__focusedCol__P_164_2 = null;
+      this.__focusedRow__P_164_3 = null; // add an event listener which updates the table content on locale change
+
+      {
+        qx.locale.Manager.getInstance().addListener("changeLocale", this._onChangeLocale, this);
+      }
+      this.initStatusBarVisible(); // If the table model has an init() method...
+
+      tableModel = this.getTableModel();
+
+      if (tableModel.init && typeof tableModel.init == "function") {
+        // ... then call it now to allow the table model to affect table
+        // properties.
+        tableModel.init(this);
+      } // ARIA attrs
+
+
+      this.getContentElement().setAttribute("role", "grid");
+    },
+
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /**
+       * Dispatched before adding the column list to the column visibility menu.
+       * The event data is a map with two properties: table and menu.  Listeners
+       * may add additional items to the menu, which appear at the top of the
+       * menu.
+       */
+      columnVisibilityMenuCreateStart: "qx.event.type.Data",
+
+      /**
+       * Dispatched after adding the column list to the column visibility menu.
+       * The event data is a map with two properties: table and menu.  Listeners
+       * may add additional items to the menu, which appear at the bottom of the
+       * menu.
+       */
+      columnVisibilityMenuCreateEnd: "qx.event.type.Data",
+
+      /**
+       * Dispatched when the width of the table has changed.
+       */
+      tableWidthChanged: "qx.event.type.Event",
+
+      /**
+       * Dispatched when updating scrollbars discovers that a vertical scrollbar
+       * is needed when it previously was not, or vice versa.  The data is a
+       * boolean indicating whether a vertical scrollbar is now being used.
+       */
+      verticalScrollBarChanged: "qx.event.type.Data",
+
+      /**
+       * Dispatched when a data cell has been tapped.
+       */
+      cellTap: "qx.ui.table.pane.CellEvent",
+
+      /**
+       * Dispatched when a data cell has been tapped.
+       */
+      cellDbltap: "qx.ui.table.pane.CellEvent",
+
+      /**
+       * Dispatched when the context menu is needed in a data cell
+       */
+      cellContextmenu: "qx.ui.table.pane.CellEvent",
+
+      /**
+       * Dispatched after a cell editor is flushed.
+       *
+       * The data is a map containing this properties:
+       * <ul>
+       *   <li>row</li>
+       *   <li>col</li>
+       *   <li>value</li>
+       *   <li>oldValue</li>
+       * </ul>
+       */
+      dataEdited: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /** Events that must be redirected to the scrollers. */
+      __redirectEvents__P_164_4: {
+        cellTap: 1,
+        cellDbltap: 1,
+        cellContextmenu: 1
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      appearance: {
+        refine: true,
+        init: "table"
+      },
+      focusable: {
+        refine: true,
+        init: true
+      },
+      minWidth: {
+        refine: true,
+        init: 50
+      },
+
+      /**
+       * The list of columns that are initially hidden. This property is set by
+       * the constructor, from the value received in
+       * custom.initiallyHiddenColumns, and is only used when a column model is
+       * initialized. It can be of great benefit in tables with numerous columns
+       * where most are not initially visible. The process of creating the
+       * headers for all of the columns, only to have those columns discarded
+       * shortly thereafter when setColumnVisibility(false) is called, is a
+       * waste of (significant, in some browsers) time. Specifying the
+       * non-visible columns at constructor time can therefore avoid the initial
+       * creation of all of those superfluous widgets.
+       */
+      initiallyHiddenColumns: {
+        init: null
+      },
+
+      /**
+       * Whether the widget contains content which may be selected by the user.
+       *
+       * If the value set to <code>true</code> the native browser selection can
+       * be used for text selection. But it is normally useful for
+       * forms fields, longer texts/documents, editors, etc.
+       *
+       * Note: This has no effect on Table!
+       */
+      selectable: {
+        refine: true,
+        init: false
+      },
+
+      /** The selection model. */
+      selectionModel: {
+        check: "qx.ui.table.selection.Model",
+        apply: "_applySelectionModel",
+        event: "changeSelectionModel"
+      },
+
+      /** The table model. */
+      tableModel: {
+        check: "qx.ui.table.ITableModel",
+        apply: "_applyTableModel",
+        event: "changeTableModel"
+      },
+
+      /** The height of the table rows. */
+      rowHeight: {
+        check: "Number",
+        init: 20,
+        apply: "_applyRowHeight",
+        event: "changeRowHeight",
+        themeable: true
+      },
+
+      /**
+       * Force line height to match row height.  May be disabled if cell
+       * renderers being used wish to render multiple lines of data within a
+       * cell.  (With the default setting, all but the first of multiple lines
+       * of data will not be visible.)
+       */
+      forceLineHeight: {
+        check: "Boolean",
+        init: true
+      },
+
+      /**
+       *  Whether the header cells are visible. When setting this to false,
+       *  you'll likely also want to set the {#columnVisibilityButtonVisible}
+       *  property to false as well, to entirely remove the header row.
+       */
+      headerCellsVisible: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyHeaderCellsVisible",
+        themeable: true
+      },
+
+      /** The height of the header cells. */
+      headerCellHeight: {
+        check: "Integer",
+        init: 16,
+        apply: "_applyHeaderCellHeight",
+        event: "changeHeaderCellHeight",
+        nullable: true,
+        themeable: true
+      },
+
+      /** Whether to show the status bar */
+      statusBarVisible: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyStatusBarVisible"
+      },
+
+      /** The Statusbartext, set it, if you want some more Information */
+      additionalStatusBarText: {
+        nullable: true,
+        init: null,
+        apply: "_applyAdditionalStatusBarText"
+      },
+
+      /** Whether to show the column visibility button */
+      columnVisibilityButtonVisible: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyColumnVisibilityButtonVisible",
+        themeable: true
+      },
+
+      /**
+       * @type {Integer[]} The number of columns per meta column. If the last array entry is -1,
+       * this meta column will get the remaining columns.
+       */
+      metaColumnCounts: {
+        check: "Object",
+        apply: "_applyMetaColumnCounts"
+      },
+
+      /**
+       * Whether the focus should moved when the pointer is moved over a cell. If false
+       * the focus is only moved on pointer taps.
+       */
+      focusCellOnPointerMove: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyFocusCellOnPointerMove"
+      },
+
+      /**
+       * Whether row focus change by keyboard also modifies selection
+       */
+      rowFocusChangeModifiesSelection: {
+        check: "Boolean",
+        init: true
+      },
+
+      /**
+       * Whether the cell focus indicator should be shown
+       */
+      showCellFocusIndicator: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyShowCellFocusIndicator"
+      },
+
+      /**
+       * By default, the "cellContextmenu" event is fired only when a data cell
+       * is right-clicked. It is not fired when a right-click occurs in the
+       * empty area of the table below the last data row. By turning on this
+       * property, "cellContextMenu" events will also be generated when a
+       * right-click occurs in that empty area. In such a case, row identifier
+       * in the event data will be null, so event handlers can check (row ===
+       * null) to handle this case.
+       */
+      contextMenuFromDataCellsOnly: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyContextMenuFromDataCellsOnly"
+      },
+
+      /**
+       * Whether the table should keep the first visible row complete. If set to false,
+       * the first row may be rendered partial, depending on the vertical scroll value.
+       */
+      keepFirstVisibleRowComplete: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyKeepFirstVisibleRowComplete"
+      },
+
+      /**
+       * Whether the table cells should be updated when only the selection or the
+       * focus changed. This slows down the table update but allows to react on a
+       * changed selection or a changed focus in a cell renderer.
+       */
+      alwaysUpdateCells: {
+        check: "Boolean",
+        init: false
+      },
+
+      /**
+       * Whether to reset the selection when a header cell is tapped. Since
+       * most data models do not have provisions to retain a selection after
+       * sorting, the default is to reset the selection in this case. Some data
+       * models, however, do have the capability to retain the selection, so
+       * when using those, this property should be set to false.
+       */
+      resetSelectionOnHeaderTap: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyResetSelectionOnHeaderTap"
+      },
+
+      /**
+       * Whether to reset the selection when the unpopulated table area is tapped.
+       * The default is false which keeps the behaviour as before
+       */
+      resetSelectionOnTapBelowRows: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyResetSelectionOnTapBelowRows"
+      },
+
+      /**
+       * If set then defines the minimum height of the focus indicator when editing
+       */
+      minCellEditHeight: {
+        check: "Integer",
+        nullable: true,
+        init: null,
+        apply: "_applyMinCellEditHeight"
+      },
+
+      /** The renderer to use for styling the rows. */
+      dataRowRenderer: {
+        check: "qx.ui.table.IRowRenderer",
+        init: null,
+        nullable: true,
+        event: "changeDataRowRenderer"
+      },
+
+      /**
+       * A function to call when before modal cell editor is opened.
+       *
+       * @signature function(cellEditor, cellInfo)
+       *
+       * @param cellEditor {qx.ui.window.Window}
+       *   The modal window which has been created for this cell editor
+       *
+       * @param cellInfo {Map}
+       *   Information about the cell for which this cell editor was created.
+       *   It contains the following properties:
+       *       col, row, xPos, value
+       *
+       */
+      modalCellEditorPreOpenFunction: {
+        check: "Function",
+        init: null,
+        nullable: true
+      },
+
+      /**
+       * By default, all Scrollers' (meta-columns') horizontal scrollbars are
+       * shown if any one is required. Allow not showing any that are not
+       * required.
+       */
+      excludeScrollerScrollbarsIfNotNeeded: {
+        check: "Boolean",
+        init: false,
+        nullable: false
+      },
+
+      /**
+       * A function to instantiate a new column menu button.
+       */
+      newColumnMenu: {
+        check: "Function",
+        init: function init() {
+          return new qx.ui.table.columnmenu.Button();
+        }
+      },
+
+      /**
+       * A function to instantiate a selection manager.  this allows subclasses of
+       * Table to subclass this internal class.  To take effect, this property must
+       * be set before calling the Table constructor.
+       */
+      newSelectionManager: {
+        check: "Function",
+        init: function init(obj) {
+          return new qx.ui.table.selection.Manager(obj);
+        }
+      },
+
+      /**
+       * A function to instantiate a selection model.  this allows subclasses of
+       * Table to subclass this internal class.  To take effect, this property must
+       * be set before calling the Table constructor.
+       */
+      newSelectionModel: {
+        check: "Function",
+        init: function init(obj) {
+          return new qx.ui.table.selection.Model(obj);
+        }
+      },
+
+      /**
+       * A function to instantiate a table column model.  This allows subclasses
+       * of Table to subclass this internal class.  To take effect, this
+       * property must be set before calling the Table constructor.
+       */
+      newTableColumnModel: {
+        check: "Function",
+        init: function init(table) {
+          return new qx.ui.table.columnmodel.Basic(table);
+        }
+      },
+
+      /**
+       * A function to instantiate a table pane.  this allows subclasses of
+       * Table to subclass this internal class.  To take effect, this property
+       * must be set before calling the Table constructor.
+       */
+      newTablePane: {
+        check: "Function",
+        init: function init(obj) {
+          return new qx.ui.table.pane.Pane(obj);
+        }
+      },
+
+      /**
+       * A function to instantiate a table pane.  this allows subclasses of
+       * Table to subclass this internal class.  To take effect, this property
+       * must be set before calling the Table constructor.
+       */
+      newTablePaneHeader: {
+        check: "Function",
+        init: function init(obj) {
+          return new qx.ui.table.pane.Header(obj);
+        }
+      },
+
+      /**
+       * A function to instantiate a table pane scroller.  this allows
+       * subclasses of Table to subclass this internal class.  To take effect,
+       * this property must be set before calling the Table constructor.
+       */
+      newTablePaneScroller: {
+        check: "Function",
+        init: function init(obj) {
+          return new qx.ui.table.pane.Scroller(obj);
+        }
+      },
+
+      /**
+       * A function to instantiate a table pane model.  this allows subclasses
+       * of Table to subclass this internal class.  To take effect, this
+       * property must be set before calling the Table constructor.
+       */
+      newTablePaneModel: {
+        check: "Function",
+        init: function init(columnModel) {
+          return new qx.ui.table.pane.Model(columnModel);
+        }
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __focusedCol__P_164_2: null,
+      __focusedRow__P_164_3: null,
+      __scrollerParent__P_164_0: null,
+      __selectionManager__P_164_1: null,
+      __additionalStatusBarText__P_164_5: null,
+      __lastRowCount__P_164_6: null,
+      __lastColCount__P_164_7: null,
+      __internalChange__P_164_8: null,
+      __columnMenuButtons__P_164_9: null,
+      __columnModel__P_164_10: null,
+      __emptyTableModel__P_164_11: null,
+      __hadVerticalScrollBar__P_164_12: null,
+      __timer__P_164_13: null,
+      // overridden
+      _createChildControlImpl: function _createChildControlImpl(id, hash) {
+        var control;
+
+        switch (id) {
+          case "statusbar":
+            control = new qx.ui.basic.Label();
+            control.set({
+              allowGrowX: true
+            });
+
+            this._add(control);
+
+            break;
+
+          case "column-button":
+            control = this.getNewColumnMenu()();
+            control.set({
+              focusable: false
+            }); // Create the initial menu too
+
+            var menu = control.factory("menu", {
+              table: this
+            }); // Add a listener to initialize the column menu when it becomes visible
+
+            menu.addListener("appear", this._initColumnMenu, this);
+            break;
+        }
+
+        return control || qx.ui.table.Table.superclass.prototype._createChildControlImpl.call(this, id);
+      },
+      // property modifier
+      _applySelectionModel: function _applySelectionModel(value, old) {
+        this.__selectionManager__P_164_1.setSelectionModel(value);
+
+        if (old != null) {
+          old.removeListener("changeSelection", this._onSelectionChanged, this);
+        }
+
+        value.addListener("changeSelection", this._onSelectionChanged, this);
+      },
+      // property modifier
+      _applyRowHeight: function _applyRowHeight(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].updateVerScrollBarMaximum();
+        }
+      },
+      // property modifier
+      _applyHeaderCellsVisible: function _applyHeaderCellsVisible(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          if (value) {
+            scrollerArr[i]._showChildControl("header");
+          } else {
+            scrollerArr[i]._excludeChildControl("header");
+          }
+        } // also hide the column visibility button
+
+
+        if (this.getColumnVisibilityButtonVisible()) {
+          this._applyColumnVisibilityButtonVisible(value);
+        }
+      },
+      // property modifier
+      _applyHeaderCellHeight: function _applyHeaderCellHeight(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].getHeader().setHeight(value);
+        }
+      },
+      // property modifier
+      _applyMinCellEditHeight: function _applyMinCellEditHeight(value) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setMinCellEditHeight(value);
+        }
+      },
+
+      /**
+       * Get an empty table model instance to use for this table. Use this table
+       * to configure the table with no table model.
+       *
+       * @return {qx.ui.table.ITableModel} The empty table model
+       */
+      getEmptyTableModel: function getEmptyTableModel() {
+        if (!this.__emptyTableModel__P_164_11) {
+          this.__emptyTableModel__P_164_11 = new qx.ui.table.model.Simple();
+
+          this.__emptyTableModel__P_164_11.setColumns([]);
+
+          this.__emptyTableModel__P_164_11.setData([]);
+        }
+
+        return this.__emptyTableModel__P_164_11;
+      },
+      // property modifier
+      _applyTableModel: function _applyTableModel(value, old) {
+        this.getTableColumnModel().init(value.getColumnCount(), this);
+
+        if (old != null) {
+          old.removeListener("metaDataChanged", this._onTableModelMetaDataChanged, this);
+          old.removeListener("dataChanged", this._onTableModelDataChanged, this);
+        }
+
+        value.addListener("metaDataChanged", this._onTableModelMetaDataChanged, this);
+        value.addListener("dataChanged", this._onTableModelDataChanged, this); // Update the status bar
+
+        this._updateStatusBar();
+
+        this._updateTableData(0, value.getRowCount(), 0, value.getColumnCount());
+
+        this._onTableModelMetaDataChanged(); // If the table model has an init() method, call it. We don't, however,
+        // call it if this is the initial setting of the table model, as the
+        // scrollers are not yet initialized. In that case, the init method is
+        // called explicitly by the Table constructor.
+
+
+        if (old && value.init && typeof value.init == "function") {
+          value.init(this);
+        }
+      },
+
+      /**
+       * Get the The table column model.
+       *
+       * @return {qx.ui.table.columnmodel.Basic} The table's column model
+       */
+      getTableColumnModel: function getTableColumnModel() {
+        if (!this.__columnModel__P_164_10) {
+          var columnModel = this.__columnModel__P_164_10 = this.getNewTableColumnModel()(this);
+          columnModel.addListener("visibilityChanged", this._onColVisibilityChanged, this);
+          columnModel.addListener("widthChanged", this._onColWidthChanged, this);
+          columnModel.addListener("orderChanged", this._onColOrderChanged, this); // Get the current table model
+
+          var tableModel = this.getTableModel();
+          columnModel.init(tableModel.getColumnCount(), this); // Reset the table column model in each table pane model
+
+          var scrollerArr = this._getPaneScrollerArr();
+
+          for (var i = 0; i < scrollerArr.length; i++) {
+            var paneScroller = scrollerArr[i];
+            var paneModel = paneScroller.getTablePaneModel();
+            paneModel.setTableColumnModel(columnModel);
+          }
+        }
+
+        return this.__columnModel__P_164_10;
+      },
+      // property modifier
+      _applyStatusBarVisible: function _applyStatusBarVisible(value, old) {
+        if (value) {
+          this._showChildControl("statusbar");
+        } else {
+          this._excludeChildControl("statusbar");
+        }
+
+        if (value) {
+          this._updateStatusBar();
+        }
+      },
+      // property modifier
+      _applyAdditionalStatusBarText: function _applyAdditionalStatusBarText(value, old) {
+        this.__additionalStatusBarText__P_164_5 = value;
+
+        this._updateStatusBar();
+      },
+      // property modifier
+      _applyColumnVisibilityButtonVisible: function _applyColumnVisibilityButtonVisible(value, old) {
+        if (value) {
+          this._showChildControl("column-button");
+        } else {
+          this._excludeChildControl("column-button");
+        }
+      },
+      // property modifier
+      _applyMetaColumnCounts: function _applyMetaColumnCounts(value, old) {
+        var metaColumnCounts = value;
+
+        var scrollerArr = this._getPaneScrollerArr();
+
+        var handlers = {};
+
+        if (value > old) {
+          // Save event listeners on the redirected events so we can re-apply
+          // them to new scrollers.
+          var manager = qx.event.Registration.getManager(scrollerArr[0]);
+
+          for (var evName in qx.ui.table.Table.__redirectEvents__P_164_4) {
+            handlers[evName] = {};
+            handlers[evName].capture = manager.getListeners(scrollerArr[0], evName, true);
+            handlers[evName].bubble = manager.getListeners(scrollerArr[0], evName, false);
+          }
+        } // Remove the panes not needed any more
+
+
+        this._cleanUpMetaColumns(metaColumnCounts.length); // Update the old panes
+
+
+        var leftX = 0;
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          var paneScroller = scrollerArr[i];
+          var paneModel = paneScroller.getTablePaneModel();
+          paneModel.setFirstColumnX(leftX);
+          paneModel.setMaxColumnCount(metaColumnCounts[i]);
+          leftX += metaColumnCounts[i];
+        } // Add the new panes
+
+
+        if (metaColumnCounts.length > scrollerArr.length) {
+          var columnModel = this.getTableColumnModel();
+
+          for (var i = scrollerArr.length; i < metaColumnCounts.length; i++) {
+            var paneModel = this.getNewTablePaneModel()(columnModel);
+            paneModel.setFirstColumnX(leftX);
+            paneModel.setMaxColumnCount(metaColumnCounts[i]);
+            leftX += metaColumnCounts[i];
+            var paneScroller = this.getNewTablePaneScroller()(this);
+            paneScroller.setTablePaneModel(paneModel); // Register event listener for vertical scrolling
+
+            paneScroller.addListener("changeScrollY", this._onScrollY, this); // Apply redirected events to this new scroller
+
+            for (evName in qx.ui.table.Table.__redirectEvents__P_164_4) {
+              // On first setting of meta columns (constructing phase), there
+              // are no handlers to deal with yet.
+              if (!handlers[evName]) {
+                break;
+              }
+
+              if (handlers[evName].capture && handlers[evName].capture.length > 0) {
+                var capture = handlers[evName].capture;
+
+                for (var j = 0; j < capture.length; j++) {
+                  // Determine what context to use.  If the context does not
+                  // exist, we assume that the context is this table.  If it
+                  // does exist and it equals the first pane scroller (from
+                  // which we retrieved the listeners) then set the context
+                  // to be this new pane scroller.  Otherwise leave the context
+                  // as it was set.
+                  var context = capture[j].context;
+
+                  if (!context) {
+                    context = this;
+                  } else if (context == scrollerArr[0]) {
+                    context = paneScroller;
+                  }
+
+                  paneScroller.addListener(evName, capture[j].handler, context, true);
+                }
+              }
+
+              if (handlers[evName].bubble && handlers[evName].bubble.length > 0) {
+                var bubble = handlers[evName].bubble;
+
+                for (var j = 0; j < bubble.length; j++) {
+                  // Determine what context to use.  If the context does not
+                  // exist, we assume that the context is this table.  If it
+                  // does exist and it equals the first pane scroller (from
+                  // which we retrieved the listeners) then set the context
+                  // to be this new pane scroller.  Otherwise leave the context
+                  // as it was set.
+                  var context = bubble[j].context;
+
+                  if (!context) {
+                    context = this;
+                  } else if (context == scrollerArr[0]) {
+                    context = paneScroller;
+                  }
+
+                  paneScroller.addListener(evName, bubble[j].handler, context, false);
+                }
+              }
+            } // last meta column is flexible
+
+
+            var flex = i == metaColumnCounts.length - 1 ? 1 : 0;
+
+            this.__scrollerParent__P_164_0.add(paneScroller, {
+              flex: flex
+            });
+
+            scrollerArr = this._getPaneScrollerArr();
+          }
+        } // Update all meta columns
+
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          var paneScroller = scrollerArr[i];
+          var isLast = i == scrollerArr.length - 1; // Set the right header height
+
+          paneScroller.getHeader().setHeight(this.getHeaderCellHeight()); // Put the column visibility button in the top right corner of the last meta column
+
+          paneScroller.setTopRightWidget(isLast ? this.getChildControl("column-button") : null);
+        }
+
+        if (!this.isColumnVisibilityButtonVisible()) {
+          this._excludeChildControl("column-button");
+        }
+
+        this._updateScrollerWidths();
+
+        this._updateScrollBarVisibility();
+      },
+      // property modifier
+      _applyFocusCellOnPointerMove: function _applyFocusCellOnPointerMove(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setFocusCellOnPointerMove(value);
+        }
+      },
+      // property modifier
+      _applyShowCellFocusIndicator: function _applyShowCellFocusIndicator(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setShowCellFocusIndicator(value);
+        }
+      },
+      // property modifier
+      _applyContextMenuFromDataCellsOnly: function _applyContextMenuFromDataCellsOnly(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setContextMenuFromDataCellsOnly(value);
+        }
+      },
+      // property modifier
+      _applyKeepFirstVisibleRowComplete: function _applyKeepFirstVisibleRowComplete(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onKeepFirstVisibleRowCompleteChanged();
+        }
+      },
+      // property modifier
+      _applyResetSelectionOnHeaderTap: function _applyResetSelectionOnHeaderTap(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setResetSelectionOnHeaderTap(value);
+        }
+      },
+      // property modifier
+      _applyResetSelectionOnTapBelowRows: function _applyResetSelectionOnTapBelowRows(value, old) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].setResetSelectionOnTapBelowRows(value);
+        }
+      },
+
+      /**
+       * Returns the selection manager.
+       *
+       * @return {qx.ui.table.selection.Manager} the selection manager.
+       */
+      getSelectionManager: function getSelectionManager() {
+        return this.__selectionManager__P_164_1;
+      },
+
+      /**
+       * Returns an array containing all TablePaneScrollers in this table.
+       *
+       * @return {qx.ui.table.pane.Scroller[]} all TablePaneScrollers in this table.
+       */
+      _getPaneScrollerArr: function _getPaneScrollerArr() {
+        return this.__scrollerParent__P_164_0.getChildren();
+      },
+
+      /**
+       * Returns a TablePaneScroller of this table.
+       *
+       * @param metaColumn {Integer} the meta column to get the TablePaneScroller for.
+       * @return {qx.ui.table.pane.Scroller} the qx.ui.table.pane.Scroller.
+       */
+      getPaneScroller: function getPaneScroller(metaColumn) {
+        return this._getPaneScrollerArr()[metaColumn];
+      },
+
+      /**
+       * Cleans up the meta columns.
+       *
+       * @param fromMetaColumn {Integer} the first meta column to clean up. All following
+       *      meta columns will be cleaned up, too. All previous meta columns will
+       *      stay unchanged. If 0 all meta columns will be cleaned up.
+       */
+      _cleanUpMetaColumns: function _cleanUpMetaColumns(fromMetaColumn) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        if (scrollerArr != null) {
+          for (var i = scrollerArr.length - 1; i >= fromMetaColumn; i--) {
+            scrollerArr[i].destroy();
+          }
+        }
+      },
+
+      /**
+       * Event handler. Called when the locale has changed.
+       *
+       * @param evt {Event} the event.
+       */
+      _onChangeLocale: function _onChangeLocale(evt) {
+        this.updateContent();
+
+        this._updateStatusBar();
+      },
+      // overridden
+      _onChangeTheme: function _onChangeTheme() {
+        qx.ui.table.Table.superclass.prototype._onChangeTheme.call(this);
+
+        this.getDataRowRenderer().initThemeValues();
+        this.updateContent();
+
+        this._updateStatusBar();
+      },
+
+      /**
+       * Event handler. Called when the selection has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onSelectionChanged: function _onSelectionChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onSelectionChanged();
+        }
+
+        this._updateStatusBar();
+      },
+
+      /**
+       * Event handler. Called when the table model meta data has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onTableModelMetaDataChanged: function _onTableModelMetaDataChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onTableModelMetaDataChanged();
+        }
+
+        this._updateStatusBar();
+      },
+
+      /**
+       * Event handler. Called when the table model data has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onTableModelDataChanged: function _onTableModelDataChanged(evt) {
+        var data = evt.getData();
+
+        this._updateTableData(data.firstRow, data.lastRow, data.firstColumn, data.lastColumn, data.removeStart, data.removeCount);
+      },
+      // overridden
+      _onContextMenuOpen: function _onContextMenuOpen(e) {// This is Widget's context menu handler which typically retrieves
+        // and displays the menu as soon as it receives a "contextmenu" event.
+        // We want to allow the cellContextmenu handler to create the menu,
+        // so we'll override this method with a null one, and do the menu
+        // placement and display handling in our _onContextMenu method.
+      },
+
+      /**
+       * To update the table if the table model has changed and remove selection.
+       *
+       * @param firstRow {Integer} The index of the first row that has changed.
+       * @param lastRow {Integer} The index of the last row that has changed.
+       * @param firstColumn {Integer} The model index of the first column that has changed.
+       * @param lastColumn {Integer} The model index of the last column that has changed.
+       * @param removeStart {Integer ? null} The first index of the interval (including), to remove selection.
+       * @param removeCount {Integer ? null} The count of the interval, to remove selection.
+       */
+      _updateTableData: function _updateTableData(firstRow, lastRow, firstColumn, lastColumn, removeStart, removeCount) {
+        var scrollerArr = this._getPaneScrollerArr(); // update selection if rows were removed
+
+
+        if (removeCount) {
+          this.getSelectionModel().removeSelectionInterval(removeStart, removeStart + removeCount - 1, true); // remove focus if the focused row has been removed
+
+          if (this.__focusedRow__P_164_3 >= removeStart && this.__focusedRow__P_164_3 < removeStart + removeCount) {
+            this.setFocusedCell();
+          }
+        }
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onTableModelDataChanged(firstRow, lastRow, firstColumn, lastColumn);
+        }
+
+        var rowCount = this.getTableModel().getRowCount();
+
+        if (rowCount != this.__lastRowCount__P_164_6) {
+          this.__lastRowCount__P_164_6 = rowCount;
+
+          this._updateScrollBarVisibility();
+
+          this._updateStatusBar(); // ARIA attrs
+
+
+          this.getContentElement().setAttribute("aria-rowcount", rowCount);
+        }
+
+        var colCount = this.getTableModel().getColumnCount();
+
+        if (colCount != this.__lastColCount__P_164_7) {
+          this.__lastColCount__P_164_7 = colCount; // ARIA attrs
+
+          this.getContentElement().setAttribute("aria-colcount", colCount);
+        }
+      },
+
+      /**
+       * Event handler. Called when a TablePaneScroller has been scrolled vertically.
+       *
+       * @param evt {Map} the event.
+       */
+      _onScrollY: function _onScrollY(evt) {
+        if (!this.__internalChange__P_164_8) {
+          this.__internalChange__P_164_8 = true; // Set the same scroll position to all meta columns
+
+          var scrollerArr = this._getPaneScrollerArr();
+
+          for (var i = 0; i < scrollerArr.length; i++) {
+            scrollerArr[i].setScrollY(evt.getData());
+          }
+
+          this.__internalChange__P_164_8 = false;
+        }
+      },
+
+      /**
+       * Event handler. Called when a key was pressed.
+       *
+       * @param evt {qx.event.type.KeySequence} the event.
+       * @deprecated {6.0} please use _onKeyDown instead!
+       */
+      _onKeyPress: function _onKeyPress(evt) {
+        qx.log.Logger.deprecatedMethodWarning(this._onKeyPress, "The method '_onKeyPress()' is deprecated. Please use '_onKeyDown()' instead.");
+        qx.log.Logger.deprecateMethodOverriding(this, qx.ui.table.Table, "_onKeyPress", "The method '_onKeyPress()' is deprecated. Please use '_onKeyDown()' instead.");
+
+        this._onKeyDown(evt);
+      },
+
+      /**
+       * Event handler. Called when on key down event
+       *
+       * @param evt {qx.event.type.KeySequence} the event.
+       */
+      _onKeyDown: function _onKeyDown(evt) {
+        if (!this.getEnabled()) {
+          return;
+        } // No editing mode
+
+
+        var oldFocusedRow = this.__focusedRow__P_164_3;
+        var consumed = false; // Handle keys that are independent from the modifiers
+
+        var identifier = evt.getKeyIdentifier();
+
+        if (this.isEditing()) {
+          // Editing mode
+          if (evt.getModifiers() == 0) {
+            switch (identifier) {
+              case "Enter":
+                this.stopEditing();
+                var oldFocusedRow = this.__focusedRow__P_164_3;
+                this.moveFocusedCell(0, 1);
+
+                if (this.__focusedRow__P_164_3 != oldFocusedRow) {
+                  consumed = this.startEditing();
+                }
+
+                break;
+
+              case "Escape":
+                this.cancelEditing();
+                this.focus();
+                break;
+
+              default:
+                consumed = false;
+                break;
+            }
+          }
+        } else {
+          consumed = true; // No editing mode
+
+          if (evt.isCtrlPressed()) {
+            // Handle keys that depend on modifiers
+            switch (identifier) {
+              case "A":
+                // Ctrl + A
+                var rowCount = this.getTableModel().getRowCount();
+
+                if (rowCount > 0) {
+                  this.getSelectionModel().setSelectionInterval(0, rowCount - 1);
+                }
+
+                break;
+
+              default:
+                consumed = false;
+                break;
+            }
+          } else {
+            // Handle keys that are independent from the modifiers
+            switch (identifier) {
+              case "Space":
+                this.__selectionManager__P_164_1.handleSelectKeyDown(this.__focusedRow__P_164_3, evt);
+
+                break;
+
+              case "F2":
+              case "Enter":
+                this.startEditing();
+                consumed = true;
+                break;
+
+              case "Home":
+                this.setFocusedCell(this.__focusedCol__P_164_2, 0, true);
+                break;
+
+              case "End":
+                var rowCount = this.getTableModel().getRowCount();
+                this.setFocusedCell(this.__focusedCol__P_164_2, rowCount - 1, true);
+                break;
+
+              case "Left":
+                this.moveFocusedCell(-1, 0);
+                break;
+
+              case "Right":
+                this.moveFocusedCell(1, 0);
+                break;
+
+              case "Up":
+                this.moveFocusedCell(0, -1);
+                break;
+
+              case "Down":
+                this.moveFocusedCell(0, 1);
+                break;
+
+              case "PageUp":
+              case "PageDown":
+                var scroller = this.getPaneScroller(0);
+                var pane = scroller.getTablePane();
+                var rowHeight = this.getRowHeight();
+                var direction = identifier == "PageUp" ? -1 : 1;
+                rowCount = pane.getVisibleRowCount() - 1;
+                scroller.setScrollY(scroller.getScrollY() + direction * rowCount * rowHeight);
+                this.moveFocusedCell(0, direction * rowCount);
+                break;
+
+              default:
+                consumed = false;
+            }
+          }
+        }
+
+        if (oldFocusedRow != this.__focusedRow__P_164_3 && this.getRowFocusChangeModifiesSelection()) {
+          // The focus moved -> Let the selection manager handle this event
+          this.__selectionManager__P_164_1.handleMoveKeyDown(this.__focusedRow__P_164_3, evt);
+        }
+
+        if (consumed) {
+          evt.preventDefault();
+          evt.stopPropagation();
+        }
+      },
+
+      /**
+       * Event handler. Called when the table gets the focus.
+       *
+       * @param evt {Map} the event.
+       */
+      _onFocusChanged: function _onFocusChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onFocusChanged();
+        }
+      },
+
+      /**
+       * Event handler. Called when the visibility of a column has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onColVisibilityChanged: function _onColVisibilityChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onColVisibilityChanged();
+        }
+
+        var data = evt.getData();
+
+        if (this.__columnMenuButtons__P_164_9 != null && data.col != null && data.visible != null) {
+          this.__columnMenuButtons__P_164_9[data.col].setColumnVisible(data.visible);
+        }
+
+        this._updateScrollerWidths();
+
+        this._updateScrollBarVisibility();
+      },
+
+      /**
+       * Event handler. Called when the width of a column has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onColWidthChanged: function _onColWidthChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          var data = evt.getData();
+          scrollerArr[i].setColumnWidth(data.col, data.newWidth);
+        }
+
+        this._updateScrollerWidths();
+
+        this._updateScrollBarVisibility();
+      },
+
+      /**
+       * Event handler. Called when the column order has changed.
+       *
+       * @param evt {Map} the event.
+       */
+      _onColOrderChanged: function _onColOrderChanged(evt) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].onColOrderChanged();
+        } // A column may have been moved between meta columns
+
+
+        this._updateScrollerWidths();
+
+        this._updateScrollBarVisibility();
+      },
+
+      /**
+       * Gets the TablePaneScroller at a certain x position in the page. If there is
+       * no TablePaneScroller at this position, null is returned.
+       *
+       * @param pageX {Integer} the position in the page to check (in pixels).
+       * @return {qx.ui.table.pane.Scroller} the TablePaneScroller or null.
+       */
+      getTablePaneScrollerAtPageX: function getTablePaneScrollerAtPageX(pageX) {
+        var metaCol = this._getMetaColumnAtPageX(pageX);
+
+        return metaCol != -1 ? this.getPaneScroller(metaCol) : null;
+      },
+
+      /**
+       * Sets the currently focused cell. A value of <code>null</code> hides the
+       * focus cell.
+       *
+       * @param col {Integer?null} the model index of the focused cell's column.
+       * @param row {Integer?null} the model index of the focused cell's row.
+       * @param scrollVisible {Boolean ? false} whether to scroll the new focused cell
+       *          visible.
+       */
+      setFocusedCell: function setFocusedCell(col, row, scrollVisible) {
+        if (!this.isEditing() && (col != this.__focusedCol__P_164_2 || row != this.__focusedRow__P_164_3)) {
+          if (col === null) {
+            col = 0;
+          }
+
+          this.__focusedCol__P_164_2 = col;
+          this.__focusedRow__P_164_3 = row;
+
+          var scrollerArr = this._getPaneScrollerArr();
+
+          for (var i = 0; i < scrollerArr.length; i++) {
+            scrollerArr[i].setFocusedCell(col, row);
+          }
+
+          if (col != null && scrollVisible) {
+            this.scrollCellVisible(col, row);
+          } // ARIA attrs
+
+
+          var cellId = "qooxdoo-table-cell-" + this.toHashCode() + "-" + row + "-" + col;
+          this.getContentElement().setAttribute("aria-activedescendant", cellId);
+        }
+      },
+
+      /**
+       * Resets (clears) the current selection
+       */
+      resetSelection: function resetSelection() {
+        this.getSelectionModel().resetSelection();
+      },
+
+      /**
+       * Resets the focused cell.
+       */
+      resetCellFocus: function resetCellFocus() {
+        this.setFocusedCell(null, null, false);
+      },
+
+      /**
+       * Returns the column of the currently focused cell.
+       *
+       * @return {Integer} the model index of the focused cell's column.
+       */
+      getFocusedColumn: function getFocusedColumn() {
+        return this.__focusedCol__P_164_2;
+      },
+
+      /**
+       * Returns the row of the currently focused cell.
+       *
+       * @return {Integer} the model index of the focused cell's column.
+       */
+      getFocusedRow: function getFocusedRow() {
+        return this.__focusedRow__P_164_3;
+      },
+
+      /**
+       * Select whether the focused row is highlighted
+       *
+       * @param bHighlight {Boolean}
+       *   Flag indicating whether the focused row should be highlighted.
+       *
+       */
+      highlightFocusedRow: function highlightFocusedRow(bHighlight) {
+        this.getDataRowRenderer().setHighlightFocusRow(bHighlight);
+      },
+
+      /**
+       * Remove the highlighting of the current focus row.
+       *
+       * This is used to temporarily remove the highlighting of the currently
+       * focused row, and is expected to be used most typically by adding a
+       * listener on the "pointerout" event, so that the focus highlighting is
+       * suspended when the pointer leaves the table:
+       *
+       *     table.addListener("pointerout", table.clearFocusedRowHighlight);
+       *
+       * @param evt {qx.event.type.Pointer} Incoming pointer event
+       */
+      clearFocusedRowHighlight: function clearFocusedRowHighlight(evt) {
+        if (evt) {
+          var relatedTarget = evt.getRelatedTarget();
+
+          if (relatedTarget instanceof qx.ui.table.pane.Pane || relatedTarget instanceof qx.ui.table.pane.FocusIndicator) {
+            return;
+          }
+        } // Remove focus from any cell that has it
+
+
+        this.resetCellFocus(); // Now, for each pane scroller...
+
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          // ... repaint without focus.
+          scrollerArr[i].onFocusChanged();
+        }
+      },
+
+      /**
+       * Moves the focus.
+       *
+       * @param deltaX {Integer} The delta by which the focus should be moved on the x axis.
+       * @param deltaY {Integer} The delta by which the focus should be moved on the y axis.
+       */
+      moveFocusedCell: function moveFocusedCell(deltaX, deltaY) {
+        var col = this.__focusedCol__P_164_2;
+        var row = this.__focusedRow__P_164_3; // could also be undefined [BUG #4676]. In that case default to first cell focus
+
+        if (col === null || col === undefined || row === null || row === undefined) {
+          this.setFocusedCell(0, 0, true);
+          return;
+        }
+
+        if (deltaX != 0) {
+          var columnModel = this.getTableColumnModel();
+          var x = columnModel.getVisibleX(col);
+          var colCount = columnModel.getVisibleColumnCount();
+          x = qx.lang.Number.limit(x + deltaX, 0, colCount - 1);
+          col = columnModel.getVisibleColumnAtX(x);
+        }
+
+        if (deltaY != 0) {
+          var tableModel = this.getTableModel();
+          row = qx.lang.Number.limit(row + deltaY, 0, tableModel.getRowCount() - 1);
+        }
+
+        this.setFocusedCell(col, row, true);
+      },
+
+      /**
+       * Scrolls a cell visible.
+       *
+       * @param col {Integer} the model index of the column the cell belongs to.
+       * @param row {Integer} the model index of the row the cell belongs to.
+       */
+      scrollCellVisible: function scrollCellVisible(col, row) {
+        // get the dom element
+        var elem = this.getContentElement().getDomElement(); // if the dom element is not available, the table hasn't been rendered
+
+        if (!elem) {
+          // postpone the scroll until the table has appeared
+          this.addListenerOnce("appear", function () {
+            this.scrollCellVisible(col, row);
+          }, this);
+        }
+
+        var columnModel = this.getTableColumnModel();
+        var x = columnModel.getVisibleX(col);
+
+        var metaColumn = this._getMetaColumnAtColumnX(x);
+
+        if (metaColumn != -1) {
+          this.getPaneScroller(metaColumn).scrollCellVisible(col, row);
+        }
+      },
+
+      /**
+       * Returns whether currently a cell is editing.
+       *
+       * @return {var} whether currently a cell is editing.
+       */
+      isEditing: function isEditing() {
+        if (this.__focusedCol__P_164_2 != null) {
+          var x = this.getTableColumnModel().getVisibleX(this.__focusedCol__P_164_2);
+
+          var metaColumn = this._getMetaColumnAtColumnX(x);
+
+          return this.getPaneScroller(metaColumn).isEditing();
+        }
+
+        return false;
+      },
+
+      /**
+       * Starts editing the currently focused cell. Does nothing if already editing
+       * or if the column is not editable.
+       *
+       * @return {Boolean} whether editing was started
+       */
+      startEditing: function startEditing() {
+        if (this.__focusedCol__P_164_2 != null) {
+          var x = this.getTableColumnModel().getVisibleX(this.__focusedCol__P_164_2);
+
+          var metaColumn = this._getMetaColumnAtColumnX(x);
+
+          var started = this.getPaneScroller(metaColumn).startEditing();
+          return started;
+        }
+
+        return false;
+      },
+
+      /**
+       * Stops editing and writes the editor's value to the model.
+       */
+      stopEditing: function stopEditing() {
+        if (this.__focusedCol__P_164_2 != null) {
+          var x = this.getTableColumnModel().getVisibleX(this.__focusedCol__P_164_2);
+
+          var metaColumn = this._getMetaColumnAtColumnX(x);
+
+          this.getPaneScroller(metaColumn).stopEditing();
+        }
+      },
+
+      /**
+       * Stops editing without writing the editor's value to the model.
+       */
+      cancelEditing: function cancelEditing() {
+        if (this.__focusedCol__P_164_2 != null) {
+          var x = this.getTableColumnModel().getVisibleX(this.__focusedCol__P_164_2);
+
+          var metaColumn = this._getMetaColumnAtColumnX(x);
+
+          this.getPaneScroller(metaColumn).cancelEditing();
+        }
+      },
+
+      /**
+       * Update the table content of every attached table pane.
+       */
+      updateContent: function updateContent() {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].getTablePane().updateContent(true);
+        }
+      },
+
+      /**
+       * Activates the blocker widgets on all column headers and the
+       * column button
+       */
+      blockHeaderElements: function blockHeaderElements() {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].getHeader().getBlocker().blockContent(20);
+        }
+
+        this.getChildControl("column-button").getBlocker().blockContent(20);
+      },
+
+      /**
+       * Deactivates the blocker widgets on all column headers and the
+       * column button
+       */
+      unblockHeaderElements: function unblockHeaderElements() {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          scrollerArr[i].getHeader().getBlocker().unblock();
+        }
+
+        this.getChildControl("column-button").getBlocker().unblock();
+      },
+
+      /**
+       * Gets the meta column at a certain x position in the page. If there is no
+       * meta column at this position, -1 is returned.
+       *
+       * @param pageX {Integer} the position in the page to check (in pixels).
+       * @return {Integer} the index of the meta column or -1.
+       */
+      _getMetaColumnAtPageX: function _getMetaColumnAtPageX(pageX) {
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          var pos = scrollerArr[i].getContentLocation();
+
+          if (pageX >= pos.left && pageX <= pos.right) {
+            return i;
+          }
+        }
+
+        return -1;
+      },
+
+      /**
+       * Returns the meta column a column is shown in. If the column is not shown at
+       * all, -1 is returned.
+       *
+       * @param visXPos {Integer} the visible x position of the column.
+       * @return {Integer} the meta column the column is shown in.
+       */
+      _getMetaColumnAtColumnX: function _getMetaColumnAtColumnX(visXPos) {
+        var metaColumnCounts = this.getMetaColumnCounts();
+        var rightXPos = 0;
+
+        for (var i = 0; i < metaColumnCounts.length; i++) {
+          var counts = metaColumnCounts[i];
+          rightXPos += counts;
+
+          if (counts == -1 || visXPos < rightXPos) {
+            return i;
+          }
+        }
+
+        return -1;
+      },
+
+      /**
+       * Updates the text shown in the status bar.
+       */
+      _updateStatusBar: function _updateStatusBar() {
+        var tableModel = this.getTableModel();
+
+        if (this.getStatusBarVisible()) {
+          var selectedRowCount = this.getSelectionModel().getSelectedCount();
+          var rowCount = tableModel.getRowCount();
+          var text;
+
+          if (rowCount >= 0) {
+            if (selectedRowCount == 0) {
+              text = this.trn("one row", "%1 rows", rowCount, rowCount);
+            } else {
+              text = this.trn("one of one row", "%1 of %2 rows", rowCount, selectedRowCount, rowCount);
+            }
+          }
+
+          if (this.__additionalStatusBarText__P_164_5) {
+            if (text) {
+              text += this.__additionalStatusBarText__P_164_5;
+            } else {
+              text = this.__additionalStatusBarText__P_164_5;
+            }
+          }
+
+          if (text) {
+            this.getChildControl("statusbar").setValue(text);
+          }
+        }
+      },
+
+      /**
+       * Updates the widths of all scrollers.
+       */
+      _updateScrollerWidths: function _updateScrollerWidths() {
+        // Give all scrollers except for the last one the wanted width
+        // (The last one has a flex with)
+        var scrollerArr = this._getPaneScrollerArr();
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          var isLast = i == scrollerArr.length - 1;
+          var width = scrollerArr[i].getTablePaneModel().getTotalWidth();
+          scrollerArr[i].setPaneWidth(width);
+          var flex = isLast ? 1 : 0;
+          scrollerArr[i].setLayoutProperties({
+            flex: flex
+          });
+        }
+      },
+
+      /**
+       * Updates the visibility of the scrollbars in the meta columns.
+       */
+      _updateScrollBarVisibility: function _updateScrollBarVisibility() {
+        if (!this.getBounds()) {
+          return;
+        }
+
+        var horBar = qx.ui.table.pane.Scroller.HORIZONTAL_SCROLLBAR;
+        var verBar = qx.ui.table.pane.Scroller.VERTICAL_SCROLLBAR;
+
+        var scrollerArr = this._getPaneScrollerArr(); // Check which scroll bars are needed
+
+
+        var horNeeded = false;
+        var verNeeded = false;
+        var excludeScrollerScrollbarsIfNotNeeded; // Determine whether we need to render horizontal scrollbars for meta
+        // columns that don't themselves actually require it
+
+        excludeScrollerScrollbarsIfNotNeeded = this.getExcludeScrollerScrollbarsIfNotNeeded();
+
+        if (!excludeScrollerScrollbarsIfNotNeeded) {
+          for (var i = 0; i < scrollerArr.length; i++) {
+            var isLast = i == scrollerArr.length - 1; // Only show the last vertical scrollbar
+
+            var bars = scrollerArr[i].getNeededScrollBars(horNeeded, !isLast);
+
+            if (bars & horBar) {
+              horNeeded = true;
+            }
+
+            if (isLast && bars & verBar) {
+              verNeeded = true;
+            }
+          }
+        } // Set the needed scrollbars
+
+
+        for (var i = 0; i < scrollerArr.length; i++) {
+          isLast = i == scrollerArr.length - 1; // If we don't want to include scrollbars for meta columns that don't
+          // require it, find out whether this meta column requires it.
+
+          if (excludeScrollerScrollbarsIfNotNeeded) {
+            horNeeded = !!(scrollerArr[i].getNeededScrollBars(false, !isLast) & horBar); // Show the horizontal scrollbar if needed. Specify null to indicate
+            // that the scrollbar should be hidden rather than excluded.
+
+            scrollerArr[i].setHorizontalScrollBarVisible(horNeeded || null);
+          } else {
+            // Show the horizontal scrollbar if needed.
+            scrollerArr[i].setHorizontalScrollBarVisible(horNeeded);
+          } // If this is the last meta-column...
+
+
+          if (isLast) {
+            // ... then get the current (old) use of vertical scroll bar
+            verNeeded = !!(scrollerArr[i].getNeededScrollBars(false, false) & verBar);
+
+            if (this.__hadVerticalScrollBar__P_164_12 == null) {
+              this.__hadVerticalScrollBar__P_164_12 = scrollerArr[i].getVerticalScrollBarVisible();
+              this.__timer__P_164_13 = qx.event.Timer.once(function () {
+                // reset the last visible state of the vertical scroll bar
+                // in a timeout to prevent infinite loops.
+                this.__hadVerticalScrollBar__P_164_12 = null;
+                this.__timer__P_164_13 = null;
+              }, this, 0);
+            }
+          }
+
+          scrollerArr[i].setVerticalScrollBarVisible(isLast && verNeeded); // If this is the last meta-column and the use of a vertical scroll bar
+          // has changed...
+
+          if (isLast && verNeeded != this.__hadVerticalScrollBar__P_164_12) {
+            // ... then dispatch an event to any awaiting listeners
+            this.fireDataEvent("verticalScrollBarChanged", verNeeded);
+          }
+        }
+      },
+
+      /**
+       * Initialize the column menu
+       */
+      _initColumnMenu: function _initColumnMenu() {
+        var tableModel = this.getTableModel();
+        var columnModel = this.getTableColumnModel();
+        var columnButton = this.getChildControl("column-button"); // Remove all items from the menu. We'll rebuild it here.
+
+        columnButton.empty(); // Inform listeners who may want to insert menu items at the beginning
+
+        var menu = columnButton.getMenu();
+        var data = {
+          table: this,
+          menu: menu,
+          columnButton: columnButton
+        };
+        this.fireDataEvent("columnVisibilityMenuCreateStart", data);
+        this.__columnMenuButtons__P_164_9 = {};
+
+        for (var iCol = 0, l = tableModel.getColumnCount(); iCol < l; iCol++) {
+          var col = columnModel.getOverallColumnAtX(iCol);
+          var menuButton = columnButton.factory("menu-button", {
+            text: tableModel.getColumnName(col),
+            column: col,
+            bVisible: columnModel.isColumnVisible(col)
+          });
+          qx.core.Assert.assertInterface(menuButton, qx.ui.table.IColumnMenuItem);
+          menuButton.addListener("changeColumnVisible", this._createColumnVisibilityCheckBoxHandler(col), this);
+          this.__columnMenuButtons__P_164_9[col] = menuButton;
+        } // Inform listeners who may want to insert menu items at the end
+
+
+        data = {
+          table: this,
+          menu: menu,
+          columnButton: columnButton
+        };
+        this.fireDataEvent("columnVisibilityMenuCreateEnd", data);
+      },
+
+      /**
+       * Creates a handler for a check box of the column visibility menu.
+       *
+       * @param col {Integer} the model index of column to create the handler for.
+       * @return {Function} The created event handler.
+       */
+      _createColumnVisibilityCheckBoxHandler: function _createColumnVisibilityCheckBoxHandler(col) {
+        return function (evt) {
+          var columnModel = this.getTableColumnModel();
+          columnModel.setColumnVisible(col, evt.getData());
+        };
+      },
+
+      /**
+       * Sets the width of a column.
+       *
+       * @param col {Integer} the model index of column.
+       * @param width {Integer} the new width in pixels.
+       */
+      setColumnWidth: function setColumnWidth(col, width) {
+        this.getTableColumnModel().setColumnWidth(col, width);
+      },
+
+      /**
+       * Resize event handler
+       */
+      _onResize: function _onResize() {
+        this.fireEvent("tableWidthChanged");
+
+        this._updateScrollerWidths();
+
+        this._updateScrollBarVisibility();
+      },
+      // overridden
+      addListener: function addListener(type, listener, self, capture) {
+        if (qx.ui.table.Table.__redirectEvents__P_164_4[type]) {
+          // start the id with the type (needed for removing)
+          var id = [type];
+
+          for (var i = 0, arr = this._getPaneScrollerArr(); i < arr.length; i++) {
+            id.push(arr[i].addListener.apply(arr[i], arguments));
+          } // join the id's of every event with "
+
+
+          return id.join('"');
+        } else {
+          return qx.ui.table.Table.superclass.prototype.addListener.call(this, type, listener, self, capture);
+        }
+      },
+      // overridden
+      removeListener: function removeListener(type, listener, self, capture) {
+        if (qx.ui.table.Table.__redirectEvents__P_164_4[type]) {
+          for (var i = 0, arr = this._getPaneScrollerArr(); i < arr.length; i++) {
+            arr[i].removeListener.apply(arr[i], arguments);
+          }
+        } else {
+          qx.ui.table.Table.superclass.prototype.removeListener.call(this, type, listener, self, capture);
+        }
+      },
+      // overridden
+      removeListenerById: function removeListenerById(id) {
+        var ids = id.split('"'); // type is the first entry of the connected id
+
+        var type = ids.shift();
+
+        if (qx.ui.table.Table.__redirectEvents__P_164_4[type]) {
+          var removed = true;
+
+          for (var i = 0, arr = this._getPaneScrollerArr(); i < arr.length; i++) {
+            removed = arr[i].removeListenerById.call(arr[i], ids[i]) && removed;
+          }
+
+          return removed;
+        } else {
+          return qx.ui.table.Table.superclass.prototype.removeListenerById.call(this, id);
+        }
+      },
+      destroy: function destroy() {
+        this.getChildControl("column-button").getMenu().destroy();
+        qx.ui.table.Table.superclass.prototype.destroy.call(this);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      // remove the event listener which handled the locale change
+      {
+        qx.locale.Manager.getInstance().removeListener("changeLocale", this._onChangeLocale, this);
+      } // we allocated these objects on init so we have to clean them up.
+
+      var selectionModel = this.getSelectionModel();
+
+      if (selectionModel) {
+        selectionModel.dispose();
+      }
+
+      var dataRowRenderer = this.getDataRowRenderer();
+
+      if (dataRowRenderer) {
+        dataRowRenderer.dispose();
+      }
+
+      if (this.getTableModel() != null) {
+        this.getTableModel().removeListener("metaDataChanged", this._onTableModelMetaDataChanged, this);
+        this.getTableModel().removeListener("dataChanged", this._onTableModelDataChanged, this);
+      }
+
+      this.getTableColumnModel().dispose();
+
+      this._disposeObjects("__selectionManager__P_164_1", "__scrollerParent__P_164_0", "__emptyTableModel__P_164_11", "__emptyTableModel__P_164_11", "__columnModel__P_164_10", "__timer__P_164_13");
+
+      this._disposeMap("__columnMenuButtons__P_164_9");
+    }
+  });
+  qx.ui.table.Table.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+       * David Perez Carmona (david-perez)
+  
+  ************************************************************************ */
+
+  /**
+   * A selection model.
+   */
+  qx.Class.define("qx.ui.table.selection.Model", {
+    extend: qx.core.Object,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      qx.core.Object.constructor.call(this);
+      this.__selectedRangeArr__P_165_0 = [];
+      this.__anchorSelectionIndex__P_165_1 = -1;
+      this.__leadSelectionIndex__P_165_2 = -1;
+      this.hasBatchModeRefCount = 0;
+      this.__hadChangeEventInBatchMode__P_165_3 = false;
+    },
+
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /** Fired when the selection has changed. */
+      changeSelection: "qx.event.type.Event"
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /** @type {int} The selection mode "none". Nothing can ever be selected. */
+      NO_SELECTION: 1,
+
+      /** @type {int} The selection mode "single". This mode only allows one selected item. */
+      SINGLE_SELECTION: 2,
+
+      /**
+       * @type {int} The selection mode "single interval". This mode only allows one
+       * continuous interval of selected items.
+       */
+      SINGLE_INTERVAL_SELECTION: 3,
+
+      /**
+       * @type {int} The selection mode "multiple interval". This mode only allows any
+       * selection.
+       */
+      MULTIPLE_INTERVAL_SELECTION: 4,
+
+      /**
+       * @type {int} The selection mode "multiple interval". This mode only allows any
+       * selection. The difference with the previous one, is that multiple
+       * selection is eased. A tap on an item, toggles its selection state.
+       * On the other hand, MULTIPLE_INTERVAL_SELECTION does this behavior only
+       * when Ctrl-tapping an item.
+       */
+      MULTIPLE_INTERVAL_SELECTION_TOGGLE: 5
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Set the selection mode. Valid values are {@link #NO_SELECTION},
+       * {@link #SINGLE_SELECTION}, {@link #SINGLE_INTERVAL_SELECTION},
+       * {@link #MULTIPLE_INTERVAL_SELECTION} and
+       * {@link #MULTIPLE_INTERVAL_SELECTION_TOGGLE}.
+       */
+      selectionMode: {
+        init: 2,
+        //SINGLE_SELECTION,
+        check: [1, 2, 3, 4, 5],
+        //[ NO_SELECTION, SINGLE_SELECTION, SINGLE_INTERVAL_SELECTION, MULTIPLE_INTERVAL_SELECTION, MULTIPLE_INTERVAL_SELECTION_TOGGLE ],
+        apply: "_applySelectionMode"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __hadChangeEventInBatchMode__P_165_3: null,
+      __anchorSelectionIndex__P_165_1: null,
+      __leadSelectionIndex__P_165_2: null,
+      __selectedRangeArr__P_165_0: null,
+      // selectionMode property modifier
+      _applySelectionMode: function _applySelectionMode(selectionMode) {
+        this.resetSelection();
+      },
+
+      /**
+       *
+       * Activates / Deactivates batch mode. In batch mode, no change events will be thrown but
+       * will be collected instead. When batch mode is turned off again and any events have
+       * been collected, one event is thrown to inform the listeners.
+       *
+       * This method supports nested calling, i. e. batch mode can be turned more than once.
+       * In this case, batch mode will not end until it has been turned off once for each
+       * turning on.
+       *
+       * @param batchMode {Boolean} true to activate batch mode, false to deactivate
+       * @return {Boolean} true if batch mode is active, false otherwise
+       * @throws {Error} if batch mode is turned off once more than it has been turned on
+       */
+      setBatchMode: function setBatchMode(batchMode) {
+        if (batchMode) {
+          this.hasBatchModeRefCount += 1;
+        } else {
+          if (this.hasBatchModeRefCount == 0) {
+            throw new Error("Try to turn off batch mode althoug it was not turned on.");
+          }
+
+          this.hasBatchModeRefCount -= 1;
+
+          if (this.__hadChangeEventInBatchMode__P_165_3) {
+            this.__hadChangeEventInBatchMode__P_165_3 = false;
+
+            this._fireChangeSelection();
+          }
+        }
+
+        return this.hasBatchMode();
+      },
+
+      /**
+       *
+       * Returns whether batch mode is active. See setter for a description of batch mode.
+       *
+       * @return {Boolean} true if batch mode is active, false otherwise
+       */
+      hasBatchMode: function hasBatchMode() {
+        return this.hasBatchModeRefCount > 0;
+      },
+
+      /**
+       * Returns the first argument of the last call to {@link #setSelectionInterval()},
+       * {@link #addSelectionInterval()} or {@link #removeSelectionInterval()}.
+       *
+       * @return {Integer} the anchor selection index.
+       */
+      getAnchorSelectionIndex: function getAnchorSelectionIndex() {
+        return this.__anchorSelectionIndex__P_165_1;
+      },
+
+      /**
+       * Sets the anchor selection index. Only use this function, if you want manipulate
+       * the selection manually.
+       *
+       * @param index {Integer} the index to set.
+       */
+      _setAnchorSelectionIndex: function _setAnchorSelectionIndex(index) {
+        this.__anchorSelectionIndex__P_165_1 = index;
+      },
+
+      /**
+       * Returns the second argument of the last call to {@link #setSelectionInterval()},
+       * {@link #addSelectionInterval()} or {@link #removeSelectionInterval()}.
+       *
+       * @return {Integer} the lead selection index.
+       */
+      getLeadSelectionIndex: function getLeadSelectionIndex() {
+        return this.__leadSelectionIndex__P_165_2;
+      },
+
+      /**
+       * Sets the lead selection index. Only use this function, if you want manipulate
+       * the selection manually.
+       *
+       * @param index {Integer} the index to set.
+       */
+      _setLeadSelectionIndex: function _setLeadSelectionIndex(index) {
+        this.__leadSelectionIndex__P_165_2 = index;
+      },
+
+      /**
+       * Returns an array that holds all the selected ranges of the table. Each
+       * entry is a map holding information about the "minIndex" and "maxIndex" of the
+       * selection range.
+       *
+       * @return {Map[]} array with all the selected ranges.
+       */
+      _getSelectedRangeArr: function _getSelectedRangeArr() {
+        return this.__selectedRangeArr__P_165_0;
+      },
+
+      /**
+       * Resets (clears) the selection.
+       */
+      resetSelection: function resetSelection() {
+        if (!this.isSelectionEmpty()) {
+          this._resetSelection();
+
+          this._fireChangeSelection();
+        }
+      },
+
+      /**
+       * Returns whether the selection is empty.
+       *
+       * @return {Boolean} whether the selection is empty.
+       */
+      isSelectionEmpty: function isSelectionEmpty() {
+        return this.__selectedRangeArr__P_165_0.length == 0;
+      },
+
+      /**
+       * Returns the number of selected items.
+       *
+       * @return {Integer} the number of selected items.
+       */
+      getSelectedCount: function getSelectedCount() {
+        var selectedCount = 0;
+
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          var range = this.__selectedRangeArr__P_165_0[i];
+          selectedCount += range.maxIndex - range.minIndex + 1;
+        }
+
+        return selectedCount;
+      },
+
+      /**
+       * Returns whether an index is selected.
+       *
+       * @param index {Integer} the index to check.
+       * @return {Boolean} whether the index is selected.
+       */
+      isSelectedIndex: function isSelectedIndex(index) {
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          var range = this.__selectedRangeArr__P_165_0[i];
+
+          if (index >= range.minIndex && index <= range.maxIndex) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+
+      /**
+       * Returns the selected ranges as an array. Each array element has a
+       * <code>minIndex</code> and a <code>maxIndex</code> property.
+       *
+       * @return {Map[]} the selected ranges.
+       */
+      getSelectedRanges: function getSelectedRanges() {
+        // clone the selection array and the individual elements - this prevents the
+        // caller from messing with the internal model
+        var retVal = [];
+
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          retVal.push({
+            minIndex: this.__selectedRangeArr__P_165_0[i].minIndex,
+            maxIndex: this.__selectedRangeArr__P_165_0[i].maxIndex
+          });
+        }
+
+        return retVal;
+      },
+
+      /**
+       * Calls an iterator function for each selected index.
+       *
+       * Usage Example:
+       * <pre class='javascript'>
+       * var selectedRowData = [];
+       * mySelectionModel.iterateSelection(function(index) {
+       *   selectedRowData.push(myTableModel.getRowData(index));
+       * });
+       * </pre>
+       *
+       * @param iterator {Function} the function to call for each selected index.
+       *          Gets the current index as parameter.
+       * @param object {var ? null} the object to use when calling the handler.
+       *          (this object will be available via "this" in the iterator)
+       */
+      iterateSelection: function iterateSelection(iterator, object) {
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          for (var j = this.__selectedRangeArr__P_165_0[i].minIndex; j <= this.__selectedRangeArr__P_165_0[i].maxIndex; j++) {
+            iterator.call(object, j);
+          }
+        }
+      },
+
+      /**
+       * Sets the selected interval. This will clear the former selection.
+       *
+       * @param fromIndex {Integer} the first index of the selection (including).
+       * @param toIndex {Integer} the last index of the selection (including).
+       */
+      setSelectionInterval: function setSelectionInterval(fromIndex, toIndex) {
+        var me = qx.ui.table.selection.Model;
+
+        switch (this.getSelectionMode()) {
+          case me.NO_SELECTION:
+            return;
+
+          case me.SINGLE_SELECTION:
+            // Ensure there is actually a change of selection
+            if (this.isSelectedIndex(toIndex)) {
+              return;
+            }
+
+            fromIndex = toIndex;
+            break;
+
+          case me.MULTIPLE_INTERVAL_SELECTION_TOGGLE:
+            this.setBatchMode(true);
+
+            try {
+              for (var i = fromIndex; i <= toIndex; i++) {
+                if (!this.isSelectedIndex(i)) {
+                  this._addSelectionInterval(i, i);
+                } else {
+                  this.removeSelectionInterval(i, i);
+                }
+              }
+            } catch (e) {
+              throw e;
+            } finally {
+              this.setBatchMode(false);
+            }
+
+            this._fireChangeSelection();
+
+            return;
+        }
+
+        this._resetSelection();
+
+        this._addSelectionInterval(fromIndex, toIndex);
+
+        this._fireChangeSelection();
+      },
+
+      /**
+       * Adds a selection interval to the current selection.
+       *
+       * @param fromIndex {Integer} the first index of the selection (including).
+       * @param toIndex {Integer} the last index of the selection (including).
+       */
+      addSelectionInterval: function addSelectionInterval(fromIndex, toIndex) {
+        var SelectionModel = qx.ui.table.selection.Model;
+
+        switch (this.getSelectionMode()) {
+          case SelectionModel.NO_SELECTION:
+            return;
+
+          case SelectionModel.MULTIPLE_INTERVAL_SELECTION:
+          case SelectionModel.MULTIPLE_INTERVAL_SELECTION_TOGGLE:
+            this._addSelectionInterval(fromIndex, toIndex);
+
+            this._fireChangeSelection();
+
+            break;
+
+          default:
+            this.setSelectionInterval(fromIndex, toIndex);
+            break;
+        }
+      },
+
+      /**
+       * Removes an interval from the current selection.
+       *
+       * @param fromIndex {Integer} the first index of the interval (including).
+       * @param toIndex {Integer} the last index of the interval (including).
+       * @param rowsRemoved {Boolean?} rows were removed that caused this selection to change.
+       *   If rows were removed, move the selections over so the same rows are selected as before.
+       */
+      removeSelectionInterval: function removeSelectionInterval(fromIndex, toIndex, rowsRemoved) {
+        this.__anchorSelectionIndex__P_165_1 = fromIndex;
+        this.__leadSelectionIndex__P_165_2 = toIndex;
+        var minIndex = Math.min(fromIndex, toIndex);
+        var maxIndex = Math.max(fromIndex, toIndex);
+        var removeCount = maxIndex + 1 - minIndex; // Crop the affected ranges
+
+        var newRanges = [];
+        var extraRange = null;
+
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          var range = this.__selectedRangeArr__P_165_0[i];
+
+          if (range.minIndex > maxIndex) {
+            if (rowsRemoved) {
+              // Move whole selection up.
+              range.minIndex -= removeCount;
+              range.maxIndex -= removeCount;
+            }
+          } else if (range.maxIndex >= minIndex) {
+            // This range is affected
+            var minIsIn = range.minIndex >= minIndex;
+            var maxIsIn = range.maxIndex >= minIndex && range.maxIndex <= maxIndex;
+
+            if (minIsIn && maxIsIn) {
+              // This range is removed completely
+              range = null;
+            } else if (minIsIn) {
+              if (rowsRemoved) {
+                range.minIndex = minIndex;
+                range.maxIndex -= removeCount;
+              } else {
+                // The range is cropped from the left
+                range.minIndex = maxIndex + 1;
+              }
+            } else if (maxIsIn) {
+              // The range is cropped from the right
+              range.maxIndex = minIndex - 1;
+            } else {
+              if (rowsRemoved) {
+                range.maxIndex -= removeCount;
+              } else {
+                // The range is split
+                extraRange = {
+                  minIndex: maxIndex + 1,
+                  maxIndex: range.maxIndex
+                };
+                range.maxIndex = minIndex - 1;
+              }
+            }
+          }
+
+          if (range) {
+            newRanges.push(range);
+            range = null;
+          }
+
+          if (extraRange) {
+            newRanges.push(extraRange);
+            extraRange = null;
+          }
+        }
+
+        this.__selectedRangeArr__P_165_0 = newRanges;
+
+        this._fireChangeSelection();
+      },
+
+      /**
+       * Resets (clears) the selection, but doesn't inform the listeners.
+       */
+      _resetSelection: function _resetSelection() {
+        this.__selectedRangeArr__P_165_0 = [];
+        this.__anchorSelectionIndex__P_165_1 = -1;
+        this.__leadSelectionIndex__P_165_2 = -1;
+      },
+
+      /**
+       * Adds a selection interval to the current selection, but doesn't inform
+       * the listeners.
+       *
+       * @param fromIndex {Integer} the first index of the selection (including).
+       * @param toIndex {Integer} the last index of the selection (including).
+       */
+      _addSelectionInterval: function _addSelectionInterval(fromIndex, toIndex) {
+        this.__anchorSelectionIndex__P_165_1 = fromIndex;
+        this.__leadSelectionIndex__P_165_2 = toIndex;
+        var minIndex = Math.min(fromIndex, toIndex);
+        var maxIndex = Math.max(fromIndex, toIndex); // Find the index where the new range should be inserted
+
+        var newRangeIndex = 0;
+
+        for (; newRangeIndex < this.__selectedRangeArr__P_165_0.length; newRangeIndex++) {
+          var range = this.__selectedRangeArr__P_165_0[newRangeIndex];
+
+          if (range.minIndex > minIndex) {
+            break;
+          }
+        } // Add the new range
+
+
+        this.__selectedRangeArr__P_165_0.splice(newRangeIndex, 0, {
+          minIndex: minIndex,
+          maxIndex: maxIndex
+        }); // Merge overlapping ranges
+
+
+        var lastRange = this.__selectedRangeArr__P_165_0[0];
+
+        for (var i = 1; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          var range = this.__selectedRangeArr__P_165_0[i];
+
+          if (lastRange.maxIndex + 1 >= range.minIndex) {
+            // The ranges are overlapping -> merge them
+            lastRange.maxIndex = Math.max(lastRange.maxIndex, range.maxIndex); // Remove the current range
+
+            this.__selectedRangeArr__P_165_0.splice(i, 1); // Check this index another time
+
+
+            i--;
+          } else {
+            lastRange = range;
+          }
+        }
+      },
+      // this._dumpRanges();
+
+      /**
+       * Logs the current ranges for debug purposes.
+       *
+       */
+      _dumpRanges: function _dumpRanges() {
+        var text = "Ranges:";
+
+        for (var i = 0; i < this.__selectedRangeArr__P_165_0.length; i++) {
+          var range = this.__selectedRangeArr__P_165_0[i];
+          text += " [" + range.minIndex + ".." + range.maxIndex + "]";
+        }
+
+        this.debug(text);
+      },
+
+      /**
+       * Fires the "changeSelection" event to all registered listeners. If the selection model
+       * currently is in batch mode, only one event will be thrown when batch mode is ended.
+       *
+       */
+      _fireChangeSelection: function _fireChangeSelection() {
+        if (this.hasBatchMode()) {
+          // In batch mode, remember event but do not throw (yet)
+          this.__hadChangeEventInBatchMode__P_165_3 = true;
+        } else {
+          // If not in batch mode, throw event
+          this.fireEvent("changeSelection");
+        }
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.__selectedRangeArr__P_165_0 = null;
+    }
+  });
+  qx.ui.table.selection.Model.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
       "qx.Class": {
         "usage": "dynamic",
         "require": true
@@ -14708,335 +17841,2344 @@ function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len 
       "qx.core.Object": {
         "require": true
       },
-      "qx.util.format.DateFormat": {}
+      "qx.ui.core.LayoutItem": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.debug": {
+          "load": true
+        }
+      }
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
-  qx.Class.define("qx.log.appender.Formatter", {
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Base class for all layout managers.
+   *
+   * Custom layout manager must derive from
+   * this class and implement the methods {@link #invalidateLayoutCache},
+   * {@link #renderLayout} and {@link #getSizeHint}.
+   */
+  qx.Class.define("qx.ui.layout.Abstract", {
+    type: "abstract",
     extend: qx.core.Object,
-    properties: {
-      /** How to format time in an entry; offset since start (backwards compatible) or as actual date/time */
-      formatTimeAs: {
-        init: "offset",
-        check: ["offset", "datetime"]
-      }
-    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
     members: {
-      /**
-       * Formats a numeric time offset to 6 characters.
-       *
-       * @param offset
-       *          {Integer} Current offset value
-       * @param length
-       *          {Integer?6} Refine the length
-       * @return {String} Padded string
+      /** @type {Map} The cached size hint */
+      __sizeHint__P_79_0: null,
+
+      /** @type {Boolean} Whether the children cache is valid. This field is protected
+       *    because sub classes must be able to access it quickly.
        */
-      formatOffset: function formatOffset(offset, length) {
-        var str = offset.toString();
-        var diff = (length || 6) - str.length;
-        var pad = "";
+      _invalidChildrenCache: null,
 
-        for (var i = 0; i < diff; i++) {
-          pad += "0";
-        }
+      /** @type {qx.ui.core.Widget} The connected widget */
+      __widget__P_79_1: null,
 
-        return pad + str;
+      /*
+      ---------------------------------------------------------------------------
+        LAYOUT INTERFACE
+      ---------------------------------------------------------------------------
+      */
+
+      /**
+       * Invalidate all layout relevant caches. Automatically deletes the size hint.
+       *
+       * @abstract
+       */
+      invalidateLayoutCache: function invalidateLayoutCache() {
+        this.__sizeHint__P_79_0 = null;
       },
 
       /**
-       * Formats the time part of an entry
+       * Applies the children layout.
        *
-       * @param entry {Map} the entry to output
-       * @return {String} formatted time, as an offset or date time depending on `formatTimeAs` property
+       * @abstract
+       * @param availWidth {Integer} Final width available for the content (in pixel)
+       * @param availHeight {Integer} Final height available for the content (in pixel)
+       * @param padding {Map} Map containing the padding values. Keys:
+       * <code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>
        */
-      formatEntryTime: function formatEntryTime(entry) {
-        if (this.getFormatTimeAs() == "offset") {
-          return this.formatOffset(entry.offset, 6);
-        }
-
-        if (!qx.log.appender.Formatter.__DATETIME_FORMAT__P_13_0) {
-          qx.log.appender.Formatter.__DATETIME_FORMAT__P_13_0 = new qx.util.format.DateFormat("YYYY-MM-dd HH:mm:ss");
-        }
-
-        return qx.log.appender.Formatter.__DATETIME_FORMAT__P_13_0.format(entry.time);
+      renderLayout: function renderLayout(availWidth, availHeight, padding) {
+        this.warn("Missing renderLayout() implementation!");
       },
 
       /**
-       * Normalises the entry into an object with clazz, object, hash.
+       * Computes the layout dimensions and possible ranges of these.
        *
-       * @param entry {Map} the entry to output
-       * @return {Map} result, containing:
-       *  clazz {Class?} the class of the object
-       *  object {Object?} the object
-       *  hash {String?} the hash code
+       * @return {Map|null} The map with the preferred width/height and the allowed
+       *   minimum and maximum values in cases where shrinking or growing
+       *   is required. Can also return <code>null</code> when this detection
+       *   is not supported by the layout.
        */
-      normalizeEntryClass: function normalizeEntryClass(entry) {
-        var result = {
-          clazz: null,
-          object: null,
-          hash: null
-        };
-
-        if (entry.object) {
-          result.hash = entry.object;
-
-          if (entry.clazz) {
-            result.clazz = entry.clazz;
-          } else {
-            var obj = entry.win.qx.core.ObjectRegistry.fromHashCode(entry.object, true);
-
-            if (obj) {
-              result.clazz = obj.constructor;
-              result.object = obj;
-            }
-          }
-        } else if (entry.clazz) {
-          result.clazz = entry.clazz;
+      getSizeHint: function getSizeHint() {
+        if (this.__sizeHint__P_79_0) {
+          return this.__sizeHint__P_79_0;
         }
 
-        return result;
+        return this.__sizeHint__P_79_0 = this._computeSizeHint();
       },
 
       /**
-       * Formats the object part of an entry
+       * Whether the layout manager supports height for width.
        *
-       * @param entry {Map} the entry to output
-       * @return {String} formatted object, with class and hash code if possible
+       * @return {Boolean} Whether the layout manager supports height for width
        */
-      formatEntryObjectAndClass: function formatEntryObjectAndClass(entry) {
-        var breakdown = this.normalizeEntryClass(entry);
-        var result = "";
-
-        if (breakdown.clazz) {
-          result += breakdown.clazz.classname;
-        }
-
-        if (breakdown.hash) {
-          result += "[" + breakdown.hash + "]";
-        }
-
-        result += ":";
-        return result;
+      hasHeightForWidth: function hasHeightForWidth() {
+        return false;
       },
 
       /**
-       * Formats the items part of an entry
+       * If layout wants to trade height for width it has to implement this
+       * method and return the preferred height if it is resized to
+       * the given width. This function returns <code>null</code> if the item
+       * do not support height for width.
        *
-       * @param entry {Map} the entry to output
-       * @return {String} formatted items
+       * @param width {Integer} The computed width
+       * @return {Integer} The desired height
        */
-      formatEntryItems: function formatEntryItems(entry) {
-        var output = [];
-        var items = entry.items;
-
-        for (var i = 0, il = items.length; i < il; i++) {
-          var item = items[i];
-          var msg = item.text;
-
-          if (item.trace && item.trace.length > 0) {
-            msg += "\n" + item.trace;
-          }
-
-          if (msg instanceof Array) {
-            var list = [];
-
-            for (var j = 0, jl = msg.length; j < jl; j++) {
-              list.push(msg[j].text);
-            }
-
-            if (item.type === "map") {
-              output.push("{", list.join(", "), "}");
-            } else {
-              output.push("[", list.join(", "), "]");
-            }
-          } else {
-            output.push(msg);
-          }
-        }
-
-        return output.join(" ");
+      getHeightForWidth: function getHeightForWidth(width) {
+        this.warn("Missing getHeightForWidth() implementation!");
+        return null;
       },
 
       /**
-       * Converts a single log entry to plain text
+       * This computes the size hint of the layout and returns it.
        *
-       * @param entry {Map} The entry to process
-       * @return {String} the formatted log entry
+       * @abstract
+       * @return {Map} The size hint.
        */
-      toText: function toText(entry) {
-        var output = this.formatEntryTime(entry) + " " + this.formatEntryObjectAndClass(entry);
-        var str = this.formatEntryItems(entry);
-
-        if (str) {
-          output += " " + str;
-        }
-
-        return output;
+      _computeSizeHint: function _computeSizeHint() {
+        return null;
       },
 
       /**
-       * Converts a single log entry to an array of plain text.
+       * This method is called, on each child "add" and "remove" action and
+       * whenever the layout data of a child is changed. The method should be used
+       * to clear any children relevant cached data.
        *
-       * This use of arrays is an outdated performance improvement, and as there is no
-       * specification of what is in each of the elements of the array, there is no value
-       * in preserving this.  This method is deprecated because it will be removed in 7.0
-       * and only toText will remain.  Note that toTextArray is not used anywhere in Qooxdoo.
-       *
-       * @param entry {Map} The entry to process
-       * @return {Array} Argument list ready message array.
-       * @deprecated {6.0} See toText instead
        */
-      toTextArray: function toTextArray(entry) {
-        var output = [];
-        output.push(this.formatEntryTime(entry));
-        output.push(this.formatEntryObjectAndClass(entry));
-        output.push(this.formatEntryItems(entry));
-        return output;
+      invalidateChildrenCache: function invalidateChildrenCache() {
+        this._invalidChildrenCache = true;
       },
 
       /**
-       * Converts a single log entry to HTML
+       * Verifies the value of a layout property.
        *
-       * @signature function(entry)
-       * @param entry {Map} The entry to process
+       * Note: This method is only available in the debug builds.
+       *
+       * @signature function(item, name, value)
+       * @param item {Object} The affected layout item
+       * @param name {Object} Name of the layout property
+       * @param value {Object} Value of the layout property
        */
-      toHtml: function toHtml(entry) {
-        var output = [];
-        var item, msg, sub, list;
-        output.push("<span class='offset'>", this.formatEntryTime(entry), "</span> ");
-        var breakdown = this.normalizeEntryClass(entry);
-        var result = "";
+      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
+        "true": function _true(item, name, value) {// empty implementation
+        },
+        "false": null
+      }),
 
-        if (breakdown.clazz) {
-          result += breakdown.clazz.classname;
+      /**
+       * Remove all currently visible separators
+       */
+      _clearSeparators: function _clearSeparators() {
+        // It may be that the widget do not implement clearSeparators which is especially true
+        // when it do not inherit from LayoutItem.
+        var widget = this.__widget__P_79_1;
+
+        if (widget instanceof qx.ui.core.LayoutItem) {
+          widget.clearSeparators();
+        }
+      },
+
+      /**
+       * Renders a separator between two children
+       *
+       * @param separator {String|qx.ui.decoration.IDecorator} The separator to render
+       * @param bounds {Map} Contains the left and top coordinate and the width and height
+       *    of the separator to render.
+       */
+      _renderSeparator: function _renderSeparator(separator, bounds) {
+        this.__widget__P_79_1.renderSeparator(separator, bounds);
+      },
+
+      /**
+       * This method is called by the widget to connect the widget with the layout.
+       *
+       * @param widget {qx.ui.core.Widget} The widget to connect to.
+       */
+      connectToWidget: function connectToWidget(widget) {
+        if (widget && this.__widget__P_79_1) {
+          throw new Error("It is not possible to manually set the connected widget.");
         }
 
-        if (breakdown.object) {
-          output.push("<span class='object' title='Object instance with hash code: " + breakdown.object.toHashCode() + "'>", breakdown.classname, "[", breakdown.object, "]</span>: ");
-        } else if (breakdown.hash) {
-          output.push("<span class='object' title='Object instance with hash code: " + breakdown.hash + "'>", breakdown.classname, "[", breakdown.hash, "]</span>: ");
-        } else if (breakdown.clazz) {
-          output.push("<span class='object'>" + breakdown.clazz.classname, "</span>: ");
+        this.__widget__P_79_1 = widget; // Invalidate cache
+
+        this.invalidateChildrenCache();
+      },
+
+      /**
+       * Return the widget that is this layout is responsible for.
+       *
+       * @return {qx.ui.core.Widget} The widget connected to this layout.
+       */
+      _getWidget: function _getWidget() {
+        return this.__widget__P_79_1;
+      },
+
+      /**
+       * Indicate that the layout has layout changed and propagate this information
+       * up the widget hierarchy.
+       *
+       * Also a generic property apply method for all layout relevant properties.
+       */
+      _applyLayoutChange: function _applyLayoutChange() {
+        if (this.__widget__P_79_1) {
+          this.__widget__P_79_1.scheduleLayoutUpdate();
         }
+      },
 
-        var items = entry.items;
-
-        for (var i = 0, il = items.length; i < il; i++) {
-          item = items[i];
-          msg = item.text;
-
-          if (msg instanceof Array) {
-            var list = [];
-
-            for (var j = 0, jl = msg.length; j < jl; j++) {
-              sub = msg[j];
-
-              if (typeof sub === "string") {
-                list.push("<span>" + qx.log.appender.Formatter.escapeHTML(sub) + "</span>");
-              } else if (sub.key) {
-                list.push("<span class='type-key'>" + sub.key + "</span>:<span class='type-" + sub.type + "'>" + qx.log.appender.Formatter.escapeHTML(sub.text) + "</span>");
-              } else {
-                list.push("<span class='type-" + sub.type + "'>" + qx.log.appender.Formatter.escapeHTML(sub.text) + "</span>");
-              }
-            }
-
-            output.push("<span class='type-" + item.type + "'>");
-
-            if (item.type === "map") {
-              output.push("{", list.join(", "), "}");
-            } else {
-              output.push("[", list.join(", "), "]");
-            }
-
-            output.push("</span>");
-          } else {
-            output.push("<span class='type-" + item.type + "'>" + qx.log.appender.Formatter.escapeHTML(msg) + "</span> ");
-          }
-        }
-
-        var wrapper = document.createElement("DIV");
-        wrapper.innerHTML = output.join("");
-        wrapper.className = "level-" + entry.level;
-        return wrapper;
+      /**
+       * Returns the list of all layout relevant children.
+       *
+       * @return {Array} List of layout relevant children.
+       */
+      _getLayoutChildren: function _getLayoutChildren() {
+        return this.__widget__P_79_1.getLayoutChildren();
       }
     },
-    statics: {
-      /** @type {qx.util.format.DateFormat} format for datetimes */
-      __DATETIME_FORMAT__P_13_0: null,
 
-      /** @type {qx.log.appender.Formatter} the default instance */
-      __defaultFormatter__P_13_1: null,
-
-      /**
-       * Returns the default formatter
-       *
-       * @return {qx.log.appender.Formatter}
-       */
-      getFormatter: function getFormatter() {
-        if (!qx.log.appender.Formatter.__defaultFormatter__P_13_1) {
-          qx.log.appender.Formatter.__defaultFormatter__P_13_1 = new qx.log.appender.Formatter();
-        }
-
-        return qx.log.appender.Formatter.__defaultFormatter__P_13_1;
-      },
-
-      /**
-       * Sets the default formatter
-       *
-       * @param instance {qx.log.appender.Formatter}
-       */
-      setFormatter: function setFormatter(instance) {
-        qx.log.appender.Formatter.__defaultFormatter__P_13_1 = instance;
-      },
-
-      /**
-       * Escapes the HTML in the given value
-       *
-       * @param value
-       *          {String} value to escape
-       * @return {String} escaped value
-       */
-      escapeHTML: function escapeHTML(value) {
-        return String(value).replace(/[<>&"']/g, qx.log.appender.Formatter.__escapeHTMLReplace__P_13_2);
-      },
-
-      /**
-       * Internal replacement helper for HTML escape.
-       *
-       * @param ch
-       *          {String} Single item to replace.
-       * @return {String} Replaced item
-       */
-      __escapeHTMLReplace__P_13_2: function __escapeHTMLReplace__P_13_2(ch) {
-        var map = {
-          "<": "&lt;",
-          ">": "&gt;",
-          "&": "&amp;",
-          "'": "&#39;",
-          '"': "&quot;"
-        };
-        return map[ch] || "?";
-      }
+    /*
+    *****************************************************************************
+       DESTRUCT
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.__widget__P_79_1 = this.__sizeHint__P_79_0 = null;
     }
   });
-  qx.log.appender.Formatter.$$dbClassInfo = $$dbClassInfo;
+  qx.ui.layout.Abstract.$$dbClassInfo = $$dbClassInfo;
 })();
-
-function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.layout.Abstract": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.layout.Util": {},
+      "qx.theme.manager.Decoration": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.debug": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A vertical box layout.
+   *
+   * The vertical box layout lays out widgets in a vertical column, from top
+   * to bottom.
+   *
+   * *Features*
+   *
+   * * Minimum and maximum dimensions
+   * * Prioritized growing/shrinking (flex)
+   * * Margins (with vertical collapsing)
+   * * Auto sizing (ignoring percent values)
+   * * Percent heights (not relevant for size hint)
+   * * Alignment (child property {@link qx.ui.core.LayoutItem#alignY} is ignored)
+   * * Vertical spacing (collapsed with margins)
+   * * Reversed children layout (from last to first)
+   * * Horizontal children stretching (respecting size hints)
+   *
+   * *Item Properties*
+   *
+   * <ul>
+   * <li><strong>flex</strong> <em>(Integer)</em>: The flexibility of a layout item determines how the container
+   *   distributes remaining empty space among its children. If items are made
+   *   flexible, they can grow or shrink accordingly. Their relative flex values
+   *   determine how the items are being resized, i.e. the larger the flex ratio
+   *   of two items, the larger the resizing of the first item compared to the
+   *   second.
+   *
+   *   If there is only one flex item in a layout container, its actual flex
+   *   value is not relevant. To disallow items to become flexible, set the
+   *   flex value to zero.
+   * </li>
+   * <li><strong>height</strong> <em>(String)</em>: Allows to define a percent
+   *   height for the item. The height in percent, if specified, is used instead
+   *   of the height defined by the size hint. The minimum and maximum height still
+   *   takes care of the element's limits. It has no influence on the layout's
+   *   size hint. Percent values are mostly useful for widgets which are sized by
+   *   the outer hierarchy.
+   * </li>
+   * </ul>
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the vertical box layout.
+   *
+   * <pre class="javascript">
+   * var layout = new qx.ui.layout.VBox();
+   * layout.setSpacing(4); // apply spacing
+   *
+   * var container = new qx.ui.container.Composite(layout);
+   *
+   * container.add(new qx.ui.core.Widget());
+   * container.add(new qx.ui.core.Widget());
+   * container.add(new qx.ui.core.Widget());
+   * </pre>
+   *
+   * *External Documentation*
+   *
+   * See <a href='https://qooxdoo.org/documentation/#/desktop/layout/box.md'>extended documentation</a>
+   * and links to demos for this layout.
+   *
+   */
+  qx.Class.define("qx.ui.layout.VBox", {
+    extend: qx.ui.layout.Abstract,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param spacing {Integer?0} The spacing between child widgets {@link #spacing}.
+     * @param alignY {String?"top"} Vertical alignment of the whole children
+     *     block {@link #alignY}.
+     * @param separator {String|qx.ui.decoration.IDecorator?} A separator to be rendered between the items
+     */
+    construct: function construct(spacing, alignY, separator) {
+      qx.ui.layout.Abstract.constructor.call(this);
+
+      if (spacing) {
+        this.setSpacing(spacing);
+      }
+
+      if (alignY) {
+        this.setAlignY(alignY);
+      }
+
+      if (separator) {
+        this.setSeparator(separator);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Vertical alignment of the whole children block. The vertical
+       * alignment of the child is completely ignored in VBoxes (
+       * {@link qx.ui.core.LayoutItem#alignY}).
+       */
+      alignY: {
+        check: ["top", "middle", "bottom"],
+        init: "top",
+        apply: "_applyLayoutChange"
+      },
+
+      /**
+       * Horizontal alignment of each child. Can be overridden through
+       * {@link qx.ui.core.LayoutItem#alignX}.
+       */
+      alignX: {
+        check: ["left", "center", "right"],
+        init: "left",
+        apply: "_applyLayoutChange"
+      },
+
+      /** Vertical spacing between two children */
+      spacing: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyLayoutChange"
+      },
+
+      /** Separator lines to use between the objects */
+      separator: {
+        check: "Decorator",
+        nullable: true,
+        apply: "_applyLayoutChange"
+      },
+
+      /** Whether the actual children list should be laid out in reversed order. */
+      reversed: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyReversed"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __heights__P_170_0: null,
+      __flexs__P_170_1: null,
+      __enableFlex__P_170_2: null,
+      __children__P_170_3: null,
+
+      /*
+      ---------------------------------------------------------------------------
+        HELPER METHODS
+      ---------------------------------------------------------------------------
+      */
+      // property apply
+      _applyReversed: function _applyReversed() {
+        // easiest way is to invalidate the cache
+        this._invalidChildrenCache = true; // call normal layout change
+
+        this._applyLayoutChange();
+      },
+
+      /**
+       * Rebuilds caches for flex and percent layout properties
+       */
+      __rebuildCache__P_170_4: function __rebuildCache__P_170_4() {
+        var children = this._getLayoutChildren();
+
+        var length = children.length;
+        var enableFlex = false;
+        var reuse = this.__heights__P_170_0 && this.__heights__P_170_0.length != length && this.__flexs__P_170_1 && this.__heights__P_170_0;
+        var props; // Sparse array (keep old one if lengths has not been modified)
+
+        var heights = reuse ? this.__heights__P_170_0 : new Array(length);
+        var flexs = reuse ? this.__flexs__P_170_1 : new Array(length); // Reverse support
+
+        if (this.getReversed()) {
+          children = children.concat().reverse();
+        } // Loop through children to preparse values
+
+
+        for (var i = 0; i < length; i++) {
+          props = children[i].getLayoutProperties();
+
+          if (props.height != null) {
+            heights[i] = parseFloat(props.height) / 100;
+          }
+
+          if (props.flex != null) {
+            flexs[i] = props.flex;
+            enableFlex = true;
+          } else {
+            // reset (in case the index of the children changed: BUG #3131)
+            flexs[i] = 0;
+          }
+        } // Store data
+
+
+        if (!reuse) {
+          this.__heights__P_170_0 = heights;
+          this.__flexs__P_170_1 = flexs;
+        }
+
+        this.__enableFlex__P_170_2 = enableFlex;
+        this.__children__P_170_3 = children; // Clear invalidation marker
+
+        delete this._invalidChildrenCache;
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        LAYOUT INTERFACE
+      ---------------------------------------------------------------------------
+      */
+      // overridden
+      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
+        "true": function _true(item, name, value) {
+          if (name == "height") {
+            this.assertMatch(value, qx.ui.layout.Util.PERCENT_VALUE);
+          } else if (name == "flex") {
+            // flex
+            this.assertNumber(value);
+            this.assert(value >= 0);
+          } else if (name == "flexShrink") {
+            this.assertBoolean(value);
+          } else {
+            this.assert(false, "The property '" + name + "' is not supported by the VBox layout!");
+          }
+        },
+        "false": null
+      }),
+      // overridden
+      renderLayout: function renderLayout(availWidth, availHeight, padding) {
+        // Rebuild flex/height caches
+        if (this._invalidChildrenCache) {
+          this.__rebuildCache__P_170_4();
+        } // Cache children
+
+
+        var children = this.__children__P_170_3;
+        var length = children.length;
+        var util = qx.ui.layout.Util; // Compute gaps
+
+        var spacing = this.getSpacing();
+        var separator = this.getSeparator();
+        var gaps;
+
+        if (separator) {
+          gaps = util.computeVerticalSeparatorGaps(children, spacing, separator);
+        } else {
+          gaps = util.computeVerticalGaps(children, spacing, true);
+        } // First run to cache children data and compute allocated height
+
+
+        var i, child, height, percent;
+        var heights = [],
+            hint;
+        var allocatedHeight = gaps;
+
+        for (i = 0; i < length; i += 1) {
+          percent = this.__heights__P_170_0[i];
+          hint = children[i].getSizeHint();
+          height = percent != null ? Math.floor((availHeight - gaps) * percent) : hint.height; // Limit computed value
+
+          if (height < hint.minHeight) {
+            height = hint.minHeight;
+          } else if (height > hint.maxHeight) {
+            height = hint.maxHeight;
+          }
+
+          heights.push(height);
+          allocatedHeight += height;
+        } // Flex support (growing/shrinking)
+
+
+        if (this.__enableFlex__P_170_2 && allocatedHeight != availHeight) {
+          var flexibles = {};
+          var flex, offset;
+          var notEnoughSpace = allocatedHeight > availHeight;
+
+          for (i = 0; i < length; i += 1) {
+            flex = this.__flexs__P_170_1[i];
+
+            if (flex > 0) {
+              hint = children[i].getSizeHint();
+              flexibles[i] = {
+                min: hint.minHeight,
+                value: heights[i],
+                max: hint.maxHeight,
+                flex: flex
+              };
+
+              if (notEnoughSpace) {
+                var props = children[i].getLayoutProperties();
+
+                if (props && props.flexShrink) {
+                  flexibles[i].min = 0;
+                }
+              }
+            }
+          }
+
+          var result = util.computeFlexOffsets(flexibles, availHeight, allocatedHeight);
+
+          for (i in result) {
+            offset = result[i].offset;
+            heights[i] += offset;
+            allocatedHeight += offset;
+          }
+        } // Start with top coordinate
+
+
+        var top = children[0].getMarginTop(); // Alignment support
+
+        if (allocatedHeight < availHeight && this.getAlignY() != "top") {
+          top = availHeight - allocatedHeight;
+
+          if (this.getAlignY() === "middle") {
+            top = Math.round(top / 2);
+          }
+        } // Layouting children
+
+
+        var hint, left, width, height, marginBottom, marginLeft, marginRight; // Pre configure separators
+
+        this._clearSeparators(); // Compute separator height
+
+
+        if (separator) {
+          var separatorInsets = qx.theme.manager.Decoration.getInstance().resolve(separator).getInsets();
+          var separatorHeight = separatorInsets.top + separatorInsets.bottom;
+        } // Render children and separators
+
+
+        for (i = 0; i < length; i += 1) {
+          child = children[i];
+          height = heights[i];
+          hint = child.getSizeHint();
+          marginLeft = child.getMarginLeft();
+          marginRight = child.getMarginRight(); // Find usable width
+
+          width = Math.max(hint.minWidth, Math.min(availWidth - marginLeft - marginRight, hint.maxWidth)); // Respect horizontal alignment
+
+          left = util.computeHorizontalAlignOffset(child.getAlignX() || this.getAlignX(), width, availWidth, marginLeft, marginRight); // Add collapsed margin
+
+          if (i > 0) {
+            // Whether a separator has been configured
+            if (separator) {
+              // add margin of last child and spacing
+              top += marginBottom + spacing; // then render the separator at this position
+
+              this._renderSeparator(separator, {
+                top: top + padding.top,
+                left: padding.left,
+                height: separatorHeight,
+                width: availWidth
+              }); // and finally add the size of the separator, the spacing (again) and the top margin
+
+
+              top += separatorHeight + spacing + child.getMarginTop();
+            } else {
+              // Support margin collapsing when no separator is defined
+              top += util.collapseMargins(spacing, marginBottom, child.getMarginTop());
+            }
+          } // Layout child
+
+
+          child.renderLayout(left + padding.left, top + padding.top, width, height); // Add height
+
+          top += height; // Remember bottom margin (for collapsing)
+
+          marginBottom = child.getMarginBottom();
+        }
+      },
+      // overridden
+      _computeSizeHint: function _computeSizeHint() {
+        // Rebuild flex/height caches
+        if (this._invalidChildrenCache) {
+          this.__rebuildCache__P_170_4();
+        }
+
+        var util = qx.ui.layout.Util;
+        var children = this.__children__P_170_3; // Initialize
+
+        var minHeight = 0,
+            height = 0,
+            percentMinHeight = 0;
+        var minWidth = 0,
+            width = 0;
+        var child, hint, margin; // Iterate over children
+
+        for (var i = 0, l = children.length; i < l; i += 1) {
+          child = children[i];
+          hint = child.getSizeHint(); // Sum up heights
+
+          height += hint.height; // Detect if child is shrinkable or has percent height and update minHeight
+
+          var flex = this.__flexs__P_170_1[i];
+          var percent = this.__heights__P_170_0[i];
+
+          if (flex) {
+            minHeight += hint.minHeight;
+          } else if (percent) {
+            percentMinHeight = Math.max(percentMinHeight, Math.round(hint.minHeight / percent));
+          } else {
+            minHeight += hint.height;
+          } // Build horizontal margin sum
+
+
+          margin = child.getMarginLeft() + child.getMarginRight(); // Find biggest width
+
+          if (hint.width + margin > width) {
+            width = hint.width + margin;
+          } // Find biggest minWidth
+
+
+          if (hint.minWidth + margin > minWidth) {
+            minWidth = hint.minWidth + margin;
+          }
+        }
+
+        minHeight += percentMinHeight; // Respect gaps
+
+        var spacing = this.getSpacing();
+        var separator = this.getSeparator();
+        var gaps;
+
+        if (separator) {
+          gaps = util.computeVerticalSeparatorGaps(children, spacing, separator);
+        } else {
+          gaps = util.computeVerticalGaps(children, spacing, true);
+        } // Return hint
+
+
+        return {
+          minHeight: minHeight + gaps,
+          height: height + gaps,
+          minWidth: minWidth,
+          width: width
+        };
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.__heights__P_170_0 = this.__flexs__P_170_1 = this.__children__P_170_3 = null;
+    }
+  });
+  qx.ui.layout.VBox.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * This mixin exposes all methods to manage the layout manager of a widget.
+   * It can only be included into instances of {@link qx.ui.core.Widget}.
+   *
+   * To optimize the method calls the including widget should call the method
+   * {@link #remap} in its defer function. This will map the protected
+   * methods to the public ones and save one method call for each function.
+   */
+  qx.Mixin.define("qx.ui.core.MLayoutHandling", {
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Set a layout manager for the widget. A a layout manager can only be connected
+       * with one widget. Reset the connection with a previous widget first, if you
+       * like to use it in another widget instead.
+       *
+       * @param layout {qx.ui.layout.Abstract} The new layout or
+       *     <code>null</code> to reset the layout.
+       */
+      setLayout: function setLayout(layout) {
+        this._setLayout(layout);
+      },
+
+      /**
+       * Get the widget's layout manager.
+       *
+       * @return {qx.ui.layout.Abstract} The widget's layout manager
+       */
+      getLayout: function getLayout() {
+        return this._getLayout();
+      }
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /**
+       * Mapping of protected methods to public.
+       * This omits an additional function call when using these methods. Call
+       * this methods in the defer block of the including class.
+       *
+       * @param members {Map} The including classes members map
+       */
+      remap: function remap(members) {
+        members.getLayout = members._getLayout;
+        members.setLayout = members._setLayout;
+      }
+    }
+  });
+  qx.ui.core.MLayoutHandling.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.core.Widget": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.core.MChildrenHandling": {
+        "defer": "runtime",
+        "require": true
+      },
+      "qx.ui.core.MLayoutHandling": {
+        "defer": "runtime",
+        "require": true
+      },
+      "qx.event.type.Data": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * The Composite is a generic container widget.
+   *
+   * It exposes all methods to set layouts and to manage child widgets
+   * as public methods. You must configure this widget with a layout manager to
+   * define the way the widget's children are positioned.
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the widget.
+   *
+   * <pre class='javascript'>
+   *   // create the composite
+   *   var composite = new qx.ui.container.Composite()
+   *
+   *   // configure it with a horizontal box layout with a spacing of '5'
+   *   composite.setLayout(new qx.ui.layout.HBox(5));
+   *
+   *   // add some children
+   *   composite.add(new qx.ui.basic.Label("Name: "));
+   *   composite.add(new qx.ui.form.TextField());
+   *
+   *   this.getRoot().add(composite);
+   * </pre>
+   *
+   * This example horizontally groups a label and text field by using a
+   * Composite configured with a horizontal box layout as a container.
+   *
+   * *External Documentation*
+   *
+   * <a href='http://qooxdoo.org/docs/#desktop/widget/composite.md' target='_blank'>
+   * Documentation of this widget in the qooxdoo manual.</a>
+   */
+  qx.Class.define("qx.ui.container.Composite", {
+    extend: qx.ui.core.Widget,
+    include: [qx.ui.core.MChildrenHandling, qx.ui.core.MLayoutHandling],
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param layout {qx.ui.layout.Abstract} A layout instance to use to
+     *   place widgets on the screen.
+     */
+    construct: function construct(layout) {
+      qx.ui.core.Widget.constructor.call(this);
+
+      if (layout != null) {
+        this._setLayout(layout);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /**
+       * This event is fired after a child widget was added to this widget. The
+       * {@link qx.event.type.Data#getData} method of the event returns the
+       * added child.
+       */
+      addChildWidget: "qx.event.type.Data",
+
+      /**
+       * This event is fired after a child widget has been removed from this widget.
+       * The {@link qx.event.type.Data#getData} method of the event returns the
+       * removed child.
+       */
+      removeChildWidget: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      // overridden
+      _afterAddChild: function _afterAddChild(child) {
+        this.fireNonBubblingEvent("addChildWidget", qx.event.type.Data, [child]);
+      },
+      // overridden
+      _afterRemoveChild: function _afterRemoveChild(child) {
+        this.fireNonBubblingEvent("removeChildWidget", qx.event.type.Data, [child]);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DEFER
+    *****************************************************************************
+    */
+    defer: function defer(statics, members) {
+      qx.ui.core.MChildrenHandling.remap(members);
+      qx.ui.core.MLayoutHandling.remap(members);
+    }
+  });
+  qx.ui.container.Composite.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.layout.Abstract": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.layout.Util": {},
+      "qx.theme.manager.Decoration": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.debug": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * A horizontal box layout.
+   *
+   * The horizontal box layout lays out widgets in a horizontal row, from left
+   * to right.
+   *
+   * *Features*
+   *
+   * * Minimum and maximum dimensions
+   * * Prioritized growing/shrinking (flex)
+   * * Margins (with horizontal collapsing)
+   * * Auto sizing (ignoring percent values)
+   * * Percent widths (not relevant for size hint)
+   * * Alignment (child property {@link qx.ui.core.LayoutItem#alignX} is ignored)
+   * * Horizontal spacing (collapsed with margins)
+   * * Reversed children layout (from last to first)
+   * * Vertical children stretching (respecting size hints)
+   *
+   * *Item Properties*
+   *
+   * <ul>
+   * <li><strong>flex</strong> <em>(Integer)</em>: The flexibility of a layout item determines how the container
+   *   distributes remaining empty space among its children. If items are made
+   *   flexible, they can grow or shrink accordingly. Their relative flex values
+   *   determine how the items are being resized, i.e. the larger the flex ratio
+   *   of two items, the larger the resizing of the first item compared to the
+   *   second.
+   *
+   *   If there is only one flex item in a layout container, its actual flex
+   *   value is not relevant. To disallow items to become flexible, set the
+   *   flex value to zero.
+   * </li>
+   * <li><strong>flexShrink</strong> <em>(Boolean)</em>: Only valid if `flex` is
+   *    set to a non-zero value, `flexShrink` tells the layout to force the child
+   *    widget to shink if there is not enough space available for all of the children.
+   *    This is used in scenarios such as when the child insists that it has a `minWidth`
+   *    but there simply is not enough space to support that minimum width, so the
+   *    overflow has to be cut off.  This setting allows the container to pick
+   *    which children are able to have their `minWidth` sacrificed.  Without this
+   *    setting, one oversized child can force later children out of view, regardless
+   *    of `flex` settings
+   * </li>
+   * <li><strong>width</strong> <em>(String)</em>: Allows to define a percent
+   *   width for the item. The width in percent, if specified, is used instead
+   *   of the width defined by the size hint. The minimum and maximum width still
+   *   takes care of the element's limits. It has no influence on the layout's
+   *   size hint. Percent values are mostly useful for widgets which are sized by
+   *   the outer hierarchy.
+   * </li>
+   * </ul>
+   *
+   * *Example*
+   *
+   * Here is a little example of how to use the HBox layout.
+   *
+   * <pre class="javascript">
+   * var layout = new qx.ui.layout.HBox();
+   * layout.setSpacing(4); // apply spacing
+   *
+   * var container = new qx.ui.container.Composite(layout);
+   *
+   * container.add(new qx.ui.core.Widget());
+   * container.add(new qx.ui.core.Widget());
+   * container.add(new qx.ui.core.Widget());
+   * </pre>
+   *
+   * *External Documentation*
+   *
+   * See <a href='https://qooxdoo.org/documentation/#/desktop/layout/box.md'>extended documentation</a>
+   * and links to demos for this layout.
+   *
+   */
+  qx.Class.define("qx.ui.layout.HBox", {
+    extend: qx.ui.layout.Abstract,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param spacing {Integer?0} The spacing between child widgets {@link #spacing}.
+     * @param alignX {String?"left"} Horizontal alignment of the whole children
+     *     block {@link #alignX}.
+     * @param separator {String|qx.ui.decoration.IDecorator?} A separator to render between the items
+     */
+    construct: function construct(spacing, alignX, separator) {
+      qx.ui.layout.Abstract.constructor.call(this);
+
+      if (spacing) {
+        this.setSpacing(spacing);
+      }
+
+      if (alignX) {
+        this.setAlignX(alignX);
+      }
+
+      if (separator) {
+        this.setSeparator(separator);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Horizontal alignment of the whole children block. The horizontal
+       * alignment of the child is completely ignored in HBoxes (
+       * {@link qx.ui.core.LayoutItem#alignX}).
+       */
+      alignX: {
+        check: ["left", "center", "right"],
+        init: "left",
+        apply: "_applyLayoutChange"
+      },
+
+      /**
+       * Vertical alignment of each child. Can be overridden through
+       * {@link qx.ui.core.LayoutItem#alignY}.
+       */
+      alignY: {
+        check: ["top", "middle", "bottom"],
+        init: "top",
+        apply: "_applyLayoutChange"
+      },
+
+      /** Horizontal spacing between two children */
+      spacing: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyLayoutChange"
+      },
+
+      /** Separator lines to use between the objects */
+      separator: {
+        check: "Decorator",
+        nullable: true,
+        apply: "_applyLayoutChange"
+      },
+
+      /** Whether the actual children list should be laid out in reversed order. */
+      reversed: {
+        check: "Boolean",
+        init: false,
+        apply: "_applyReversed"
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __widths__P_112_0: null,
+      __flexs__P_112_1: null,
+      __enableFlex__P_112_2: null,
+      __children__P_112_3: null,
+
+      /*
+      ---------------------------------------------------------------------------
+        HELPER METHODS
+      ---------------------------------------------------------------------------
+      */
+      // property apply
+      _applyReversed: function _applyReversed() {
+        // easiest way is to invalidate the cache
+        this._invalidChildrenCache = true; // call normal layout change
+
+        this._applyLayoutChange();
+      },
+
+      /**
+       * Rebuilds caches for flex and percent layout properties
+       */
+      __rebuildCache__P_112_4: function __rebuildCache__P_112_4() {
+        var children = this._getLayoutChildren();
+
+        var length = children.length;
+        var enableFlex = false;
+        var reuse = this.__widths__P_112_0 && this.__widths__P_112_0.length != length && this.__flexs__P_112_1 && this.__widths__P_112_0;
+        var props; // Sparse array (keep old one if lengths has not been modified)
+
+        var widths = reuse ? this.__widths__P_112_0 : new Array(length);
+        var flexs = reuse ? this.__flexs__P_112_1 : new Array(length); // Reverse support
+
+        if (this.getReversed()) {
+          children = children.concat().reverse();
+        } // Loop through children to preparse values
+
+
+        for (var i = 0; i < length; i++) {
+          props = children[i].getLayoutProperties();
+
+          if (props.width != null) {
+            widths[i] = parseFloat(props.width) / 100;
+          }
+
+          if (props.flex != null) {
+            flexs[i] = props.flex;
+            enableFlex = true;
+          } else {
+            // reset (in case the index of the children changed: BUG #3131)
+            flexs[i] = 0;
+          }
+        } // Store data
+
+
+        if (!reuse) {
+          this.__widths__P_112_0 = widths;
+          this.__flexs__P_112_1 = flexs;
+        }
+
+        this.__enableFlex__P_112_2 = enableFlex;
+        this.__children__P_112_3 = children; // Clear invalidation marker
+
+        delete this._invalidChildrenCache;
+      },
+
+      /*
+      ---------------------------------------------------------------------------
+        LAYOUT INTERFACE
+      ---------------------------------------------------------------------------
+      */
+      // overridden
+      verifyLayoutProperty: qx.core.Environment.select("qx.debug", {
+        "true": function _true(item, name, value) {
+          if (name === "width") {
+            this.assertMatch(value, qx.ui.layout.Util.PERCENT_VALUE);
+          } else if (name === "flex") {
+            this.assertNumber(value);
+            this.assert(value >= 0);
+          } else if (name === "flexShrink") {
+            this.assertBoolean(value);
+          } else {
+            this.assert(false, "The property '" + name + "' is not supported by the HBox layout!");
+          }
+        },
+        "false": null
+      }),
+      // overridden
+      renderLayout: function renderLayout(availWidth, availHeight, padding) {
+        // Rebuild flex/width caches
+        if (this._invalidChildrenCache) {
+          this.__rebuildCache__P_112_4();
+        } // Cache children
+
+
+        var children = this.__children__P_112_3;
+        var length = children.length;
+        var util = qx.ui.layout.Util; // Compute gaps
+
+        var spacing = this.getSpacing();
+        var separator = this.getSeparator();
+        var gaps;
+
+        if (separator) {
+          gaps = util.computeHorizontalSeparatorGaps(children, spacing, separator);
+        } else {
+          gaps = util.computeHorizontalGaps(children, spacing, true);
+        } // First run to cache children data and compute allocated width
+
+
+        var i, child, width, percent;
+        var widths = [],
+            hint;
+        var allocatedWidth = gaps;
+
+        for (i = 0; i < length; i += 1) {
+          percent = this.__widths__P_112_0[i];
+          hint = children[i].getSizeHint();
+          width = percent != null ? Math.floor((availWidth - gaps) * percent) : hint.width; // Limit computed value
+
+          if (width < hint.minWidth) {
+            width = hint.minWidth;
+          } else if (width > hint.maxWidth) {
+            width = hint.maxWidth;
+          }
+
+          widths.push(width);
+          allocatedWidth += width;
+        } // Flex support (growing/shrinking)
+
+
+        if (this.__enableFlex__P_112_2 && allocatedWidth != availWidth) {
+          var flexibles = {};
+          var flex, offset;
+          var notEnoughSpace = allocatedWidth > availWidth;
+
+          for (i = 0; i < length; i += 1) {
+            flex = this.__flexs__P_112_1[i];
+
+            if (flex > 0) {
+              hint = children[i].getSizeHint();
+              flexibles[i] = {
+                min: hint.minWidth,
+                value: widths[i],
+                max: hint.maxWidth,
+                flex: flex
+              };
+
+              if (notEnoughSpace) {
+                var props = children[i].getLayoutProperties();
+
+                if (props && props.flexShrink) {
+                  flexibles[i].min = 0;
+                }
+              }
+            }
+          }
+
+          var result = util.computeFlexOffsets(flexibles, availWidth, allocatedWidth);
+
+          for (i in result) {
+            offset = result[i].offset;
+            widths[i] += offset;
+            allocatedWidth += offset;
+          }
+        } // Start with left coordinate
+
+
+        var left = children[0].getMarginLeft(); // Alignment support
+
+        if (allocatedWidth < availWidth && this.getAlignX() != "left") {
+          left = availWidth - allocatedWidth;
+
+          if (this.getAlignX() === "center") {
+            left = Math.round(left / 2);
+          }
+        } // Layouting children
+
+
+        var hint, top, height, width, marginRight, marginTop, marginBottom;
+        var spacing = this.getSpacing(); // Pre configure separators
+
+        this._clearSeparators(); // Compute separator width
+
+
+        if (separator) {
+          var separatorInsets = qx.theme.manager.Decoration.getInstance().resolve(separator).getInsets();
+          var separatorWidth = separatorInsets.left + separatorInsets.right;
+        } // Render children and separators
+
+
+        for (i = 0; i < length; i += 1) {
+          child = children[i];
+          width = widths[i];
+          hint = child.getSizeHint();
+          marginTop = child.getMarginTop();
+          marginBottom = child.getMarginBottom(); // Find usable height
+
+          height = Math.max(hint.minHeight, Math.min(availHeight - marginTop - marginBottom, hint.maxHeight)); // Respect vertical alignment
+
+          top = util.computeVerticalAlignOffset(child.getAlignY() || this.getAlignY(), height, availHeight, marginTop, marginBottom); // Add collapsed margin
+
+          if (i > 0) {
+            // Whether a separator has been configured
+            if (separator) {
+              // add margin of last child and spacing
+              left += marginRight + spacing; // then render the separator at this position
+
+              this._renderSeparator(separator, {
+                left: left + padding.left,
+                top: padding.top,
+                width: separatorWidth,
+                height: availHeight
+              }); // and finally add the size of the separator, the spacing (again) and the left margin
+
+
+              left += separatorWidth + spacing + child.getMarginLeft();
+            } else {
+              // Support margin collapsing when no separator is defined
+              left += util.collapseMargins(spacing, marginRight, child.getMarginLeft());
+            }
+          } // Layout child
+
+
+          child.renderLayout(left + padding.left, top + padding.top, width, height); // Add width
+
+          left += width; // Remember right margin (for collapsing)
+
+          marginRight = child.getMarginRight();
+        }
+      },
+      // overridden
+      _computeSizeHint: function _computeSizeHint() {
+        // Rebuild flex/width caches
+        if (this._invalidChildrenCache) {
+          this.__rebuildCache__P_112_4();
+        }
+
+        var util = qx.ui.layout.Util;
+        var children = this.__children__P_112_3; // Initialize
+
+        var minWidth = 0,
+            width = 0,
+            percentMinWidth = 0;
+        var minHeight = 0,
+            height = 0;
+        var child, hint, margin; // Iterate over children
+
+        for (var i = 0, l = children.length; i < l; i += 1) {
+          child = children[i];
+          hint = child.getSizeHint(); // Sum up widths
+
+          width += hint.width; // Detect if child is shrinkable or has percent width and update minWidth
+
+          var flex = this.__flexs__P_112_1[i];
+          var percent = this.__widths__P_112_0[i];
+
+          if (flex) {
+            minWidth += hint.minWidth;
+          } else if (percent) {
+            percentMinWidth = Math.max(percentMinWidth, Math.round(hint.minWidth / percent));
+          } else {
+            minWidth += hint.width;
+          } // Build vertical margin sum
+
+
+          margin = child.getMarginTop() + child.getMarginBottom(); // Find biggest height
+
+          if (hint.height + margin > height) {
+            height = hint.height + margin;
+          } // Find biggest minHeight
+
+
+          if (hint.minHeight + margin > minHeight) {
+            minHeight = hint.minHeight + margin;
+          }
+        }
+
+        minWidth += percentMinWidth; // Respect gaps
+
+        var spacing = this.getSpacing();
+        var separator = this.getSeparator();
+        var gaps;
+
+        if (separator) {
+          gaps = util.computeHorizontalSeparatorGaps(children, spacing, separator);
+        } else {
+          gaps = util.computeHorizontalGaps(children, spacing, true);
+        } // Return hint
+
+
+        return {
+          minWidth: minWidth + gaps,
+          width: width + gaps,
+          minHeight: minHeight,
+          height: height
+        };
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this.__widths__P_112_0 = this.__flexs__P_112_1 = this.__children__P_112_3 = null;
+    }
+  });
+  qx.ui.layout.HBox.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132)
+  
+  ************************************************************************ */
+
+  /**
+   * Interface for a row renderer.
+   */
+  qx.Interface.define("qx.ui.table.IRowRenderer", {
+    members: {
+      /**
+       * Updates a data row.
+       *
+       * The rowInfo map contains the following properties:
+       * <ul>
+       * <li>rowData (var): contains the row data for the row.
+       *   The kind of this object depends on the table model, see
+       *   {@link ITableModel#getRowData()}</li>
+       * <li>row (int): the model index of the row.</li>
+       * <li>selected (boolean): whether a cell in this row is selected.</li>
+       * <li>focusedRow (boolean): whether the focused cell is in this row.</li>
+       * <li>table (qx.ui.table.Table): the table the row belongs to.</li>
+       * </ul>
+       *
+       * @abstract
+       * @param rowInfo {Map} A map containing the information about the row to
+       *      update.
+       * @param rowElement {Element} the DOM element that renders the data row.
+       */
+      updateDataRowElement: function updateDataRowElement(rowInfo, rowElement) {},
+
+      /**
+       * Get the row's height CSS style taking the box model into account
+       *
+       * @param height {Integer} The row's (border-box) height in pixel
+       */
+      getRowHeightStyle: function getRowHeightStyle(height) {},
+
+      /**
+       * Create a style string, which will be set as the style property of the row.
+       *
+       * @param rowInfo {Map} A map containing the information about the row to
+       *      update. See {@link #updateDataRowElement} for more information.
+       */
+      createRowStyle: function createRowStyle(rowInfo) {},
+
+      /**
+       * Create a HTML class string, which will be set as the class property of the row.
+       *
+       * @param rowInfo {Map} A map containing the information about the row to
+       *      update. See {@link #updateDataRowElement} for more information.
+       */
+      getRowClass: function getRowClass(rowInfo) {}
+    }
+  });
+  qx.ui.table.IRowRenderer.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.table.IRowRenderer": {
+        "require": true
+      },
+      "qx.theme.manager.Meta": {
+        "construct": true
+      },
+      "qx.theme.manager.Font": {},
+      "qx.theme.manager.Color": {},
+      "qx.bom.element.Style": {},
+      "qx.bom.Font": {},
+      "qx.bom.client.Css": {
+        "require": true
+      }
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "css.boxmodel": {
+          "className": "qx.bom.client.Css"
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2006 STZ-IDA, Germany, http://www.stz-ida.de
+       2007 Visionet GmbH, http://www.visionet.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Til Schneider (til132) STZ-IDA
+       * Dietrich Streifert (level420) Visionet
+  
+  ************************************************************************ */
+
+  /**
+   * The default data row renderer.
+   */
+  qx.Class.define("qx.ui.table.rowrenderer.Default", {
+    extend: qx.core.Object,
+    implement: qx.ui.table.IRowRenderer,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      qx.core.Object.constructor.call(this);
+      this.initThemeValues(); // dynamic theme switch
+
+      {
+        qx.theme.manager.Meta.getInstance().addListener("changeTheme", this.initThemeValues, this);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /** Whether the focused row should be highlighted. */
+      highlightFocusRow: {
+        check: "Boolean",
+        init: true
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      _colors: null,
+      _fontStyle: null,
+      _fontStyleString: null,
+
+      /**
+       * Initializes the colors from the color theme.
+       * @internal
+       */
+      initThemeValues: function initThemeValues() {
+        this._fontStyleString = "";
+        this._fontStyle = {};
+        this._colors = {}; // link to font theme
+
+        this._renderFont(qx.theme.manager.Font.getInstance().resolve("default")); // link to color theme
+
+
+        var colorMgr = qx.theme.manager.Color.getInstance();
+        this._colors.bgcolFocusedSelected = colorMgr.resolve("table-row-background-focused-selected");
+        this._colors.bgcolFocused = colorMgr.resolve("table-row-background-focused");
+        this._colors.bgcolSelected = colorMgr.resolve("table-row-background-selected");
+        this._colors.bgcolEven = colorMgr.resolve("table-row-background-even");
+        this._colors.bgcolOdd = colorMgr.resolve("table-row-background-odd");
+        this._colors.colSelected = colorMgr.resolve("table-row-selected");
+        this._colors.colNormal = colorMgr.resolve("table-row");
+        this._colors.horLine = colorMgr.resolve("table-row-line");
+      },
+
+      /**
+       * the sum of the vertical insets. This is needed to compute the box model
+       * independent size
+       */
+      _insetY: 1,
+      // borderBottom
+
+      /**
+       * Render the new font and update the table pane content
+       * to reflect the font change.
+       *
+       * @param font {qx.bom.Font} The font to use for the table row
+       */
+      _renderFont: function _renderFont(font) {
+        if (font) {
+          this._fontStyle = font.getStyles();
+          this._fontStyleString = qx.bom.element.Style.compile(this._fontStyle);
+          this._fontStyleString = this._fontStyleString.replace(/"/g, "'");
+        } else {
+          this._fontStyleString = "";
+          this._fontStyle = qx.bom.Font.getDefaultStyles();
+        }
+      },
+      // interface implementation
+      updateDataRowElement: function updateDataRowElement(rowInfo, rowElem) {
+        var fontStyle = this._fontStyle;
+        var style = rowElem.style; // set font styles
+
+        qx.bom.element.Style.setStyles(rowElem, fontStyle);
+
+        if (rowInfo.focusedRow && this.getHighlightFocusRow()) {
+          style.backgroundColor = rowInfo.selected ? this._colors.bgcolFocusedSelected : this._colors.bgcolFocused;
+        } else {
+          if (rowInfo.selected) {
+            style.backgroundColor = this._colors.bgcolSelected;
+          } else {
+            style.backgroundColor = rowInfo.row % 2 == 0 ? this._colors.bgcolEven : this._colors.bgcolOdd;
+          }
+        }
+
+        style.color = rowInfo.selected ? this._colors.colSelected : this._colors.colNormal;
+        style.borderBottom = "1px solid " + this._colors.horLine;
+      },
+
+      /**
+       * Get the row's height CSS style taking the box model into account
+       *
+       * @param height {Integer} The row's (border-box) height in pixel
+       * @return {String} CSS rule for the row height
+       */
+      getRowHeightStyle: function getRowHeightStyle(height) {
+        if (qx.core.Environment.get("css.boxmodel") == "content") {
+          height -= this._insetY;
+        }
+
+        return "height:" + height + "px;";
+      },
+      // interface implementation
+      createRowStyle: function createRowStyle(rowInfo) {
+        var rowStyle = [];
+        rowStyle.push(";");
+        rowStyle.push(this._fontStyleString);
+        rowStyle.push("background-color:");
+
+        if (rowInfo.focusedRow && this.getHighlightFocusRow()) {
+          rowStyle.push(rowInfo.selected ? this._colors.bgcolFocusedSelected : this._colors.bgcolFocused);
+        } else {
+          if (rowInfo.selected) {
+            rowStyle.push(this._colors.bgcolSelected);
+          } else {
+            rowStyle.push(rowInfo.row % 2 == 0 ? this._colors.bgcolEven : this._colors.bgcolOdd);
+          }
+        }
+
+        rowStyle.push(";color:");
+        rowStyle.push(rowInfo.selected ? this._colors.colSelected : this._colors.colNormal);
+        rowStyle.push(";border-bottom: 1px solid ", this._colors.horLine);
+        return rowStyle.join("");
+      },
+      getRowClass: function getRowClass(rowInfo) {
+        return "";
+      },
+
+      /**
+       * Add extra attributes to each row.
+       *
+       * @param rowInfo {Object}
+       *   The following members are available in rowInfo:
+       *   <dl>
+       *     <dt>table {qx.ui.table.Table}</dt>
+       *     <dd>The table object</dd>
+       *
+       *     <dt>styleHeight {Integer}</dt>
+       *     <dd>The height of this (and every) row</dd>
+       *
+       *     <dt>row {Integer}</dt>
+       *     <dd>The number of the row being added</dd>
+       *
+       *     <dt>selected {Boolean}</dt>
+       *     <dd>Whether the row being added is currently selected</dd>
+       *
+       *     <dt>focusedRow {Boolean}</dt>
+       *     <dd>Whether the row being added is currently focused</dd>
+       *
+       *     <dt>rowData {Array}</dt>
+       *     <dd>The array row from the data model of the row being added</dd>
+       *   </dl>
+       *
+       * @return {String}
+       *   Any additional attributes and their values that should be added to the
+       *   div tag for the row.
+       */
+      getRowAttributes: function getRowAttributes(rowInfo) {
+        return "role=row "; // Space important!
+      }
+    },
+
+    /*
+    *****************************************************************************
+       DESTRUCTOR
+    *****************************************************************************
+    */
+    destruct: function destruct() {
+      this._colors = this._fontStyle = this._fontStyleString = null; // remove dynamic theme listener
+
+      {
+        qx.theme.manager.Meta.getInstance().removeListener("changeTheme", this.initThemeValues, this);
+      }
+    }
+  });
+  qx.ui.table.rowrenderer.Default.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "defer": "runtime",
+        "require": true
+      },
+      "qx.core.ObjectRegistry": {},
+      "qx.core.Object": {},
+      "qx.core.MAssert": {
+        "defer": "runtime"
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Fabian Jakobs (fjakobs)
+       * Jonathan Weiß (jonathan_rass)
+  
+     ======================================================================
+  
+       This class uses documentation of the native String methods from the MDC
+       documentation of Mozilla.
+  
+       License:
+         CC Attribution-Sharealike License:
+         http://creativecommons.org/licenses/by-sa/2.5/
+  
+  ************************************************************************ */
+
+  /**
+   * This class emulates the built-in JavaScript String class. It can be used as
+   * base class for classes, which need to derive from String.
+   *
+   * Instances of this class can be used in any place a JavaScript string can.
+   */
+  qx.Class.define("qx.type.BaseString", {
+    extend: Object,
+
+    /**
+     * @param txt {String?""} Initialize with this string
+     */
+    construct: function construct(txt) {
+      var txt = txt || ""; // no base call needed
+
+      this.__txt__P_145_0 = txt;
+      this.length = txt.length;
+    },
+    members: {
+      $$isString: true,
+      length: 0,
+      __txt__P_145_0: null,
+
+      /**
+       * Returns a string representing the specified object.
+       *
+       * The valueOf method of String returns the primitive value of a String
+       * object as a string data type.
+       * This method is usually called internally by JavaScript and not
+       * explicitly in code.
+       *
+       * @return {String} A new string containing the string value.
+       */
+      toString: function toString() {
+        return this.__txt__P_145_0;
+      },
+
+      /**
+       *  Returns the specified character from a string.
+       *
+       * Characters in a string are indexed from left to right. The index of the
+       * first character is 0, and the index of the last character in a string
+       * called stringName is stringName.length - 1. If the index you supply is
+       * out of range, JavaScript returns an empty string.
+       *
+       * @signature function(index)
+       * @param index {Integer} An integer between 0 and 1 less than the length
+       *   of the string.
+       * @return {String} The character.
+       */
+      charAt: null,
+
+      /**
+       * Returns the primitive value of a String object.
+       *
+       * The valueOf method of String returns the primitive value of a String
+       * object as a string data type.
+       * This method is usually called internally by JavaScript and not
+       * explicitly in code.
+       *
+       * @signature function()
+       * @return {String} A new string containing the primitive value.
+       */
+      valueOf: null,
+
+      /**
+       * Returns a number indicating the Unicode value of the character at the given index.
+       *
+       * @signature function(index)
+       * @param index {Integer} An integer greater than 0 and less than the length
+       *   of the string; if it is not a number, it defaults to 0.
+       * @return {Integer} The number.
+       */
+      charCodeAt: null,
+
+      /**
+       * Combines the text of two or more strings and returns a new string.
+       * Changes to the text in one string do not affect the other string.
+       *
+       * @signature function(stringN)
+       * @param stringN {String} One or more strings to be combined.
+       * @return {String} The combined string.
+       */
+      concat: null,
+
+      /**
+       * Returns the index within the calling String object of the first
+       * occurrence of the specified value, starting the search at fromIndex,
+       * returns -1 if the value is not found.
+       *
+       * @signature function(index, offset)
+       * @param index {String} A string representing the value to search for.
+       * @param offset {Integer?0} The location within the calling string to start
+       *   the search from. It can be any integer between 0 and the length of the
+       *   string. The default value is 0.
+       * @return {Integer} The index or -1.
+       */
+      indexOf: null,
+
+      /**
+       * Returns the index within the calling String object of the last occurrence
+       * of the specified value, or -1 if not found. The calling string is
+       * searched backward, starting at fromIndex.
+       *
+       * @signature function(index, offset)
+       * @param index {String} A string representing the value to search for.
+       * @param offset {Integer?0} The location within the calling string to start
+       *   the search from, indexed from left to right. It can be any integer
+       *   between 0 and the length of the string. The default value is the length
+       *    of the string.
+       * @return {Integer} The index or -1.
+       */
+      lastIndexOf: null,
+
+      /**
+       * Used to retrieve the matches when matching a string against a regular
+       * expression.
+       *
+       * If the regular expression does not include the g flag, returns the same
+       * result as regexp.exec(string). If the regular expression includes the g
+       * flag, the method returns an Array containing all matches.
+       *
+       * @signature function(regexp)
+       * @param regexp {Object} A regular expression object. If a non-RegExp object
+       *  obj is passed, it is implicitly converted to a RegExp by using
+       *   new RegExp(obj).
+       * @return {Object} The matching RegExp object or an array containing all
+       *   matches.
+       */
+      match: null,
+
+      /**
+       * Finds a match between a regular expression and a string, and replaces the
+       * matched substring with a new substring.
+       *
+       * @signature function(regexp, aFunction)
+       * @param regexp {Object} A RegExp object. The match is replaced by the
+       *   return value of parameter #2. Or a String that is to be replaced by
+       *   newSubStr.
+       * @param aFunction {Function} A function to be invoked to create the new
+       *   substring (to put in place of the substring received from parameter
+       *   #1).
+       * @return {String} The new substring.
+       */
+      replace: null,
+
+      /**
+       * Executes the search for a match between a regular expression and this
+       * String object.
+       *
+       * If successful, search returns the index of the regular expression inside
+       * the string. Otherwise, it returns -1.
+       *
+       * @signature function(regexp)
+       * @param regexp {Object} A regular expression object. If a non-RegExp object
+       *  obj is passed, it is implicitly converted to a RegExp by using
+       *   new RegExp(obj).
+       * @return {Object} The matching RegExp object or -1.
+       *   matches.
+       */
+      search: null,
+
+      /**
+       * Extracts a section of a string and returns a new string.
+       *
+       * Slice extracts the text from one string and returns a new string. Changes
+       * to the text in one string do not affect the other string.
+       * As a negative index, endSlice indicates an offset from the end of the
+       * string.
+       *
+       * @signature function(beginslice, endSlice)
+       * @param beginslice {Integer} The zero-based index at which to begin
+       *   extraction.
+       * @param endSlice {Integer?null} The zero-based index at which to end
+       *   extraction. If omitted, slice extracts to the end of the string.
+       * @return {String} The extracted string.
+       */
+      slice: null,
+
+      /**
+       * Splits a String object into an array of strings by separating the string
+       * into substrings.
+       *
+       * When found, separator is removed from the string and the substrings are
+       * returned in an array. If separator is omitted, the array contains one
+       * element consisting of the entire string.
+       *
+       * If separator is a regular expression that contains capturing parentheses,
+       * then each time separator is matched the results (including any undefined
+       * results) of the capturing parentheses are spliced into the output array.
+       * However, not all browsers support this capability.
+       *
+       * Note: When the string is empty, split returns an array containing one
+       *
+       * @signature function(separator, limit)
+       * @param separator {String?null} Specifies the character to use for
+       *   separating the string. The separator is treated as a string or a regular
+       *   expression. If separator is omitted, the array returned contains one
+       *   element consisting of the entire string.
+       * @param limit {Integer?null} Integer specifying a limit on the number of
+       *   splits to be found.
+       * @return {Array} The Array containing substrings.
+       */
+      split: null,
+
+      /**
+       * Returns the characters in a string beginning at the specified location
+       * through the specified number of characters.
+       *
+       * Start is a character index. The index of the first character is 0, and the
+       * index of the last character is 1 less than the length of the string. substr
+       *  begins extracting characters at start and collects length characters
+       * (unless it reaches the end of the string first, in which case it will
+       * return fewer).
+       * If start is positive and is greater than or equal to the length of the
+       * string, substr returns an empty string.
+       *
+       * @signature function(start, length)
+       * @param start {Integer} Location at which to begin extracting characters
+       *   (an integer between 0 and one less than the length of the string).
+       * @param length {Integer?null} The number of characters to extract.
+       * @return {String} The substring.
+       */
+      substr: null,
+
+      /**
+       * Returns a subset of a String object.
+       *
+       * substring extracts characters from indexA up to but not including indexB.
+       * In particular:
+       * If indexA equals indexB, substring returns an empty string.
+       * If indexB is omitted, substring extracts characters to the end of the
+       * string.
+       * If either argument is less than 0 or is NaN, it is treated as if it were
+       * 0.
+       * If either argument is greater than stringName.length, it is treated as if
+       * it were stringName.length.
+       * If indexA is larger than indexB, then the effect of substring is as if
+       * the two arguments were swapped; for example, str.substring(1, 0) == str.substring(0, 1).
+       *
+       * @signature function(indexA, indexB)
+       * @param indexA {Integer} An integer between 0 and one less than the
+       *   length of the string.
+       * @param indexB {Integer?null} (optional) An integer between 0 and the
+       *   length of the string.
+       * @return {String} The subset.
+       */
+      substring: null,
+
+      /**
+       * Returns the calling string value converted to lowercase.
+       * The toLowerCase method returns the value of the string converted to
+       * lowercase. toLowerCase does not affect the value of the string itself.
+       *
+       * @signature function()
+       * @return {String} The new string.
+       */
+      toLowerCase: null,
+
+      /**
+       * Returns the calling string value converted to uppercase.
+       * The toUpperCase method returns the value of the string converted to
+       * uppercase. toUpperCase does not affect the value of the string itself.
+       *
+       * @signature function()
+       * @return {String} The new string.
+       */
+      toUpperCase: null,
+
+      /**
+       * Return unique hash code of object
+       *
+       * @return {Integer} unique hash code of the object
+       */
+      toHashCode: function toHashCode() {
+        return qx.core.ObjectRegistry.toHashCode(this);
+      },
+
+      /**
+       * The characters within a string are converted to lower case while
+       * respecting the current locale.
+       *
+       * The toLowerCase method returns the value of the string converted to
+       * lowercase. toLowerCase does not affect the value of the string itself.
+       *
+       * @signature function()
+       * @return {String} The new string.
+       */
+      toLocaleLowerCase: null,
+
+      /**
+       * The characters within a string are converted to upper case while
+       * respecting the current locale.
+       * The toUpperCase method returns the value of the string converted to
+       * uppercase. toUpperCase does not affect the value of the string itself.
+       *
+       * @signature function()
+       * @return {String} The new string.
+       */
+      toLocaleUpperCase: null,
+
+      /**
+       * Call the same method of the super class.
+       *
+       * @param args {arguments} the arguments variable of the calling method
+       * @param varags {var} variable number of arguments passed to the overwritten function
+       * @return {var} the return value of the method of the base class.
+       */
+      base: function base(args, varags) {
+        return qx.core.Object.prototype.base.apply(this, arguments);
+      }
+    },
+
+    /*
+     *****************************************************************************
+        DEFER
+     *****************************************************************************
+     */
+    defer: function defer(statics, members) {
+      // add asserts into each debug build
+      {
+        qx.Class.include(statics, qx.core.MAssert);
+      }
+      var mappedFunctions = ["charAt", "charCodeAt", "concat", "indexOf", "lastIndexOf", "match", "replace", "search", "slice", "split", "substr", "substring", "toLowerCase", "toUpperCase", "toLocaleLowerCase", "toLocaleUpperCase", "trim", "codePointAt"]; // feature/bug detection:
+      // Some older Firefox version (<2) break if valueOf is overridden
+
+      members.valueOf = members.toString;
+
+      if (new statics("").valueOf() == null) {
+        delete members.valueOf;
+      }
+
+      for (var i = 0, l = mappedFunctions.length; i < l; i++) {
+        members[mappedFunctions[i]] = String.prototype[mappedFunctions[i]];
+      }
+    }
+  });
+  qx.type.BaseString.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.type.BaseString": {
+        "construct": true,
+        "require": true
+      },
+      "qx.locale.Manager": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * This class contains the translation of a message and all information
+   * to translate it again into a different language.
+   */
+  qx.Class.define("qx.locale.LocalizedString", {
+    extend: qx.type.BaseString,
+
+    /**
+     * @param translation {String} The translated message
+     * @param messageId {String} The messageId to translate
+     * @param args {Array} list of arguments passed used as values for format strings
+     * @param localized {Boolean} True if the string uses localize instead of translate
+     */
+    construct: function construct(translation, messageId, args, localized) {
+      qx.type.BaseString.constructor.call(this, translation);
+      this.__messageId__P_122_0 = messageId;
+      this.__localized__P_122_1 = !!localized;
+      this.__args__P_122_2 = args;
+    },
+    members: {
+      __localized__P_122_1: null,
+      __messageId__P_122_0: null,
+      __args__P_122_2: null,
+
+      /**
+       * Get a translation of the string using the current locale.
+       *
+       * @return {qx.locale.LocalizedString|String} This string translated using the current
+       *    locale.
+       */
+      translate: function translate() {
+        if (this.__localized__P_122_1) {
+          return qx.locale.Manager.getInstance().localize(this.__messageId__P_122_0, this.__args__P_122_2);
+        }
+
+        return qx.locale.Manager.getInstance().translate(this.__messageId__P_122_0, this.__args__P_122_2);
+      },
+
+      /**
+       * Returns the messageId.
+       *
+       * @return {String} The messageId of this localized String
+       */
+      getMessageId: function getMessageId() {
+        return this.__messageId__P_122_0;
+      }
+    }
+  });
+  qx.locale.LocalizedString.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.bom.client.OperatingSystem": {
+        "require": true,
+        "defer": "runtime"
+      },
       "qx.Bootstrap": {
         "usage": "dynamic",
         "require": true
       },
+      "qx.lang.Type": {},
       "qx.core.Environment": {
         "defer": "runtime"
       }
     },
     "environment": {
-      "provided": ["html.webworker", "html.filereader", "html.geolocation", "html.audio", "html.audio.ogg", "html.audio.mp3", "html.audio.wav", "html.audio.au", "html.audio.aif", "html.video", "html.video.ogg", "html.video.h264", "html.video.webm", "html.storage.local", "html.storage.session", "html.storage.userdata", "html.classlist", "html.xpath", "html.xul", "html.canvas", "html.svg", "html.vml", "html.dataset", "html.element.contains", "html.element.compareDocumentPosition", "html.element.textcontent", "html.console", "html.image.naturaldimensions", "html.history.state", "html.selection", "html.node.isequalnode", "html.fullscreen"],
+      "provided": ["locale", "locale.variant", "locale.default"],
       "required": {}
     }
   };
@@ -15049,7 +20191,2382 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
      http://qooxdoo.org
   
      Copyright:
-       2004-2011 1&1 Internet AG, Germany, http://www.1und1.de
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * This class comes with all relevant information regarding
+   * the client's selected locale.
+   *
+   * This class is used by {@link qx.core.Environment} and should not be used
+   * directly. Please check its class comment for details how to use it.
+   *
+   * @internal
+   * @require(qx.bom.client.OperatingSystem)
+   */
+  qx.Bootstrap.define("qx.bom.client.Locale", {
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /**
+       * The name of the system locale e.g. "de" when the full locale is "de_AT"
+       * @return {String} The current locale
+       * @internal
+       */
+      getLocale: function getLocale() {
+        var locale = qx.bom.client.Locale.__getNavigatorLocale__P_123_0();
+
+        var index = locale.indexOf("-");
+
+        if (index != -1) {
+          locale = locale.substr(0, index);
+        }
+
+        return locale;
+      },
+
+      /**
+       * The name of the variant for the system locale e.g. "at" when the
+       * full locale is "de_AT"
+       *
+       * @return {String} The locales variant.
+       * @internal
+       */
+      getVariant: function getVariant() {
+        var locale = qx.bom.client.Locale.__getNavigatorLocale__P_123_0();
+
+        var variant = "";
+        var index = locale.indexOf("-");
+
+        if (index != -1) {
+          variant = locale.substr(index + 1);
+        }
+
+        return variant;
+      },
+
+      /**
+       * Internal helper for accessing the navigators language.
+       *
+       * @return {String} The language set by the navigator.
+       */
+      __getNavigatorLocale__P_123_0: function __getNavigatorLocale__P_123_0() {
+        var locale = navigator.userLanguage || navigator.language || ""; // Android Bug: Android does not return the system language from the
+        // navigator language before version 4.4.x. Try to parse the language
+        // from the userAgent.
+        // See http://code.google.com/p/android/issues/detail?id=4641
+
+        if (qx.bom.client.OperatingSystem.getName() == "android") {
+          var version = /^(\d+)\.(\d+)(\..+)?/i.exec(qx.bom.client.OperatingSystem.getVersion());
+
+          if (qx.lang.Type.isArray(version) && version.length >= 3) {
+            if (parseInt(version[1]) < 4 || parseInt(version[1]) === 4 && parseInt(version[2]) < 4) {
+              var match = /(\w{2})-(\w{2})/i.exec(navigator.userAgent);
+
+              if (match) {
+                locale = match[0];
+              }
+            }
+          }
+        }
+
+        return locale.toLowerCase();
+      }
+    },
+    defer: function defer(statics) {
+      qx.core.Environment.add("locale", statics.getLocale);
+      qx.core.Environment.add("locale.variant", statics.getVariant);
+      qx.core.Environment.add("locale.default", "C");
+    }
+  });
+  qx.bom.client.Locale.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.event.dispatch.Direct": {
+        "require": true
+      },
+      "qx.locale.LocalizedString": {
+        "require": true
+      },
+      "qx.bom.client.Locale": {
+        "require": true
+      },
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.lang.Array": {},
+      "qx.log.Logger": {},
+      "qx.lang.String": {}
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "locale": {
+          "className": "qx.bom.client.Locale"
+        },
+        "locale.default": {
+          "className": "qx.bom.client.Locale",
+          "load": true
+        },
+        "locale.variant": {
+          "className": "qx.bom.client.Locale"
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Andreas Ecker (ecker)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * The qx.locale.Manager provides static translation methods (like tr()) and
+   * general locale information.
+   *
+   * @require(qx.event.dispatch.Direct)
+   * @require(qx.locale.LocalizedString)
+   * @require(qx.bom.client.Locale)
+   *
+   * Note: "translating" the empty string, e.g. tr("") will return the header
+   * of the respective .po file. See also https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html#PO-Files
+   *
+   * @cldr()
+   */
+  qx.Class.define("qx.locale.Manager", {
+    type: "singleton",
+    extend: qx.core.Object,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      qx.core.Object.constructor.call(this);
+      this.__translations__P_87_0 = qx.$$translations || {};
+      this.__locales__P_87_1 = qx.$$locales || {};
+      this.initLocale();
+      this.__clientLocale__P_87_2 = this.getLocale();
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /**
+       * Translate a message
+       *
+       * @param messageId {String} message id (may contain format strings)
+       * @param varargs {Object} variable number of arguments applied to the format string
+       * @return {String | LocalizedString} The translated message or localized string
+       * @see qx.lang.String.format
+       */
+      tr: function tr(messageId, varargs) {
+        var args = qx.lang.Array.fromArguments(arguments, 1);
+        return qx.locale.Manager.getInstance().translate(messageId, args);
+      },
+
+      /**
+       * Translate a plural message
+       *
+       * Depending on the third argument the plural or the singular form is chosen.
+       *
+       * @param singularMessageId {String} message id of the singular form (may contain format strings)
+       * @param pluralMessageId {String} message id of the plural form (may contain format strings)
+       * @param count {Integer} singular form if equals 1, otherwise plural
+       * @param varargs {Object} variable number of arguments applied to the format string
+       * @return {String | LocalizedString} The translated message or localized string
+       * @see qx.lang.String.format
+       */
+      trn: function trn(singularMessageId, pluralMessageId, count, varargs) {
+        var args = qx.lang.Array.fromArguments(arguments);
+        args.splice(0, 3); // assumes "Two forms, singular used for one only" (seems to be the most common form)
+        // (http://www.gnu.org/software/gettext/manual/html_node/gettext_150.html#Plural-forms)
+        // closely related with bug #745
+
+        if (count != 1) {
+          return qx.locale.Manager.getInstance().translate(pluralMessageId, args);
+        } else {
+          return qx.locale.Manager.getInstance().translate(singularMessageId, args);
+        }
+      },
+
+      /**
+       * Translate a message with translation hint (from developer addressed to translator).
+       *
+       * @param hint {String} hint for the translator of the message. Will be included in the .po file.
+       * @param messageId {String} message id (may contain format strings)
+       * @param varargs {Object} variable number of arguments applied to the format string
+       * @return {String | LocalizedString} The translated message or localized string
+       * @see qx.lang.String.format
+       */
+      trc: function trc(hint, messageId, varargs) {
+        var args = qx.lang.Array.fromArguments(arguments);
+        args.splice(0, 2);
+        return qx.locale.Manager.getInstance().translate(messageId, args);
+      },
+
+      /**
+       * Translate a plural message with translation hint (from developer addressed to translator).
+       *
+       * Depending on the third argument the plural or the singular form is chosen.
+       *
+       * @param hint {String} hint for the translator of the message. Will be included in the .po file.
+       * @param singularMessageId {String} message id of the singular form (may contain format strings)
+       * @param pluralMessageId {String} message id of the plural form (may contain format strings)
+       * @param count {Integer} singular form if equals 1, otherwise plural
+       * @param varargs {Object} variable number of arguments applied to the format string
+       * @return {String | LocalizedString} The translated message or localized string
+       * @see qx.lang.String.format
+       */
+      trnc: function trnc(hint, singularMessageId, pluralMessageId, count, varargs) {
+        var args = qx.lang.Array.fromArguments(arguments);
+        args.splice(0, 4); // see trn()
+
+        if (count != 1) {
+          return qx.locale.Manager.getInstance().translate(pluralMessageId, args);
+        } else {
+          return qx.locale.Manager.getInstance().translate(singularMessageId, args);
+        }
+      },
+
+      /**
+       * Mark the message for translation but return the original message.
+       *
+       * @param messageId {String} the message ID
+       * @return {String} messageId
+       */
+      marktr: function marktr(messageId) {
+        return messageId;
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /** current locale. locale is an language code like de, de_AT, en, en_GB, fr, ... */
+      locale: {
+        check: "String",
+        apply: "_applyLocale",
+        event: "changeLocale",
+        init: function () {
+          var locale = qx.core.Environment.get("locale");
+
+          if (!locale || locale === "") {
+            return qx.core.Environment.get("locale.default");
+          }
+
+          var variant = qx.core.Environment.get("locale.variant");
+
+          if (variant !== "") {
+            locale += "_" + variant;
+          }
+
+          return locale;
+        }()
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __defaultLocale__P_87_3: qx.core.Environment.get("locale.default"),
+      __locale__P_87_4: null,
+      __language__P_87_5: null,
+      __translations__P_87_0: null,
+      __locales__P_87_1: null,
+      __clientLocale__P_87_2: null,
+
+      /**
+       * Get the language code of the current locale
+       *
+       * This is the first part of a locale definition. The language for "de_DE" would be "de"
+       *
+       * @return {String} language code
+       */
+      getLanguage: function getLanguage() {
+        return this.__language__P_87_5;
+      },
+
+      /**
+       * Get the territory code of the current locale
+       *
+       * This is the second part of a locale definition. The territory for "de_DE" would be "DE"
+       *
+       * @return {String} territory code
+       */
+      getTerritory: function getTerritory() {
+        return this.getLocale().split("_")[1] || "";
+      },
+
+      /**
+       * Return the available application locales
+       *
+       * This corresponds to the LOCALES setting in config.json. Without argument,
+       * it only returns the currently loaded locales, with an argument of true
+       * all locales that went into the build. This is particularly interesting if
+       * locales were generated as dedicated I18N parts, and have to be loaded
+       * explicitly before being available.
+       *
+       * @param includeNonloaded {Boolean?null} include locales not yet loaded
+       * @return {String[]} array of available locales
+       */
+      getAvailableLocales: function getAvailableLocales(includeNonloaded) {
+        var locales = [];
+
+        for (var locale in this.__locales__P_87_1) {
+          if (locale != this.__defaultLocale__P_87_3) {
+            if (this.__locales__P_87_1[locale] === null && !includeNonloaded) {
+              continue; // skip not yet loaded locales
+            }
+
+            locales.push(locale);
+          }
+        }
+
+        return locales;
+      },
+
+      /**
+       * Extract the language part from a locale.
+       *
+       * @param locale {String} locale to be used
+       * @return {String} language
+       */
+      __extractLanguage__P_87_6: function __extractLanguage__P_87_6(locale) {
+        var language;
+
+        if (locale == null) {
+          return null;
+        }
+
+        var pos = locale.indexOf("_");
+
+        if (pos == -1) {
+          language = locale;
+        } else {
+          language = locale.substring(0, pos);
+        }
+
+        return language;
+      },
+      // property apply
+      _applyLocale: function _applyLocale(value, old) {
+        {
+          if (!(value in this.__locales__P_87_1 || value == this.__clientLocale__P_87_2)) {
+            qx.log.Logger.warn("Locale: " + value + " not available.");
+          }
+        }
+        this.__locale__P_87_4 = value;
+        this.__language__P_87_5 = this.__extractLanguage__P_87_6(value);
+      },
+
+      /**
+       * Add a translation to the translation manager.
+       *
+       * If <code>languageCode</code> already exists, its map will be updated with
+       * <code>translationMap</code> (new keys will be added, existing keys will be
+       * overwritten).
+       *
+       * @param languageCode {String} language code of the translation like <i>de, de_AT, en, en_GB, fr, ...</i>
+       * @param translationMap {Map} mapping of message identifiers to message strings in the target
+       *                             language, e.g. <i>{"greeting_short" : "Hello"}</i>. Plural forms
+       *                             are separate keys.
+       */
+      addTranslation: function addTranslation(languageCode, translationMap) {
+        var catalog = this.__translations__P_87_0;
+
+        if (catalog[languageCode]) {
+          for (var key in translationMap) {
+            catalog[languageCode][key] = translationMap[key];
+          }
+        } else {
+          catalog[languageCode] = translationMap;
+        }
+      },
+
+      /**
+       * Add a localization to the localization manager.
+       *
+       * If <code>localeCode</code> already exists, its map will be updated with
+       * <code>localeMap</code> (new keys will be added, existing keys will be overwritten).
+       *
+       * @param localeCode {String} locale code of the translation like <i>de, de_AT, en, en_GB, fr, ...</i>
+       * @param localeMap {Map} mapping of locale keys to the target locale values, e.g.
+       *                        <i>{"cldr_date_format_short" : "M/d/yy"}</i>.
+       */
+      addLocale: function addLocale(localeCode, localeMap) {
+        var catalog = this.__locales__P_87_1;
+
+        if (catalog[localeCode]) {
+          for (var key in localeMap) {
+            catalog[localeCode][key] = localeMap[key];
+          }
+        } else {
+          catalog[localeCode] = localeMap;
+        }
+      },
+
+      /**
+       * Translate a message using the current locale and apply format string to the arguments.
+       *
+       * Implements the lookup chain locale (e.g. en_US) -> language (e.g. en) ->
+       * default locale (e.g. C). Localizes the arguments if possible and splices
+       * them into the message. If qx.dynlocale is on, returns a {@link
+       * LocalizedString}.
+       *
+       * @param messageId {String} message id (may contain format strings)
+       * @param args {Object[]} array of objects, which are inserted into the format string
+       * @param locale {String ? #locale} locale to be used; if not given, defaults to the value of {@link #locale}
+       * @return {String | LocalizedString} translated message or localized string
+       */
+      translate: function translate(messageId, args, locale) {
+        var catalog = this.__translations__P_87_0;
+        return this.__lookupAndExpand__P_87_7(catalog, messageId, args, locale);
+      },
+
+      /**
+       * Provide localization (CLDR) data.
+       *
+       * Implements the lookup chain locale (e.g. en_US) -> language (e.g. en) ->
+       * default locale (e.g. C). Localizes the arguments if possible and splices
+       * them into the message. If qx.dynlocale is on, returns a {@link
+       * LocalizedString}.
+       *
+       * @param messageId {String} message id (may contain format strings)
+       * @param args {Object[]} array of objects, which are inserted into the format string
+       * @param locale {String ? #locale} locale to be used; if not given, defaults to the value of {@link #locale}
+       * @return {String | LocalizedString} translated message or localized string
+       */
+      localize: function localize(messageId, args, locale) {
+        var catalog = this.__locales__P_87_1;
+        return this.__lookupAndExpand__P_87_7(catalog, messageId, args, locale);
+      },
+
+      /**
+       * Look up an I18N key in a catalog and expand format strings.
+       *
+       * Implements the lookup chain locale (e.g. en_US) -> language (e.g. en) ->
+       * default locale (e.g. C). Localizes the arguments if possible and splices
+       * them into the message. If qx.dynlocale is on, returns a {@link
+       * LocalizedString}.
+       *
+       * @param catalog {Map} map of I18N keys and their values
+       * @param messageId {String} message id (may contain format strings)
+       * @param args {Object[]} array of objects, which are inserted into the format string
+       * @param locale {String ? #locale} locale to be used; if not given, defaults to the value of {@link #locale}
+       * @return {String | LocalizedString} translated message or localized string
+       */
+      __lookupAndExpand__P_87_7: function __lookupAndExpand__P_87_7(catalog, messageId, args, locale) {
+        {
+          this.assertObject(catalog);
+          this.assertString(messageId);
+          this.assertArray(args);
+        }
+        var txt;
+
+        if (!catalog) {
+          return messageId;
+        }
+
+        if (locale) {
+          var language = this.__extractLanguage__P_87_6(locale);
+        } else {
+          locale = this.__locale__P_87_4;
+          language = this.__language__P_87_5;
+        } // e.g. DE_at
+
+
+        if (!txt && catalog[locale]) {
+          txt = catalog[locale][messageId];
+        } // e.g. DE
+
+
+        if (!txt && catalog[language]) {
+          txt = catalog[language][messageId];
+        } // C
+
+
+        if (!txt && catalog[this.__defaultLocale__P_87_3]) {
+          txt = catalog[this.__defaultLocale__P_87_3][messageId];
+        }
+
+        if (!txt) {
+          txt = messageId;
+        }
+
+        if (args.length > 0) {
+          var translatedArgs = [];
+
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+
+            if (arg && arg.translate) {
+              translatedArgs[i] = arg.translate();
+            } else {
+              translatedArgs[i] = arg;
+            }
+          }
+
+          txt = qx.lang.String.format(txt, translatedArgs);
+        }
+
+        {
+          txt = new qx.locale.LocalizedString(txt, messageId, args, catalog === this.__locales__P_87_1);
+        }
+        return txt;
+      }
+    }
+  });
+  qx.locale.Manager.$$dbClassInfo = $$dbClassInfo;
+})();
+
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.ui.table.Table": {
+        "construct": true,
+        "require": true
+      },
+      "qx.ui.treevirtual.SimpleTreeDataModel": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.SimpleTreeDataCellRenderer": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.DefaultDataCellRenderer": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.SimpleTreeDataRowRenderer": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.SelectionManager": {
+        "construct": true
+      },
+      "qx.ui.table.columnmodel.Resize": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.pane.Scroller": {
+        "construct": true
+      },
+      "qx.lang.Type": {
+        "construct": true
+      },
+      "qx.ui.treevirtual.celleditor.NodeEditor": {
+        "construct": true
+      },
+      "qx.ui.table.selection.Model": {
+        "require": true
+      },
+      "qx.bom.element.Location": {},
+      "qx.event.type.Dom": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2007 Derrell Lipman
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Derrell Lipman (derrell)
+  
+  ************************************************************************ */
+
+  /**
+   * A "virtual" tree
+   * <p>
+   *   A number of convenience methods are available in the following mixins:
+   *   <ul>
+   *     <li>{@link qx.ui.treevirtual.MNode}</li>
+   *     <li>{@link qx.ui.treevirtual.MFamily}</li>
+   *   </ul>
+   * </p>
+   */
+  qx.Class.define("qx.ui.treevirtual.TreeVirtual", {
+    extend: qx.ui.table.Table,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param headings {Array | String}
+     *   An array containing a list of strings, one for each column, representing
+     *   the headings for each column.  As a special case, if only one column is
+     *   to exist, the string representing its heading need not be enclosed in an
+     *   array.
+     *
+     * @param custom {Map ? null}
+     *   A map provided (typically) by subclasses, to override the various
+     *   supplemental classes allocated within this constructor.  For normal
+     *   usage, this parameter may be omitted.  Each property must be an object
+     *   instance or a function which returns an object instance, as indicated by
+     *   the defaults listed here:
+     *
+     *   <dl>
+     *     <dt>initiallyHiddenColumns</dt>
+     *       <dd>
+     *         {Array?}
+     *         A list of column numbers that should be initially invisible. Any
+     *         column not mentioned will be initially visible, and if no array
+     *         is provided, all columns will be initially visible.
+     *       </dd>
+     *     <dt>dataModel</dt>
+     *       <dd>new qx.ui.treevirtual.SimpleTreeDataModel()</dd>
+     *     <dt>treeDataCellRenderer</dt>
+     *       <dd>
+     *         Instance of {@link qx.ui.treevirtual.SimpleTreeDataCellRenderer}.
+     *         Custom data cell renderer for the tree column.
+     *       </dd>
+     *     <dt>treeColumn</dt>
+     *       <dd>
+     *         The column number in which the tree is to reside, i.e., which
+     *         column uses the SimpleTreeDataCellRenderer or a subclass of it.
+     *       </dd>
+     *     <dt>defaultDataCellRenderer</dt>
+     *       <dd>
+     *         Instance of {@link qx.ui.treevirtual.DefaultDataCellRenderer}.
+     *         Custom data cell renderer for all columns other than the tree
+     *         column.
+     *       </dd>
+     *     <dt>dataRowRenderer</dt>
+     *       <dd>new qx.ui.treevirtual.SimpleTreeDataRowRenderer()</dd>
+     *     <dt>selectionManager</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.treevirtual.SelectionManager(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tableColumnModel</dt>
+     *       <dd><pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.columnmodel.Resize(obj);
+     *         }
+     *       </pre></dd>
+     *     <dt>tablePaneScroller</dt>
+     *       <dd>
+     *         Instance of {@link qx.ui.treevirtual.pane.Scroller}.
+     *         Custom table pane scroller for the tree
+     *         <pre class='javascript'>
+     *         function(obj)
+     *         {
+     *           return new qx.ui.table.columnmodel.Resize(obj);
+     *         }
+     *       </pre>
+     *       </dd>
+     *   </dl>
+     */
+    construct: function construct(headings, custom) {
+      //
+      // Allocate default objects if custom objects are not specified
+      //
+      if (!custom) {
+        custom = {};
+      }
+
+      if (!custom.dataModel) {
+        custom.dataModel = new qx.ui.treevirtual.SimpleTreeDataModel();
+      }
+
+      if (custom.treeColumn === undefined) {
+        custom.treeColumn = 0;
+        custom.dataModel.setTreeColumn(custom.treeColumn);
+      }
+
+      if (!custom.treeDataCellRenderer) {
+        custom.treeDataCellRenderer = new qx.ui.treevirtual.SimpleTreeDataCellRenderer();
+      }
+
+      if (!custom.defaultDataCellRenderer) {
+        custom.defaultDataCellRenderer = new qx.ui.treevirtual.DefaultDataCellRenderer();
+      }
+
+      if (!custom.dataRowRenderer) {
+        custom.dataRowRenderer = new qx.ui.treevirtual.SimpleTreeDataRowRenderer();
+      }
+
+      if (!custom.selectionManager) {
+        custom.selectionManager = function (obj) {
+          return new qx.ui.treevirtual.SelectionManager(obj);
+        };
+      }
+
+      if (!custom.tableColumnModel) {
+        custom.tableColumnModel = function (obj) {
+          return new qx.ui.table.columnmodel.Resize(obj);
+        };
+      }
+
+      if (!custom.tablePaneScroller) {
+        custom.tablePaneScroller = function (obj) {
+          return new qx.ui.treevirtual.pane.Scroller(obj);
+        };
+      } // Specify the column headings.  We accept a single string (one single
+      // column) or an array of strings (one or more columns).
+
+
+      if (qx.lang.Type.isString(headings)) {
+        headings = [headings];
+      }
+
+      custom.dataModel.setColumns(headings);
+      custom.dataModel.setTreeColumn(custom.treeColumn); // Save a reference to the tree with the data model
+
+      custom.dataModel.setTree(this); // Call our superclass constructor
+
+      qx.ui.table.Table.constructor.call(this, custom.dataModel, custom); // Arrange to redisplay edited data following editing
+
+      this.addListener("dataEdited", function (e) {
+        this.getDataModel().setData();
+      }, this); // By default, present the column visibility button only if there are
+      // multiple columns.
+
+      this.setColumnVisibilityButtonVisible(headings.length > 1); // Set sizes
+
+      this.setRowHeight(16);
+      this.setMetaColumnCounts(headings.length > 1 ? [1, -1] : [1]); // Overflow on trees is always hidden.  The internal elements scroll.
+
+      this.setOverflow("hidden"); // Set the data cell render.  We use the SimpleTreeDataCellRenderer for the
+      // tree column, and our DefaultDataCellRenderer for all other columns.
+
+      var stdcr = custom.treeDataCellRenderer;
+      var ddcr = custom.defaultDataCellRenderer;
+      var tcm = this.getTableColumnModel();
+      var treeCol = this.getDataModel().getTreeColumn();
+
+      for (var i = 0; i < headings.length; i++) {
+        tcm.setDataCellRenderer(i, i == treeCol ? stdcr : ddcr);
+      } // Set the data row renderer.
+
+
+      this.setDataRowRenderer(custom.dataRowRenderer); // Set the editor for the tree column, for use if allowNodeEdit is true
+
+      tcm.setCellEditorFactory(treeCol, new qx.ui.treevirtual.celleditor.NodeEditor()); // Move the focus with the mouse.  This controls the ROW focus indicator.
+
+      this.setFocusCellOnPointerMove(true); // In a tree we don't typically want a visible cell focus indicator
+
+      this.setShowCellFocusIndicator(false); // Get the list of pane scrollers
+
+      var scrollers = this._getPaneScrollerArr(); // For each scroller...
+
+
+      for (var i = 0; i < scrollers.length; i++) {
+        // Set the pane scrollers to handle the selection before
+        // displaying the focus, so we can manipulate the selected icon.
+        scrollers[i].setSelectBeforeFocus(true);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       EVENTS
+    *****************************************************************************
+    */
+    events: {
+      /**
+       * Fired when a tree branch which already has content is opened.
+       *
+       * Event data: the node object from the data model (of the node
+       * being opened) as described in
+       * {@link qx.ui.treevirtual.SimpleTreeDataModel}
+       */
+      treeOpenWithContent: "qx.event.type.Data",
+
+      /**
+       * Fired when an empty tree branch is opened.
+       *
+       * Event data: the node object from the data model (of the node
+       * being opened) as described in
+       * {@link qx.ui.treevirtual.SimpleTreeDataModel}
+       */
+      treeOpenWhileEmpty: "qx.event.type.Data",
+
+      /**
+       * Fired when a tree branch is closed.
+       *
+       * Event data: the node object from the data model (of the node
+       * being closed) as described in
+       * {@link qx.ui.treevirtual.SimpleTreeDataModel}
+       */
+      treeClose: "qx.event.type.Data",
+
+      /**
+       * Fired when the selected rows change.
+       *
+       * Event data: An array of node objects (the selected rows' nodes)
+       * from the data model.  Each node object is described in
+       * {@link qx.ui.treevirtual.SimpleTreeDataModel}
+       */
+      changeSelection: "qx.event.type.Data"
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /**
+       * Selection Modes {int}
+       *
+       *   NONE
+       *     Nothing can ever be selected.
+       *
+       *   SINGLE
+       *     Allow only one selected item.
+       *
+       *   SINGLE_INTERVAL
+       *     Allow one contiguous interval of selected items.
+       *
+       *   MULTIPLE_INTERVAL
+       *     Allow any set of selected items, whether contiguous or not.
+       *
+       *   MULTIPLE_INTERVAL_TOGGLE
+       *     Like MULTIPLE_INTERVAL, but clicking on an item toggles its selection state.
+       */
+      SelectionMode: {
+        NONE: qx.ui.table.selection.Model.NO_SELECTION,
+        SINGLE: qx.ui.table.selection.Model.SINGLE_SELECTION,
+        SINGLE_INTERVAL: qx.ui.table.selection.Model.SINGLE_INTERVAL_SELECTION,
+        MULTIPLE_INTERVAL: qx.ui.table.selection.Model.MULTIPLE_INTERVAL_SELECTION,
+        MULTIPLE_INTERVAL_TOGGLE: qx.ui.table.selection.Model.MULTIPLE_INTERVAL_SELECTION_TOGGLE
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /**
+       * Whether a click on the open/close button should also cause selection of
+       * the row.
+       */
+      openCloseClickSelectsRow: {
+        check: "Boolean",
+        init: false
+      },
+      appearance: {
+        refine: true,
+        init: "treevirtual"
+      },
+      allowNodeEdit: {
+        check: "Boolean",
+        init: false
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Return the data model for this tree.
+       *
+       * @return {qx.ui.table.ITableModel} The data model.
+       */
+      getDataModel: function getDataModel() {
+        return this.getTableModel();
+      },
+
+      /**
+       * Set whether lines linking tree children shall be drawn on the tree.
+       * Note that not all themes support tree lines.  As of the time of this
+       * writing, the Classic theme supports tree lines (and uses +/- icons
+       * which lend themselves to tree lines), while the Modern theme, which
+       * uses right-facing and downward-facing arrows instead of +/-, does not.
+       *
+       * @param b {Boolean}
+       *   <i>true</i> if tree lines should be shown; <i>false</i> otherwise.
+       *
+       */
+      setUseTreeLines: function setUseTreeLines(b) {
+        var dataModel = this.getDataModel();
+        var treeCol = dataModel.getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        dcr.setUseTreeLines(b); // Inform the listeners
+
+        if (dataModel.hasListener("dataChanged")) {
+          var data = {
+            firstRow: 0,
+            lastRow: dataModel.getRowCount() - 1,
+            firstColumn: 0,
+            lastColumn: dataModel.getColumnCount() - 1
+          };
+          dataModel.fireDataEvent("dataChanged", data);
+        }
+      },
+
+      /**
+       * Get whether lines linking tree children shall be drawn on the tree.
+       *
+       * @return {Boolean}
+       *   <i>true</i> if tree lines are in use;
+       *   <i>false</i> otherwise.
+       */
+      getUseTreeLines: function getUseTreeLines() {
+        var treeCol = this.getDataModel().getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        return dcr.getUseTreeLines();
+      },
+
+      /**
+       * Set whether the open/close button should be displayed on a branch,
+       * even if the branch has no children.
+       *
+       * @param b {Boolean}
+       *   <i>true</i> if the open/close button should be shown;
+       *   <i>false</i> otherwise.
+       *
+       */
+      setAlwaysShowOpenCloseSymbol: function setAlwaysShowOpenCloseSymbol(b) {
+        var dataModel = this.getDataModel();
+        var treeCol = dataModel.getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        dcr.setAlwaysShowOpenCloseSymbol(b); // Inform the listeners
+
+        if (dataModel.hasListener("dataChanged")) {
+          var data = {
+            firstRow: 0,
+            lastRow: dataModel.getRowCount() - 1,
+            firstColumn: 0,
+            lastColumn: dataModel.getColumnCount() - 1
+          };
+          dataModel.fireDataEvent("dataChanged", data);
+        }
+      },
+
+      /**
+       * Set whether drawing of first-level tree-node lines are disabled even
+       * if drawing of tree lines is enabled.
+       *
+       * @param b {Boolean}
+       *   <i>true</i> if first-level tree lines should be disabled;
+       *   <i>false</i> for normal operation.
+       *
+       */
+      setExcludeFirstLevelTreeLines: function setExcludeFirstLevelTreeLines(b) {
+        var dataModel = this.getDataModel();
+        var treeCol = dataModel.getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        dcr.setExcludeFirstLevelTreeLines(b); // Inform the listeners
+
+        if (dataModel.hasListener("dataChanged")) {
+          var data = {
+            firstRow: 0,
+            lastRow: dataModel.getRowCount() - 1,
+            firstColumn: 0,
+            lastColumn: dataModel.getColumnCount() - 1
+          };
+          dataModel.fireDataEvent("dataChanged", data);
+        }
+      },
+
+      /**
+       * Get whether drawing of first-level tree lines should be disabled even
+       * if drawing of tree lines is enabled.
+       * (See also {@link #getUseTreeLines})
+       *
+       * @return {Boolean}
+       *   <i>true</i> if tree lines are in use;
+       *   <i>false</i> otherwise.
+       */
+      getExcludeFirstLevelTreeLines: function getExcludeFirstLevelTreeLines() {
+        var treeCol = this.getDataModel().getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        return dcr.getExcludeFirstLevelTreeLines();
+      },
+
+      /**
+       * Set whether the open/close button should be displayed on a branch,
+       * even if the branch has no children.
+       *
+       * @return {Boolean}
+       *   <i>true</i> if tree lines are in use;
+       *   <i>false</i> otherwise.
+       */
+      getAlwaysShowOpenCloseSymbol: function getAlwaysShowOpenCloseSymbol() {
+        var treeCol = this.getDataModel().getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        return dcr.getAlwaysShowOpenCloseSymbol();
+      },
+
+      /**
+       * Returns the position of the open/close button for a node
+       *
+       * @return {Object} The position of the open/close button within the tree row
+       */
+      getOpenCloseButtonPosition: function getOpenCloseButtonPosition(node) {
+        var treeCol = this.getDataModel().getTreeColumn();
+        var dcr = this.getTableColumnModel().getDataCellRenderer(treeCol);
+        var rowPos = dcr.getOpenCloseButtonPosition(this, node); // Get the order of the columns
+
+        var tcm = this.getTableColumnModel();
+
+        var columnPositions = tcm._getColToXPosMap(); // Calculate the position of the beginning of the tree column
+
+
+        var left = qx.bom.element.Location.getLeft(this.getContentElement().getDomElement());
+
+        for (var i = 0; i < columnPositions[treeCol].visX; i++) {
+          left += tcm.getColumnWidth(columnPositions[i].visX);
+        }
+
+        rowPos.left += left;
+        return rowPos;
+      },
+
+      /**
+       * Set the selection mode.
+       *
+       * @param mode {Integer}
+       *   The selection mode to be used.  It may be any of:
+       *     <pre>
+       *       qx.ui.treevirtual.TreeVirtual.SelectionMode.NONE:
+       *          Nothing can ever be selected.
+       *
+       *       qx.ui.treevirtual.TreeVirtual.SelectionMode.SINGLE
+       *          Allow only one selected item.
+       *
+       *       qx.ui.treevirtual.TreeVirtual.SelectionMode.SINGLE_INTERVAL
+       *          Allow one contiguous interval of selected items.
+       *
+       *       qx.ui.treevirtual.TreeVirtual.SelectionMode.MULTIPLE_INTERVAL
+       *          Allow any selected items, whether contiguous or not.
+       *     </pre>
+       *
+       */
+      setSelectionMode: function setSelectionMode(mode) {
+        this.getSelectionModel().setSelectionMode(mode);
+      },
+
+      /**
+       * Get the selection mode currently in use.
+       *
+       * @return {Integer}
+       *   One of the values documented in {@link #setSelectionMode}
+       */
+      getSelectionMode: function getSelectionMode() {
+        return this.getSelectionModel().getSelectionMode();
+      },
+
+      /**
+       * Obtain the entire hierarchy of labels from the root down to the
+       * specified node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the hierarchy is desired.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {Array}
+       *   The returned array contains one string for each label in the
+       *   hierarchy of the node specified by the parameter.  Element 0 of the
+       *   array contains the label of the root node, element 1 contains the
+       *   label of the node immediately below root in the specified node's
+       *   hierarchy, etc., down to the last element in the array contain the
+       *   label of the node referenced by the parameter.
+       */
+      getHierarchy: function getHierarchy(nodeReference) {
+        var _this = this;
+
+        var components = [];
+        var node;
+        var nodeId;
+
+        if (_typeof(nodeReference) == "object") {
+          node = nodeReference;
+          nodeId = node.nodeId;
+        } else if (typeof nodeReference == "number") {
+          nodeId = nodeReference;
+        } else {
+          throw new Error("Expected node object or node id");
+        }
+
+        function addHierarchy(nodeId) {
+          // If we're at the root...
+          if (!nodeId) {
+            // ... then we're done
+            return;
+          } // Get the requested node
+
+
+          var node = _this.getDataModel().getData()[nodeId]; // Add its label to the hierarchy components
+
+
+          components.unshift(node.label); // Call recursively to our parent node.
+
+          addHierarchy(node.parentNodeId);
+        }
+
+        addHierarchy(nodeId);
+        return components;
+      },
+
+      /**
+       * Return the nodes that are currently selected.
+       *
+       * @return {Array}
+       *   An array containing the nodes that are currently selected.
+       */
+      getSelectedNodes: function getSelectedNodes() {
+        return this.getDataModel().getSelectedNodes();
+      },
+
+      /**
+       * Event handler. Called when a key was pressed.
+       *
+       * We handle the Enter key to toggle opened/closed tree state.  All
+       * other keydown events are passed to our superclass.
+       *
+       * @param evt {Map}
+       *   The event.
+       *
+       */
+      _onKeyDown: function _onKeyDown(evt) {
+        if (!this.getEnabled()) {
+          return;
+        }
+
+        var identifier = evt.getKeyIdentifier();
+        var consumed = false;
+        var modifiers = evt.getModifiers();
+
+        if (modifiers == 0) {
+          switch (identifier) {
+            case "Enter":
+              // Get the data model
+              var dm = this.getDataModel();
+              var focusedCol = this.getFocusedColumn();
+              var treeCol = dm.getTreeColumn();
+
+              if (focusedCol == treeCol) {
+                // Get the focused node
+                var focusedRow = this.getFocusedRow();
+                var node = dm.getNode(focusedRow);
+
+                if (!node.bHideOpenClose && node.type != qx.ui.treevirtual.SimpleTreeDataModel.Type.LEAF) {
+                  dm.setState(node, {
+                    bOpened: !node.bOpened
+                  });
+                }
+
+                consumed = true;
+              }
+
+              break;
+
+            case "Left":
+              this.moveFocusedCell(-1, 0);
+              break;
+
+            case "Right":
+              this.moveFocusedCell(1, 0);
+              break;
+          }
+        } else if (modifiers == qx.event.type.Dom.CTRL_MASK) {
+          switch (identifier) {
+            case "Left":
+              // Get the data model
+              var dm = this.getDataModel(); // Get the focused node
+
+              var focusedRow = this.getFocusedRow();
+              var treeCol = dm.getTreeColumn();
+              var node = dm.getNode(focusedRow); // If it's an open branch and open/close is allowed...
+
+              if (node.type == qx.ui.treevirtual.SimpleTreeDataModel.Type.BRANCH && !node.bHideOpenClose && node.bOpened) {
+                // ... then close it
+                dm.setState(node, {
+                  bOpened: !node.bOpened
+                });
+              } // Reset the focus to the current node
+
+
+              this.setFocusedCell(treeCol, focusedRow, true);
+              consumed = true;
+              break;
+
+            case "Right":
+              // Get the data model
+              var dm = this.getDataModel(); // Get the focused node
+
+              focusedRow = this.getFocusedRow();
+              treeCol = dm.getTreeColumn();
+              node = dm.getNode(focusedRow); // If it's a closed branch and open/close is allowed...
+
+              if (node.type == qx.ui.treevirtual.SimpleTreeDataModel.Type.BRANCH && !node.bHideOpenClose && !node.bOpened) {
+                // ... then open it
+                dm.setState(node, {
+                  bOpened: !node.bOpened
+                });
+              } // Reset the focus to the current node
+
+
+              this.setFocusedCell(treeCol, focusedRow, true);
+              consumed = true;
+              break;
+          }
+        } else if (modifiers == qx.event.type.Dom.SHIFT_MASK) {
+          switch (identifier) {
+            case "Left":
+              // Get the data model
+              var dm = this.getDataModel(); // Get the focused node
+
+              var focusedRow = this.getFocusedRow();
+              var treeCol = dm.getTreeColumn();
+              var node = dm.getNode(focusedRow); // If we're not at the top-level already...
+
+              if (node.parentNodeId) {
+                // Find out what rendered row our parent node is at
+                var rowIndex = dm.getRowFromNodeId(node.parentNodeId); // Set the focus to our parent
+
+                this.setFocusedCell(this._focusedCol, rowIndex, true);
+              }
+
+              consumed = true;
+              break;
+
+            case "Right":
+              // Get the data model
+              var dm = this.getDataModel(); // Get the focused node
+
+              focusedRow = this.getFocusedRow();
+              treeCol = dm.getTreeColumn();
+              node = dm.getNode(focusedRow); // If we're on a branch and open/close is allowed...
+
+              if (node.type == qx.ui.treevirtual.SimpleTreeDataModel.Type.BRANCH && !node.bHideOpenClose) {
+                // ... then first ensure the branch is open
+                if (!node.bOpened) {
+                  dm.setState(node, {
+                    bOpened: !node.bOpened
+                  });
+                } // If this node has children...
+
+
+                if (node.children.length > 0) {
+                  // ... then move the focus to the first child
+                  this.moveFocusedCell(0, 1);
+                }
+              }
+
+              consumed = true;
+              break;
+          }
+        } // Was this one of our events that we handled?
+
+
+        if (consumed) {
+          // Yup.  Don't propagate it.
+          evt.preventDefault();
+          evt.stopPropagation();
+        } else {
+          // It's not one of ours.  Let our superclass handle this event
+          qx.ui.treevirtual.TreeVirtual.superclass.prototype._onKeyDown.call(this, evt);
+        }
+      },
+
+      /**
+       * Event handler. Called when the selection has changed.
+       *
+       * @param evt {Map}
+       *   The event.
+       *
+       */
+      _onSelectionChanged: function _onSelectionChanged(evt) {
+        // Clear the old list of selected nodes
+        this.getDataModel()._clearSelections(); // If selections are allowed, pass an event to our listeners
+
+
+        if (this.getSelectionMode() != qx.ui.treevirtual.TreeVirtual.SelectionMode.NONE) {
+          var selectedNodes = this._calculateSelectedNodes(); // Get the now-focused
+
+
+          this.fireDataEvent("changeSelection", selectedNodes);
+        } // Call the superclass method
+
+
+        qx.ui.treevirtual.TreeVirtual.superclass.prototype._onSelectionChanged.call(this, evt);
+      },
+
+      /**
+       * Calculate and return the set of nodes which are currently selected by
+       * the user, on the screen.  In the process of calculating which nodes
+       * are selected, the nodes corresponding to the selected rows on the
+       * screen are marked as selected by setting their <i>bSelected</i>
+       * property to true, and all previously-selected nodes have their
+       * <i>bSelected</i> property reset to false.
+       *
+       * @return {Array}
+       *   An array of nodes matching the set of rows which are selected on the
+       *   screen.
+       */
+      _calculateSelectedNodes: function _calculateSelectedNodes() {
+        // Create an array of nodes that are now selected
+        var stdcm = this.getDataModel();
+        var selectedRanges = this.getSelectionModel().getSelectedRanges();
+        var selectedNodes = [];
+        var node;
+
+        for (var i = 0; i < selectedRanges.length; i++) {
+          for (var j = selectedRanges[i].minIndex; j <= selectedRanges[i].maxIndex; j++) {
+            node = stdcm.getNode(j);
+            stdcm.setState(node, {
+              bSelected: true
+            });
+            selectedNodes.push(node);
+          }
+        }
+
+        return selectedNodes;
+      },
+
+      /**
+       * Set the overflow mode.
+       *
+       * @param s {String}
+       *   Overflow mode.  The only allowable mode is "hidden".
+       *
+       *
+       * @throws {Error}
+       *   Error if tree overflow mode is other than "hidden"
+       */
+      setOverflow: function setOverflow(s) {
+        if (s != "hidden") {
+          throw new Error("Tree overflow must be hidden.  The internal elements of it will scroll.");
+        }
+      }
+    }
+  });
+  qx.ui.treevirtual.TreeVirtual.$$dbClassInfo = $$dbClassInfo;
+})();
+
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2007 Derrell Lipman
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Derrell Lipman (derrell)
+  
+  ************************************************************************ */
+
+  /**
+   * Utility functions for working with nodes.  These methods allow reference
+   * to a node by either the object itself or the object's node id.
+   */
+  qx.Mixin.define("qx.ui.treevirtual.MNode", {
+    members: {
+      /**
+       * Get a node object given its node id.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node to have its opened/closed state toggled.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.).
+       *
+       * @return {Object}
+       *   If the nodeReference is a node object itself, that same node object
+       *   is returned (identity).  Otherwise, the node object is looked up
+       *   using the specified node id.
+       */
+      nodeGet: function nodeGet(nodeReference) {
+        if (_typeof(nodeReference) == "object") {
+          return nodeReference;
+        } else if (typeof nodeReference == "number") {
+          return this.getTableModel().getData()[nodeReference];
+        } else {
+          throw new Error("Expected node object or node id");
+        }
+      },
+
+      /**
+       * Toggle the opened state of the node: if the node is opened, close
+       * it; if it is closed, open it.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node to have its opened/closed state toggled.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       */
+      nodeToggleOpened: function nodeToggleOpened(nodeReference) {
+        var node;
+        var nodeId;
+
+        if (_typeof(nodeReference) == "object") {
+          node = nodeReference;
+          nodeId = node.nodeId;
+        } else if (typeof nodeReference == "number") {
+          nodeId = nodeReference;
+          node = this.getTableModel().getData()[nodeId];
+        } else {
+          throw new Error("Expected node object or node id");
+        }
+
+        this.getTableModel().setState(nodeId, {
+          bOpened: !node.bOpened
+        });
+      },
+
+      /**
+       * Set state attributes of a tree node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which attributes are being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param attributes {Map}
+       *   Map with the node properties to be set.  The map may contain any of
+       *   the properties described in
+       *   {@link qx.ui.treevirtual.SimpleTreeDataModel}
+       *
+       */
+      nodeSetState: function nodeSetState(nodeReference, attributes) {
+        var nodeId;
+
+        if (_typeof(nodeReference) == "object") {
+          nodeId = nodeReference.nodeId;
+        } else if (typeof nodeReference == "number") {
+          nodeId = nodeReference;
+        } else {
+          throw new Error("Expected node object or node id");
+        }
+
+        this.getTableModel().setState(nodeId, attributes);
+      },
+
+      /**
+       * Set the label for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the label is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param label {String}
+       *   The new label for the specified node
+       *
+       */
+      nodeSetLabel: function nodeSetLabel(nodeReference, label) {
+        this.nodeSetState(nodeReference, {
+          label: label
+        });
+      },
+
+      /**
+       * Get the label for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the label is being retrieved.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {String}
+       *   The label for the specified node
+       */
+      nodeGetLabel: function nodeGetLabel(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.label;
+      },
+
+      /**
+       * Set the selected state for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the selected state is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param b {Boolean}
+       *   The new selected state for the specified node.
+       *
+       */
+      nodeSetSelected: function nodeSetSelected(nodeReference, b) {
+        this.nodeSetState(nodeReference, {
+          bSelected: b
+        });
+      },
+
+      /**
+       * Get the selected state for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the selected state is being retrieved.  The node
+       *   can be represented either by the node object, or the node id (as
+       *   would have been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {Boolean}
+       *   The selected state for the specified node.
+       */
+      nodeGetSelected: function nodeGetSelected(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.bSelected;
+      },
+
+      /**
+       * Opens all nodes in the tree with minimal redraw
+       */
+      nodeOpenAll: function nodeOpenAll() {
+        var model = this.getTableModel();
+        model.getData().forEach(function (node) {
+          if (node) {
+            model.setState(node.nodeId, {
+              bOpened: true
+            }, true);
+          }
+        });
+        model.setData();
+      },
+
+      /**
+       * Closes all nodes in the tree with minimal redraw
+       */
+      nodeCloseAll: function nodeCloseAll() {
+        var model = this.getTableModel();
+        model.getData().forEach(function (node) {
+          if (node) {
+            model.setState(node.nodeId, {
+              bOpened: false
+            }, true);
+          }
+        });
+        model.setData();
+      },
+
+      /**
+       * Internal call to set the opened state for a node. (Note that this method has no effect
+       * if the requested state is the same as the current state.)
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the opened state is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param opened {Boolean}
+       *   The new opened state for the specified node.
+       *
+       * @param cascade {Boolean}
+       *   Whether to descend the tree changing opened state of all children
+       *
+       * @param isRecursed {Boolean?}
+       *   For internal use when cascading to determine outer level and call setData
+       */
+      _nodeSetOpenedInternal: function _nodeSetOpenedInternal(nodeReference, opened, cascade, isRecursed) {
+        var _this = this;
+
+        var node;
+
+        if (_typeof(nodeReference) == "object") {
+          node = nodeReference;
+        } else if (typeof nodeReference == "number") {
+          node = this.getTableModel().getData()[nodeReference];
+        } else {
+          throw new Error("Expected node object or node id");
+        } // Only set new state if not already in the requested state, since
+        // setting new state involves dispatching events.
+
+
+        if (opened != node.bOpened) {
+          this.getTableModel().setState(node.nodeId, {
+            bOpened: opened
+          }, true);
+        }
+
+        if (cascade) {
+          node.children.forEach(function (child) {
+            return _this.nodeSetOpened(child, opened, cascade, true);
+          });
+        }
+
+        if (!cascade || !isRecursed) {
+          this.getTableModel().setData();
+        }
+      },
+
+      /**
+       * Set the opened state for a node.  (Note that this method has no effect
+       * if the requested state is the same as the current state.)
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the opened state is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param opened {Boolean}
+       *   The new opened state for the specified node.
+       *
+       * @param cascade {Boolean}
+       *   Whether to descend the tree changing opened state of all children
+       */
+      nodeSetOpened: function nodeSetOpened(nodeReference, opened, cascade) {
+        this._nodeSetOpenedInternal(nodeReference, opened, cascade, false);
+      },
+
+      /**
+       * Get the opened state for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the opened state is being retrieved.  The node can
+       *   be represented either by the node object, or the node id (as would
+       *   have been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {Boolean}
+       *   The opened state for the specified node.
+       */
+      nodeGetOpened: function nodeGetOpened(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.bOpened;
+      },
+
+      /**
+       * Set the hideOpenClose state for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the hideOpenClose state is being set.  The node
+       *   can be represented either by the node object, or the node id (as
+       *   would have been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param b {Boolean}
+       *   The new hideOpenClose state for the specified node.
+       *
+       */
+      nodeSetHideOpenClose: function nodeSetHideOpenClose(nodeReference, b) {
+        this.nodeSetState(nodeReference, {
+          bHideOpenClose: b
+        });
+      },
+
+      /**
+       * Get the hideOpenClose state for a node.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the hideOpenClose state is being retrieved.  The
+       *   node can be represented either by the node object, or the node id (as
+       *   would have been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {Boolean}
+       *   The new hideOpenClose state for the specified node.
+       */
+      nodeGetHideOpenClose: function nodeGetHideOpenClose(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.bHideOpenClose;
+      },
+
+      /**
+       * Set the icon for a node when in its unselected (normal) state.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the icon is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param path {String}
+       *   The path to the icon to be used when the node is not selected
+       *
+       */
+      nodeSetIcon: function nodeSetIcon(nodeReference, path) {
+        this.nodeSetState(nodeReference, {
+          icon: path
+        });
+      },
+
+      /**
+       * Get the icon for a node when in its unselected (normal) state.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the icon is being retrieved.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {String}
+       *   The path to the icon to be used when the node is not selected, if a
+       *   path has been previously provided (i.e. not using the default icon).
+       */
+      nodeGetIcon: function nodeGetIcon(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.icon;
+      },
+
+      /**
+       * Set the icon for a node when in its selected state.
+       * <p>
+       * NOTE: As of 13 Mar 2009, this feature is disabled by default, by
+       *       virtue of the fact that the tree's "alwaysUpdateCells" property
+       *       has a setting of 'false' now instead of 'true'. Setting this
+       *       property to true allows the icon to change upon selection, but
+       *       causes problems such as single clicks not always selecting a
+       *       row, and, in IE, double click operations failing
+       *       completely. (For more information, see bugs 605 and 2021.) To
+       *       re-enable the option to have an unique icon that is displayed
+       *       when the node is selected, issue
+       *       <code>tree.setAlwaysUpdateCells(true);</code>
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the icon is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param path {String}
+       *   The path to the icon to be used when the node is selected
+       *
+       */
+      nodeSetSelectedIcon: function nodeSetSelectedIcon(nodeReference, path) {
+        this.nodeSetState(nodeReference, {
+          iconSelected: path
+        });
+      },
+
+      /**
+       * Get the icon for a node when in its selected state.
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the icon is being retrieved.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {String}
+       *   The path to the icon to be used when the node is selected, if a path
+       *   has been previously provided (i.e. not using the default icon).
+       */
+      nodeGetSelectedIcon: function nodeGetSelectedIcon(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.iconSelected;
+      },
+
+      /**
+       * Set the cell style for a node
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the cell style is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param style {String}
+       *   The CSS style to be applied for the tree column cell for this node,
+       *   if a style has been previously provided (i.e. not using the default
+       *   style).
+       *
+       */
+      nodeSetCellStyle: function nodeSetCellStyle(nodeReference, style) {
+        this.nodeSetState(nodeReference, {
+          cellStyle: style
+        });
+      },
+
+      /**
+       * Get the cell style for a node
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the cell style is being retrieved.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {String}
+       *   The CSS style being applied for the tree column cell for this node.
+       */
+      nodeGetCellStyle: function nodeGetCellStyle(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.cellStyle;
+      },
+
+      /**
+       * Set the label style for a node
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the label style is being set.  The node can be
+       *   represented either by the node object, or the node id (as would have
+       *   been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @param style {String}
+       *   The CSS style to be applied for the label for this node.
+       *
+       */
+      nodeSetLabelStyle: function nodeSetLabelStyle(nodeReference, style) {
+        this.nodeSetState(nodeReference, {
+          labelStyle: style
+        });
+      },
+
+      /**
+       * Get the label style for a node
+       *
+       * @param nodeReference {Object | Integer}
+       *   The node for which the label style is being retrieved.  The node can
+       *   be represented either by the node object, or the node id (as would
+       *   have been returned by addBranch(), addLeaf(), etc.)
+       *
+       * @return {String}
+       *   The CSS style being applied for the label for this node, if a style
+       *   has been previously provided (i.e. not using the default style).
+       */
+      nodeGetLabelStyle: function nodeGetLabelStyle(nodeReference) {
+        var node = this.nodeGet(nodeReference);
+        return node.cellStyle;
+      }
+    }
+  });
+  qx.ui.treevirtual.MNode.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * This mixin redirects all children handling methods to a child widget of the
+   * including class. This is e.g. used in {@link qx.ui.window.Window} to add
+   * child widgets directly to the window pane.
+   *
+   * The including class must implement the method <code>getChildrenContainer</code>,
+   * which has to return the widget, to which the child widgets should be added.
+   */
+  qx.Mixin.define("qx.ui.core.MRemoteChildrenHandling", {
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Forward the call with the given function name to the children container
+       *
+       * @param functionName {String} name of the method to forward
+       * @param a1 {var?} first argument of the method to call
+       * @param a2 {var?} second argument of the method to call
+       * @param a3 {var?} third argument of the method to call
+       * @return {var} The return value of the forward method
+       */
+      __forward__P_186_0: function __forward__P_186_0(functionName, a1, a2, a3) {
+        var container = this.getChildrenContainer();
+
+        if (container === this) {
+          functionName = "_" + functionName;
+        }
+
+        return container[functionName](a1, a2, a3);
+      },
+
+      /**
+       * Returns the children list
+       *
+       * @return {qx.ui.core.LayoutItem[]} The children array (Arrays are
+       *   reference types, please do not modify them in-place)
+       */
+      getChildren: function getChildren() {
+        return this.__forward__P_186_0("getChildren");
+      },
+
+      /**
+       * Whether the widget contains children.
+       *
+       * @return {Boolean} Returns <code>true</code> when the widget has children.
+       */
+      hasChildren: function hasChildren() {
+        return this.__forward__P_186_0("hasChildren");
+      },
+
+      /**
+       * Adds a new child widget.
+       *
+       * The supported keys of the layout options map depend on the layout manager
+       * used to position the widget. The options are documented in the class
+       * documentation of each layout manager {@link qx.ui.layout}.
+       *
+       * @param child {qx.ui.core.LayoutItem} the item to add.
+       * @param options {Map?null} Optional layout data for item.
+       * @return {qx.ui.core.Widget} This object (for chaining support)
+       */
+      add: function add(child, options) {
+        return this.__forward__P_186_0("add", child, options);
+      },
+
+      /**
+       * Remove the given child item.
+       *
+       * @param child {qx.ui.core.LayoutItem} the item to remove
+       * @return {qx.ui.core.Widget} This object (for chaining support)
+       */
+      remove: function remove(child) {
+        return this.__forward__P_186_0("remove", child);
+      },
+
+      /**
+       * Remove all children.
+       * @return {Array} An array containing the removed children.
+       */
+      removeAll: function removeAll() {
+        return this.__forward__P_186_0("removeAll");
+      },
+
+      /**
+       * Returns the index position of the given item if it is
+       * a child item. Otherwise it returns <code>-1</code>.
+       *
+       * This method works on the widget's children list. Some layout managers
+       * (e.g. {@link qx.ui.layout.HBox}) use the children order as additional
+       * layout information. Other layout manager (e.g. {@link qx.ui.layout.Grid})
+       * ignore the children order for the layout process.
+       *
+       * @param child {qx.ui.core.LayoutItem} the item to query for
+       * @return {Integer} The index position or <code>-1</code> when
+       *   the given item is no child of this layout.
+       */
+      indexOf: function indexOf(child) {
+        return this.__forward__P_186_0("indexOf", child);
+      },
+
+      /**
+       * Add a child at the specified index
+       *
+       * This method works on the widget's children list. Some layout managers
+       * (e.g. {@link qx.ui.layout.HBox}) use the children order as additional
+       * layout information. Other layout manager (e.g. {@link qx.ui.layout.Grid})
+       * ignore the children order for the layout process.
+       *
+       * @param child {qx.ui.core.LayoutItem} item to add
+       * @param index {Integer} Index, at which the item will be inserted
+       * @param options {Map?null} Optional layout data for item.
+       */
+      addAt: function addAt(child, index, options) {
+        this.__forward__P_186_0("addAt", child, index, options);
+      },
+
+      /**
+       * Add an item before another already inserted item
+       *
+       * This method works on the widget's children list. Some layout managers
+       * (e.g. {@link qx.ui.layout.HBox}) use the children order as additional
+       * layout information. Other layout manager (e.g. {@link qx.ui.layout.Grid})
+       * ignore the children order for the layout process.
+       *
+       * @param child {qx.ui.core.LayoutItem} item to add
+       * @param before {qx.ui.core.LayoutItem} item before the new item will be inserted.
+       * @param options {Map?null} Optional layout data for item.
+       */
+      addBefore: function addBefore(child, before, options) {
+        this.__forward__P_186_0("addBefore", child, before, options);
+      },
+
+      /**
+       * Add an item after another already inserted item
+       *
+       * This method works on the widget's children list. Some layout managers
+       * (e.g. {@link qx.ui.layout.HBox}) use the children order as additional
+       * layout information. Other layout manager (e.g. {@link qx.ui.layout.Grid})
+       * ignore the children order for the layout process.
+       *
+       * @param child {qx.ui.core.LayoutItem} item to add
+       * @param after {qx.ui.core.LayoutItem} item, after which the new item will be inserted
+       * @param options {Map?null} Optional layout data for item.
+       */
+      addAfter: function addAfter(child, after, options) {
+        this.__forward__P_186_0("addAfter", child, after, options);
+      },
+
+      /**
+       * Remove the item at the specified index.
+       *
+       * This method works on the widget's children list. Some layout managers
+       * (e.g. {@link qx.ui.layout.HBox}) use the children order as additional
+       * layout information. Other layout manager (e.g. {@link qx.ui.layout.Grid})
+       * ignore the children order for the layout process.
+       *
+       * @param index {Integer} Index of the item to remove.
+       * @return {qx.ui.core.LayoutItem} The removed item
+       */
+      removeAt: function removeAt(index) {
+        return this.__forward__P_186_0("removeAt", index);
+      }
+    }
+  });
+  qx.ui.core.MRemoteChildrenHandling.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * This mixin redirects the layout manager to a child widget of the
+   * including class. This is e.g. used in {@link qx.ui.window.Window} to configure
+   * the layout manager of the window pane instead of the window directly.
+   *
+   * The including class must implement the method <code>getChildrenContainer</code>,
+   * which has to return the widget, to which the layout should be set.
+   */
+  qx.Mixin.define("qx.ui.core.MRemoteLayoutHandling", {
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Set a layout manager for the widget. A a layout manager can only be connected
+       * with one widget. Reset the connection with a previous widget first, if you
+       * like to use it in another widget instead.
+       *
+       * @param layout {qx.ui.layout.Abstract} The new layout or
+       *     <code>null</code> to reset the layout.
+       */
+      setLayout: function setLayout(layout) {
+        this.getChildrenContainer().setLayout(layout);
+      },
+
+      /**
+       * Get the widget's layout manager.
+       *
+       * @return {qx.ui.layout.Abstract} The widget's layout manager
+       */
+      getLayout: function getLayout() {
+        return this.getChildrenContainer().getLayout();
+      }
+    }
+  });
+  qx.ui.core.MRemoteLayoutHandling.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * This mixin defines the <code>contentPadding</code> property, which is used
+   * by widgets like the window or group box, which must have a property, which
+   * defines the padding of an inner pane.
+   *
+   * The including class must implement the method
+   * <code>_getContentPaddingTarget</code>, which must return the widget on which
+   * the padding should be applied.
+   */
+  qx.Mixin.define("qx.ui.core.MContentPadding", {
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      /** Top padding of the content pane */
+      contentPaddingTop: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyContentPadding",
+        themeable: true
+      },
+
+      /** Right padding of the content pane */
+      contentPaddingRight: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyContentPadding",
+        themeable: true
+      },
+
+      /** Bottom padding of the content pane */
+      contentPaddingBottom: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyContentPadding",
+        themeable: true
+      },
+
+      /** Left padding of the content pane */
+      contentPaddingLeft: {
+        check: "Integer",
+        init: 0,
+        apply: "_applyContentPadding",
+        themeable: true
+      },
+
+      /**
+       * The 'contentPadding' property is a shorthand property for setting 'contentPaddingTop',
+       * 'contentPaddingRight', 'contentPaddingBottom' and 'contentPaddingLeft'
+       * at the same time.
+       *
+       * If four values are specified they apply to top, right, bottom and left respectively.
+       * If there is only one value, it applies to all sides, if there are two or three,
+       * the missing values are taken from the opposite side.
+       */
+      contentPadding: {
+        group: ["contentPaddingTop", "contentPaddingRight", "contentPaddingBottom", "contentPaddingLeft"],
+        mode: "shorthand",
+        themeable: true
+      }
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+
+    /* eslint-disable @qooxdoo/qx/no-refs-in-members */
+    members: {
+      /**
+       * @type {Map} Maps property names of content padding to the setter of the padding
+       *
+       * @lint ignoreReferenceField(__contentPaddingSetter)
+       */
+      __contentPaddingSetter__P_191_0: {
+        contentPaddingTop: "setPaddingTop",
+        contentPaddingRight: "setPaddingRight",
+        contentPaddingBottom: "setPaddingBottom",
+        contentPaddingLeft: "setPaddingLeft"
+      },
+
+      /**
+       * @type {Map} Maps property names of content padding to the themed setter of the padding
+       *
+       * @lint ignoreReferenceField(__contentPaddingThemedSetter)
+       */
+      __contentPaddingThemedSetter__P_191_1: {
+        contentPaddingTop: "setThemedPaddingTop",
+        contentPaddingRight: "setThemedPaddingRight",
+        contentPaddingBottom: "setThemedPaddingBottom",
+        contentPaddingLeft: "setThemedPaddingLeft"
+      },
+
+      /**
+       * @type {Map} Maps property names of content padding to the resetter of the padding
+       *
+       * @lint ignoreReferenceField(__contentPaddingResetter)
+       */
+      __contentPaddingResetter__P_191_2: {
+        contentPaddingTop: "resetPaddingTop",
+        contentPaddingRight: "resetPaddingRight",
+        contentPaddingBottom: "resetPaddingBottom",
+        contentPaddingLeft: "resetPaddingLeft"
+      },
+      // property apply
+      _applyContentPadding: function _applyContentPadding(value, old, name, variant) {
+        var target = this._getContentPaddingTarget();
+
+        if (value == null) {
+          var resetter = this.__contentPaddingResetter__P_191_2[name];
+          target[resetter]();
+        } else {
+          // forward the themed sates if case the apply was invoked by a theme
+          if (variant == "setThemed" || variant == "resetThemed") {
+            var setter = this.__contentPaddingThemedSetter__P_191_1[name];
+            target[setter](value);
+          } else {
+            var setter = this.__contentPaddingSetter__P_191_0[name];
+            target[setter](value);
+          }
+        }
+      }
+    }
+  });
+  qx.ui.core.MContentPadding.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.Mixin": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.locale.Manager": {
+        "construct": true
+      }
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "qx.dynlocale": {
+          "load": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2009 1&1 Internet AG, Germany, http://www.1und1.de
   
      License:
        MIT: https://opensource.org/licenses/MIT
@@ -15061,1206 +22578,101 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
   ************************************************************************ */
 
   /**
-   * Internal class which contains the checks used by {@link qx.core.Environment}.
-   * All checks in here are marked as internal which means you should never use
-   * them directly.
-   *
-   * This class should contain all checks about HTML.
-   *
-   * @internal
+   * Mixin handling the valid and required properties for the form widgets.
    */
-  qx.Bootstrap.define("qx.bom.client.Html", {
-    statics: {
-      /**
-       * Whether the client supports Web Workers.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if webworkers are supported
-       */
-      getWebWorker: function getWebWorker() {
-        return window.Worker != null;
-      },
-
-      /**
-       * Whether the client supports File Readers
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if FileReaders are supported
-       */
-      getFileReader: function getFileReader() {
-        return window.FileReader != null;
-      },
-
-      /**
-       * Whether the client supports Geo Location.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if geolocation supported
-       */
-      getGeoLocation: function getGeoLocation() {
-        return "geolocation" in navigator;
-      },
-
-      /**
-       * Whether the client supports audio.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if audio is supported
-       */
-      getAudio: function getAudio() {
-        return !!document.createElement("audio").canPlayType;
-      },
-
-      /**
-       * Whether the client can play ogg audio format.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getAudioOgg: function getAudioOgg() {
-        if (!qx.bom.client.Html.getAudio()) {
-          return "";
-        }
-
-        var a = document.createElement("audio");
-        return a.canPlayType("audio/ogg");
-      },
-
-      /**
-       * Whether the client can play mp3 audio format.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getAudioMp3: function getAudioMp3() {
-        if (!qx.bom.client.Html.getAudio()) {
-          return "";
-        }
-
-        var a = document.createElement("audio");
-        return a.canPlayType("audio/mpeg");
-      },
-
-      /**
-       * Whether the client can play wave audio wave format.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getAudioWav: function getAudioWav() {
-        if (!qx.bom.client.Html.getAudio()) {
-          return "";
-        }
-
-        var a = document.createElement("audio");
-        return a.canPlayType("audio/x-wav");
-      },
-
-      /**
-       * Whether the client can play au audio format.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getAudioAu: function getAudioAu() {
-        if (!qx.bom.client.Html.getAudio()) {
-          return "";
-        }
-
-        var a = document.createElement("audio");
-        return a.canPlayType("audio/basic");
-      },
-
-      /**
-       * Whether the client can play aif audio format.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getAudioAif: function getAudioAif() {
-        if (!qx.bom.client.Html.getAudio()) {
-          return "";
-        }
-
-        var a = document.createElement("audio");
-        return a.canPlayType("audio/x-aiff");
-      },
-
-      /**
-       * Whether the client supports video.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if video is supported
-       */
-      getVideo: function getVideo() {
-        return !!document.createElement("video").canPlayType;
-      },
-
-      /**
-       * Whether the client supports ogg video.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getVideoOgg: function getVideoOgg() {
-        if (!qx.bom.client.Html.getVideo()) {
-          return "";
-        }
-
-        var v = document.createElement("video");
-        return v.canPlayType('video/ogg; codecs="theora, vorbis"');
-      },
-
-      /**
-       * Whether the client supports mp4 video.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getVideoH264: function getVideoH264() {
-        if (!qx.bom.client.Html.getVideo()) {
-          return "";
-        }
-
-        var v = document.createElement("video");
-        return v.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-      },
-
-      /**
-       * Whether the client supports webm video.
-       *
-       * @internal
-       * @return {String} "" or "maybe" or "probably"
-       */
-      getVideoWebm: function getVideoWebm() {
-        if (!qx.bom.client.Html.getVideo()) {
-          return "";
-        }
-
-        var v = document.createElement("video");
-        return v.canPlayType('video/webm; codecs="vp8, vorbis"');
-      },
-
-      /**
-       * Whether the client supports local storage.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if local storage is supported
-       */
-      getLocalStorage: function getLocalStorage() {
-        try {
-          // write once to make sure to catch safari's private mode [BUG #7718]
-          window.localStorage.setItem("$qx_check", "test");
-          window.localStorage.removeItem("$qx_check");
-          return true;
-        } catch (exc) {
-          // Firefox Bug: localStorage doesn't work in file:/// documents
-          // see https://bugzilla.mozilla.org/show_bug.cgi?id=507361
-          return false;
-        }
-      },
-
-      /**
-       * Whether the client supports session storage.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if session storage is supported
-       */
-      getSessionStorage: function getSessionStorage() {
-        try {
-          // write once to make sure to catch safari's private mode [BUG #7718]
-          window.sessionStorage.setItem("$qx_check", "test");
-          window.sessionStorage.removeItem("$qx_check");
-          return true;
-        } catch (exc) {
-          // Firefox Bug: Local execution of window.sessionStorage throws error
-          // see https://bugzilla.mozilla.org/show_bug.cgi?id=357323
-          return false;
-        }
-      },
-
-      /**
-       * Whether the client supports user data to persist data. This is only
-       * relevant for IE < 8.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if the user data is supported.
-       */
-      getUserDataStorage: function getUserDataStorage() {
-        var el = document.createElement("div");
-        el.style["display"] = "none";
-        document.getElementsByTagName("head")[0].appendChild(el);
-        var supported = false;
-
-        try {
-          el.addBehavior("#default#userdata");
-          el.load("qxtest");
-          supported = true;
-        } catch (e) {}
-
-        document.getElementsByTagName("head")[0].removeChild(el);
-        return supported;
-      },
-
-      /**
-       * Whether the browser supports CSS class lists.
-       * https://developer.mozilla.org/en-US/docs/DOM/element.classList
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if class list is supported.
-       */
-      getClassList: function getClassList() {
-        return !!(document.documentElement.classList && qx.Bootstrap.getClass(document.documentElement.classList) === "DOMTokenList");
-      },
-
-      /**
-       * Checks if XPath could be used.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if xpath is supported.
-       */
-      getXPath: function getXPath() {
-        return !!document.evaluate;
-      },
-
-      /**
-       * Checks if XUL could be used.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if XUL is supported.
-       */
-      getXul: function getXul() {
-        try {
-          document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "label");
-          return true;
-        } catch (e) {
-          return false;
-        }
-      },
-
-      /**
-       * Checks if SVG could be used
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if SVG is supported.
-       */
-      getSvg: function getSvg() {
-        return document.implementation && document.implementation.hasFeature && (document.implementation.hasFeature("org.w3c.dom.svg", "1.0") || document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1"));
-      },
-
-      /**
-       * Checks if VML is supported
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if VML is supported.
-       */
-      getVml: function getVml() {
-        var el = document.createElement("div");
-        document.body.appendChild(el);
-        el.innerHTML = '<v:shape id="vml_flag1" adj="1" />';
-        el.firstChild.style.behavior = "url(#default#VML)";
-        var hasVml = _typeof(el.firstChild.adj) == "object";
-        document.body.removeChild(el);
-        return hasVml;
-      },
-
-      /**
-       * Checks if canvas could be used
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if canvas is supported.
-       */
-      getCanvas: function getCanvas() {
-        return !!window.CanvasRenderingContext2D;
-      },
-
-      /**
-       * Asynchronous check for using data urls.
-       *
-       * @internal
-       * @param callback {Function} The function which should be executed as
-       *   soon as the check is done.
-       *
-       * @ignore(Image)
-       */
-      getDataUrl: function getDataUrl(callback) {
-        var data = new Image();
-
-        data.onload = data.onerror = function () {
-          // wrap that into a timeout because IE might execute it synchronously
-          window.setTimeout(function () {
-            callback.call(null, data.width == 1 && data.height == 1);
-          }, 0);
-        };
-
-        data.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-      },
-
-      /**
-       * Checks if dataset could be used
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if dataset is supported.
-       */
-      getDataset: function getDataset() {
-        return !!document.documentElement.dataset;
-      },
-
-      /**
-       * Check for element.contains
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if element.contains is supported
-       */
-      getContains: function getContains() {
-        // "object" in IE6/7/8, "function" in IE9
-        return typeof document.documentElement.contains !== "undefined";
-      },
-
-      /**
-       * Check for element.compareDocumentPosition
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if element.compareDocumentPosition is supported
-       */
-      getCompareDocumentPosition: function getCompareDocumentPosition() {
-        return typeof document.documentElement.compareDocumentPosition === "function";
-      },
-
-      /**
-       * Check for element.textContent. Legacy IEs do not support this, use
-       * innerText instead.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if textContent is supported
-       */
-      getTextContent: function getTextContent() {
-        var el = document.createElement("span");
-        return typeof el.textContent !== "undefined";
-      },
-
-      /**
-       * Whether the client supports the fullscreen API.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if fullscreen is supported
-       */
-      getFullScreen: function getFullScreen() {
-        return document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled || false;
-      },
-
-      /**
-       * Check for a console object.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if a console is available.
-       */
-      getConsole: function getConsole() {
-        return typeof window.console !== "undefined";
-      },
-
-      /**
-       * Check for the <code>naturalHeight</code> and <code>naturalWidth</code>
-       * image element attributes.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code> if both attributes are supported
-       */
-      getNaturalDimensions: function getNaturalDimensions() {
-        var img = document.createElement("img");
-        return typeof img.naturalHeight === "number" && typeof img.naturalWidth === "number";
-      },
-
-      /**
-       * Check for HTML5 history manipulation support.
-       * @internal
-       * @return {Boolean} <code>true</code> if the HTML5 history API is supported
-       */
-      getHistoryState: function getHistoryState() {
-        return typeof window.onpopstate !== "undefined" && typeof window.history.replaceState !== "undefined" && typeof window.history.pushState !== "undefined";
-      },
-
-      /**
-       * Returns the name of the native object/function used to access the
-       * document's text selection.
-       *
-       * @return {String|null} <code>getSelection</code> if the standard window.getSelection
-       * function is available; <code>selection</code> if the MS-proprietary
-       * document.selection object is available; <code>null</code> if no known
-       * text selection API is available.
-       */
-      getSelection: function getSelection() {
-        if (typeof window.getSelection === "function") {
-          return "getSelection";
-        }
-
-        if (_typeof(document.selection) === "object") {
-          return "selection";
-        }
-
-        return null;
-      },
-
-      /**
-       * Check for the isEqualNode DOM method.
-       *
-       * @return {Boolean} <code>true</code> if isEqualNode is supported by DOM nodes
-       */
-      getIsEqualNode: function getIsEqualNode() {
-        return typeof document.documentElement.isEqualNode === "function";
+  qx.Mixin.define("qx.ui.form.MForm", {
+    construct: function construct() {
+      {
+        qx.locale.Manager.getInstance().addListener("changeLocale", this.__onChangeLocale__P_200_0, this);
       }
     },
-    defer: function defer(statics) {
-      qx.core.Environment.add("html.webworker", statics.getWebWorker);
-      qx.core.Environment.add("html.filereader", statics.getFileReader);
-      qx.core.Environment.add("html.geolocation", statics.getGeoLocation);
-      qx.core.Environment.add("html.audio", statics.getAudio);
-      qx.core.Environment.add("html.audio.ogg", statics.getAudioOgg);
-      qx.core.Environment.add("html.audio.mp3", statics.getAudioMp3);
-      qx.core.Environment.add("html.audio.wav", statics.getAudioWav);
-      qx.core.Environment.add("html.audio.au", statics.getAudioAu);
-      qx.core.Environment.add("html.audio.aif", statics.getAudioAif);
-      qx.core.Environment.add("html.video", statics.getVideo);
-      qx.core.Environment.add("html.video.ogg", statics.getVideoOgg);
-      qx.core.Environment.add("html.video.h264", statics.getVideoH264);
-      qx.core.Environment.add("html.video.webm", statics.getVideoWebm);
-      qx.core.Environment.add("html.storage.local", statics.getLocalStorage);
-      qx.core.Environment.add("html.storage.session", statics.getSessionStorage);
-      qx.core.Environment.add("html.storage.userdata", statics.getUserDataStorage);
-      qx.core.Environment.add("html.classlist", statics.getClassList);
-      qx.core.Environment.add("html.xpath", statics.getXPath);
-      qx.core.Environment.add("html.xul", statics.getXul);
-      qx.core.Environment.add("html.canvas", statics.getCanvas);
-      qx.core.Environment.add("html.svg", statics.getSvg);
-      qx.core.Environment.add("html.vml", statics.getVml);
-      qx.core.Environment.add("html.dataset", statics.getDataset);
-      qx.core.Environment.addAsync("html.dataurl", statics.getDataUrl);
-      qx.core.Environment.add("html.element.contains", statics.getContains);
-      qx.core.Environment.add("html.element.compareDocumentPosition", statics.getCompareDocumentPosition);
-      qx.core.Environment.add("html.element.textcontent", statics.getTextContent);
-      qx.core.Environment.add("html.console", statics.getConsole);
-      qx.core.Environment.add("html.image.naturaldimensions", statics.getNaturalDimensions);
-      qx.core.Environment.add("html.history.state", statics.getHistoryState);
-      qx.core.Environment.add("html.selection", statics.getSelection);
-      qx.core.Environment.add("html.node.isequalnode", statics.getIsEqualNode);
-      qx.core.Environment.add("html.fullscreen", statics.getFullScreen);
-    }
-  });
-  qx.bom.client.Html.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.log.appender.Formatter": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.bom.client.Html": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.log.Logger": {
-        "defer": "runtime"
-      }
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "html.console": {
-          "className": "qx.bom.client.Html"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-  
-  ************************************************************************ */
-
-  /**
-   * Processes the incoming log entry and displays it by means of the native
-   * logging capabilities of the client.
-   *
-   * Supported browsers:
-   * * Firefox <4 using FireBug (if available).
-   * * Firefox >=4 using the Web Console.
-   * * WebKit browsers using the Web Inspector/Developer Tools.
-   * * Internet Explorer 8+ using the F12 Developer Tools.
-   * * Opera >=10.60 using either the Error Console or Dragonfly
-   *
-   * Currently unsupported browsers:
-   * * Opera <10.60
-   *
-   * @require(qx.log.appender.Formatter)
-   * @require(qx.bom.client.Html)
-   */
-  qx.Bootstrap.define("qx.log.appender.Native", {
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
+    properties: {
       /**
-       * Processes a single log entry
-       *
-       * @param entry {Map} The entry to process
+       * Flag signaling if a widget is valid. If a widget is invalid, an invalid
+       * state will be set.
        */
-      process: function process(entry) {
-        if (qx.core.Environment.get("html.console")) {
-          // Firefox 4's Web Console doesn't support "debug"
-          var level = console[entry.level] ? entry.level : "log";
+      valid: {
+        check: "Boolean",
+        init: true,
+        apply: "_applyValid",
+        event: "changeValid"
+      },
 
-          if (console[level]) {
-            var formatter = qx.log.appender.Formatter.getFormatter();
-            var args = formatter.toText(entry);
-            console[level](args);
-          }
-        }
+      /**
+       * Flag signaling if a widget is required.
+       */
+      required: {
+        check: "Boolean",
+        init: false,
+        event: "changeRequired"
+      },
+
+      /**
+       * Message which is shown in an invalid tooltip.
+       */
+      invalidMessage: {
+        check: "String",
+        init: "",
+        event: "changeInvalidMessage"
+      },
+
+      /**
+       * Message which is shown in an invalid tooltip if the {@link #required} is
+       * set to true.
+       */
+      requiredInvalidMessage: {
+        check: "String",
+        nullable: true,
+        event: "changeInvalidMessage"
       }
     },
-
-    /*
-    *****************************************************************************
-       DEFER
-    *****************************************************************************
-    */
-    defer: function defer(statics) {
-      qx.log.Logger.register(statics);
-    }
-  });
-  qx.log.appender.Native.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.event.handler.UserAction": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "construct": true,
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.Object": {
-        "construct": true,
-        "require": true
-      },
-      "qx.event.IEventHandler": {
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "construct": true,
-        "defer": "load",
-        "require": true
-      },
-      "qx.event.Registration": {
-        "defer": "runtime",
-        "require": true
-      },
-      "qx.event.type.KeyInput": {},
-      "qx.event.Utils": {},
-      "qx.event.type.Data": {},
-      "qx.event.type.KeySequence": {},
-      "qx.bom.client.Browser": {
-        "require": true
-      },
-      "qx.event.util.Keyboard": {},
-      "qx.event.handler.Focus": {},
-      "qx.lang.Function": {},
-      "qx.bom.Event": {},
-      "qx.event.GlobalError": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.ObjectRegistry": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "engine.name": {
-          "construct": true,
-          "className": "qx.bom.client.Engine",
-          "load": true,
-          "defer": true
-        },
-        "browser.version": {
-          "className": "qx.bom.client.Browser",
-          "load": true
-        },
-        "engine.version": {
-          "className": "qx.bom.client.Engine"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Andreas Ecker (ecker)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * This class provides unified key event handler for Internet Explorer,
-   * Firefox, Opera and Safari.
-   *
-   * NOTE: Instances of this class must be disposed of after use
-   *
-   * @require(qx.event.handler.UserAction)
-   */
-  qx.Class.define("qx.event.handler.Keyboard", {
-    extend: qx.core.Object,
-    implement: [qx.event.IEventHandler, qx.core.IDisposable],
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-
-    /**
-     * Create a new instance
-     *
-     * @param manager {qx.event.Manager} Event manager for the window to use
-     */
-    construct: function construct(manager) {
-      qx.core.Object.constructor.call(this); // Define shorthands
-
-      this.__manager__P_16_0 = manager;
-      this.__window__P_16_1 = manager.getWindow(); // Gecko ignores key events when not explicitly clicked in the document.
-
-      if (qx.core.Environment.get("engine.name") == "gecko") {
-        this.__root__P_16_2 = this.__window__P_16_1;
-      } else {
-        this.__root__P_16_2 = this.__window__P_16_1.document.documentElement;
-      } // Internal sequence cache
-
-
-      this.__lastUpDownType__P_16_3 = {}; // Initialize observer
-
-      this._initKeyObserver();
-    },
-
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      /** @type {Integer} Priority of this handler */
-      PRIORITY: qx.event.Registration.PRIORITY_NORMAL,
-
-      /** @type {Map} Supported event types */
-      SUPPORTED_TYPES: {
-        keyup: 1,
-        keydown: 1,
-        keypress: 1,
-        keyinput: 1
-      },
-
-      /** @type {Integer} Which target check to use */
-      TARGET_CHECK: qx.event.IEventHandler.TARGET_DOMNODE,
-
-      /** @type {Integer} Whether the method "canHandleEvent" must be called */
-      IGNORE_CAN_HANDLE: true
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
     members: {
-      __onKeyUpDownWrapper__P_16_4: null,
-      __manager__P_16_0: null,
-      __window__P_16_1: null,
-      __root__P_16_2: null,
-      __lastUpDownType__P_16_3: null,
-      __lastKeyCode__P_16_5: null,
-      __inputListeners__P_16_6: null,
-      __onKeyPressWrapper__P_16_7: null,
-
-      /*
-      ---------------------------------------------------------------------------
-        EVENT HANDLER INTERFACE
-      ---------------------------------------------------------------------------
-      */
-      // interface implementation
-      canHandleEvent: function canHandleEvent(target, type) {},
-      // interface implementation
-      registerEvent: function registerEvent(target, type, capture) {// Nothing needs to be done here
-      },
-      // interface implementation
-      unregisterEvent: function unregisterEvent(target, type, capture) {// Nothing needs to be done here
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        HELPER
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Fire a key input event with the given parameters
-       *
-       * @param domEvent {Event} DOM event
-       * @param charCode {Integer} character code
-       * @return {qx.Promise?} a promise if the event handlers created one
-       */
-      _fireInputEvent: function _fireInputEvent(domEvent, charCode) {
-        var target = this.__getEventTarget__P_16_8();
-
-        var tracker = {};
-        var self = this; // Only fire when target is defined and visible
-
-        if (target && target.offsetWidth != 0) {
-          var event = qx.event.Registration.createEvent("keyinput", qx.event.type.KeyInput, [domEvent, target, charCode]);
-          qx.event.Utils.then(tracker, function () {
-            self.__manager__P_16_0.dispatchEvent(target, event);
-          });
-        } // Fire user action event
-        // Needs to check if still alive first
-
-
-        if (this.__window__P_16_1) {
-          var self = this;
-          qx.event.Utils.then(tracker, function () {
-            return qx.event.Registration.fireEvent(self.__window__P_16_1, "useraction", qx.event.type.Data, ["keyinput"]);
-          });
-        }
-
-        return tracker.promise;
+      // apply method
+      _applyValid: function _applyValid(value, old) {
+        value ? this.removeState("invalid") : this.addState("invalid");
       },
 
       /**
-       * Fire a key up/down/press event with the given parameters
+       * Locale change event handler
        *
-       * @param domEvent {Event} DOM event
-       * @param type {String} type og the event
-       * @param keyIdentifier {String} key identifier
-       * @return {qx.Promise?} a promise, if any of the event handlers returned a promise
+       * @signature function(e)
+       * @param e {Event} the change event
        */
-      _fireSequenceEvent: function _fireSequenceEvent(domEvent, type, keyIdentifier) {
-        var target = this.__getEventTarget__P_16_8();
+      __onChangeLocale__P_200_0: qx.core.Environment.select("qx.dynlocale", {
+        "true": function _true(e) {
+          // invalid message
+          var invalidMessage = this.getInvalidMessage();
 
-        var keyCode = domEvent.keyCode;
-        var tracker = {};
-        var self = this; // Fire key event
-
-        var event = qx.event.Registration.createEvent(type, qx.event.type.KeySequence, [domEvent, target, keyIdentifier]);
-        qx.event.Utils.then(tracker, function () {
-          return self.__manager__P_16_0.dispatchEvent(target, event);
-        }); // IE and Safari suppress a "keypress" event if the "keydown" event's
-        // default action was prevented. In this case we emulate the "keypress"
-        //
-        // FireFox suppresses "keypress" when "keydown" default action is prevented.
-        // from version 29: https://bugzilla.mozilla.org/show_bug.cgi?id=935876.
-
-        if (event.getDefaultPrevented() && type == "keydown") {
-          if (qx.core.Environment.get("engine.name") == "mshtml" || qx.core.Environment.get("engine.name") == "webkit" || qx.core.Environment.get("engine.name") == "gecko" && qx.core.Environment.get("browser.version") >= 29) {
-            // some key press events are already emulated. Ignore these events.
-            if (!qx.event.util.Keyboard.isNonPrintableKeyCode(keyCode) && !this._emulateKeyPress[keyCode]) {
-              qx.event.Utils.then(tracker, function () {
-                return self._fireSequenceEvent(domEvent, "keypress", keyIdentifier);
-              });
-            }
-          }
-        } // Fire user action event
-        // Needs to check if still alive first
+          if (invalidMessage && invalidMessage.translate) {
+            this.setInvalidMessage(invalidMessage.translate());
+          } // required invalid message
 
 
-        if (this.__window__P_16_1) {
-          qx.event.Utils.then(tracker, function () {
-            return qx.event.Registration.fireEvent(self.__window__P_16_1, "useraction", qx.event.type.Data, [type]);
-          });
-        }
+          var requiredInvalidMessage = this.getRequiredInvalidMessage();
 
-        return tracker.promise;
-      },
-
-      /**
-       * Get the target element for key events
-       *
-       * @return {Element} the event target element
-       */
-      __getEventTarget__P_16_8: function __getEventTarget__P_16_8() {
-        var focusHandler = this.__manager__P_16_0.getHandler(qx.event.handler.Focus);
-
-        var target = focusHandler.getActive(); // Fallback to focused element when active is null or invisible
-
-        if (!target || target.offsetWidth == 0) {
-          target = focusHandler.getFocus();
-        } // Fallback to body when focused is null or invisible
-
-
-        if (!target || target.offsetWidth == 0) {
-          target = this.__manager__P_16_0.getWindow().document.body;
-        }
-
-        return target;
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        OBSERVER INIT/STOP
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Initializes the native key event listeners.
-       *
-       * @signature function()
-       */
-      _initKeyObserver: function _initKeyObserver() {
-        this.__onKeyUpDownWrapper__P_16_4 = qx.lang.Function.listener(this.__onKeyUpDown__P_16_9, this);
-        this.__onKeyPressWrapper__P_16_7 = qx.lang.Function.listener(this.__onKeyPress__P_16_10, this);
-        var Event = qx.bom.Event;
-        Event.addNativeListener(this.__root__P_16_2, "keyup", this.__onKeyUpDownWrapper__P_16_4);
-        Event.addNativeListener(this.__root__P_16_2, "keydown", this.__onKeyUpDownWrapper__P_16_4);
-        Event.addNativeListener(this.__root__P_16_2, "keypress", this.__onKeyPressWrapper__P_16_7);
-      },
-
-      /**
-       * Stops the native key event listeners.
-       *
-       * @signature function()
-       */
-      _stopKeyObserver: function _stopKeyObserver() {
-        var Event = qx.bom.Event;
-        Event.removeNativeListener(this.__root__P_16_2, "keyup", this.__onKeyUpDownWrapper__P_16_4);
-        Event.removeNativeListener(this.__root__P_16_2, "keydown", this.__onKeyUpDownWrapper__P_16_4);
-        Event.removeNativeListener(this.__root__P_16_2, "keypress", this.__onKeyPressWrapper__P_16_7);
-
-        for (var key in this.__inputListeners__P_16_6 || {}) {
-          var listener = this.__inputListeners__P_16_6[key];
-          Event.removeNativeListener(listener.target, "keypress", listener.callback);
-        }
-
-        delete this.__inputListeners__P_16_6;
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        NATIVE EVENT OBSERVERS
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Low level handler for "keyup" and "keydown" events
-       *
-       * @internal
-       * @signature function(domEvent)
-       * @param domEvent {Event} DOM event object
-       */
-      __onKeyUpDown__P_16_9: qx.event.GlobalError.observeMethod(qx.core.Environment.select("engine.name", {
-        "gecko|webkit|mshtml": function geckoWebkitMshtml(domEvent) {
-          var keyCode = 0;
-          var charCode = 0;
-          var type = domEvent.type;
-          keyCode = domEvent.keyCode;
-          var tracker = {};
-          var self = this;
-          qx.event.Utils.track(tracker, this._idealKeyHandler(keyCode, charCode, type, domEvent)); // On non print-able character be sure to add a keypress event
-
-          if (type == "keydown") {
-            /*
-             * We need an artificial keypress event for every keydown event.
-             * Newer browsers do not fire keypress for a regular charachter key (e.g when typing 'a')
-             * if it was typed with the CTRL, ALT or META Key pressed during typing, like
-             * doing it when typing the combination CTRL+A
-             */
-            var isModifierDown = domEvent.ctrlKey || domEvent.altKey || domEvent.metaKey; // non-printable, backspace, tab or the modfier keys are down
-
-            if (qx.event.util.Keyboard.isNonPrintableKeyCode(keyCode) || this._emulateKeyPress[keyCode] || isModifierDown) {
-              qx.event.Utils.then(tracker, function () {
-                return self._idealKeyHandler(keyCode, charCode, "keypress", domEvent);
-              });
-            }
-          } // Store last type
-
-
-          this.__lastUpDownType__P_16_3[keyCode] = type;
-          return tracker.promise;
-        },
-        opera: function opera(domEvent) {
-          this.__lastKeyCode__P_16_5 = domEvent.keyCode;
-          return this._idealKeyHandler(domEvent.keyCode, 0, domEvent.type, domEvent);
-        }
-      })),
-
-      /**
-       * some keys like "up", "down", "pageup", "pagedown" do not bubble a
-       * "keypress" event in Firefox. To work around this bug we attach keypress
-       * listeners directly to the input events.
-       *
-       * https://bugzilla.mozilla.org/show_bug.cgi?id=467513
-       *
-       * @signature function(target, type, keyCode)
-       * @param target {Element} The event target
-       * @param type {String} The event type
-       * @param keyCode {Integer} the key code
-       */
-      __firefoxInputFix__P_16_11: qx.core.Environment.select("engine.name", {
-        gecko: function gecko(target, type, keyCode) {
-          if (type === "keydown" && (keyCode == 33 || keyCode == 34 || keyCode == 38 || keyCode == 40) && target.type == "text" && target.tagName.toLowerCase() === "input" && target.getAttribute("autoComplete") !== "off") {
-            if (!this.__inputListeners__P_16_6) {
-              this.__inputListeners__P_16_6 = {};
-            }
-
-            var hash = qx.core.ObjectRegistry.toHashCode(target);
-
-            if (this.__inputListeners__P_16_6[hash]) {
-              return;
-            }
-
-            var self = this;
-            this.__inputListeners__P_16_6[hash] = {
-              target: target,
-              callback: function callback(domEvent) {
-                qx.bom.Event.stopPropagation(domEvent);
-
-                self.__onKeyPress__P_16_10(domEvent);
-              }
-            };
-            var listener = qx.event.GlobalError.observeMethod(this.__inputListeners__P_16_6[hash].callback);
-            qx.bom.Event.addNativeListener(target, "keypress", listener);
+          if (requiredInvalidMessage && requiredInvalidMessage.translate) {
+            this.setRequiredInvalidMessage(requiredInvalidMessage.translate());
           }
         },
-        "default": null
-      }),
-
-      /**
-       * Low level key press handler
-       *
-       * @signature function(domEvent)
-       * @param domEvent {Event} DOM event object
-       */
-      __onKeyPress__P_16_10: qx.event.GlobalError.observeMethod(qx.core.Environment.select("engine.name", {
-        mshtml: function mshtml(domEvent) {
-          domEvent = window.event || domEvent;
-
-          if (this._charCode2KeyCode[domEvent.keyCode]) {
-            return this._idealKeyHandler(this._charCode2KeyCode[domEvent.keyCode], 0, domEvent.type, domEvent);
-          } else {
-            return this._idealKeyHandler(0, domEvent.keyCode, domEvent.type, domEvent);
-          }
-        },
-        gecko: function gecko(domEvent) {
-          if (qx.core.Environment.get("engine.version") < 66) {
-            var charCode = domEvent.charCode;
-            var type = domEvent.type;
-            return this._idealKeyHandler(domEvent.keyCode, charCode, type, domEvent);
-          } else {
-            if (this._charCode2KeyCode[domEvent.keyCode]) {
-              return this._idealKeyHandler(this._charCode2KeyCode[domEvent.keyCode], 0, domEvent.type, domEvent);
-            } else {
-              return this._idealKeyHandler(0, domEvent.keyCode, domEvent.type, domEvent);
-            }
-          }
-        },
-        webkit: function webkit(domEvent) {
-          if (this._charCode2KeyCode[domEvent.keyCode]) {
-            return this._idealKeyHandler(this._charCode2KeyCode[domEvent.keyCode], 0, domEvent.type, domEvent);
-          } else {
-            return this._idealKeyHandler(0, domEvent.keyCode, domEvent.type, domEvent);
-          }
-        },
-        opera: function opera(domEvent) {
-          var keyCode = domEvent.keyCode;
-          var type = domEvent.type; // Some keys are identified differently for key up/down and keypress
-          // (e.g. "v" gets identified as "F7").
-          // So we store the last key up/down keycode and compare it to the
-          // current keycode.
-          // See http://bugzilla.qooxdoo.org/show_bug.cgi?id=603
-
-          if (keyCode != this.__lastKeyCode__P_16_5) {
-            return this._idealKeyHandler(0, this.__lastKeyCode__P_16_5, type, domEvent);
-          } else {
-            if (qx.event.util.Keyboard.keyCodeToIdentifierMap[domEvent.keyCode]) {
-              return this._idealKeyHandler(domEvent.keyCode, 0, domEvent.type, domEvent);
-            } else {
-              return this._idealKeyHandler(0, domEvent.keyCode, domEvent.type, domEvent);
-            }
-          }
-        }
-      })),
-
-      /*
-      ---------------------------------------------------------------------------
-        IDEAL KEY HANDLER
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * Key handler for an idealized browser.
-       * Runs after the browser specific key handlers have normalized the key events.
-       *
-       * @param keyCode {String} keyboard code
-       * @param charCode {String} character code
-       * @param eventType {String} type of the event (keydown, keypress, keyup)
-       * @param domEvent {Element} DomEvent
-       * @return {qx.Promise?} a promise, if an event handler created one
-       */
-      _idealKeyHandler: function _idealKeyHandler(keyCode, charCode, eventType, domEvent) {
-        var keyIdentifier; // Use: keyCode
-
-        if (keyCode || !keyCode && !charCode) {
-          keyIdentifier = qx.event.util.Keyboard.keyCodeToIdentifier(keyCode);
-          return this._fireSequenceEvent(domEvent, eventType, keyIdentifier);
-        } // Use: charCode
-        else {
-          keyIdentifier = qx.event.util.Keyboard.charCodeToIdentifier(charCode);
-          var tracker = {};
-          var self = this;
-          qx.event.Utils.track(tracker, this._fireSequenceEvent(domEvent, "keypress", keyIdentifier));
-          return qx.event.Utils.then(tracker, function () {
-            return self._fireInputEvent(domEvent, charCode);
-          });
-        }
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        KEY MAPS
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * @type {Map} maps the charcodes of special keys for key press emulation
-       *
-       * @lint ignoreReferenceField(_emulateKeyPress)
-       */
-      _emulateKeyPress: qx.core.Environment.select("engine.name", {
-        mshtml: {
-          8: true,
-          9: true
-        },
-        webkit: {
-          8: true,
-          9: true,
-          27: true
-        },
-        gecko: qx.core.Environment.get("browser.version") >= 65 ? {
-          8: true,
-          9: true,
-          27: true
-        } : {},
-        "default": {}
-      }),
-
-      /*
-      ---------------------------------------------------------------------------
-        HELPER METHODS
-      ---------------------------------------------------------------------------
-      */
-
-      /**
-       * converts a key identifier back to a keycode
-       *
-       * @param keyIdentifier {String} The key identifier to convert
-       * @return {Integer} keyboard code
-       */
-      _identifierToKeyCode: function _identifierToKeyCode(keyIdentifier) {
-        return qx.event.util.Keyboard.identifierToKeyCodeMap[keyIdentifier] || keyIdentifier.charCodeAt(0);
-      }
+        "false": null
+      })
     },
-
-    /*
-    *****************************************************************************
-       DESTRUCTOR
-    *****************************************************************************
-    */
     destruct: function destruct() {
-      this._stopKeyObserver();
-
-      this.__lastKeyCode__P_16_5 = this.__manager__P_16_0 = this.__window__P_16_1 = this.__root__P_16_2 = this.__lastUpDownType__P_16_3 = null;
-    },
-
-    /*
-    *****************************************************************************
-       DEFER
-    *****************************************************************************
-    */
-    defer: function defer(statics, members) {
-      // register at the event handler
-      qx.event.Registration.addHandler(statics);
-
-      if (qx.core.Environment.get("engine.name") !== "opera") {
-        members._charCode2KeyCode = {
-          13: 13,
-          27: 27
-        };
+      {
+        qx.locale.Manager.getInstance().removeListener("changeLocale", this.__onChangeLocale__P_200_0, this);
       }
     }
   });
-  qx.event.handler.Keyboard.$$dbClassInfo = $$dbClassInfo;
+  qx.ui.form.MForm.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
-      "qx.Class": {
+      "qx.Interface": {
         "usage": "dynamic",
         "require": true
-      },
-      "qx.core.Object": {
-        "require": true
-      },
-      "qx.event.IEventDispatcher": {
-        "require": true
-      },
-      "qx.event.Utils": {},
-      "qx.event.type.Event": {}
+      }
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -16272,39 +22684,39 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
      http://qooxdoo.org
   
      Copyright:
-       2007-2008 1&1 Internet AG, Germany, http://www.1und1.de
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
   
      License:
        MIT: https://opensource.org/licenses/MIT
        See the LICENSE file in the project's top-level directory for details.
   
      Authors:
-       * Fabian Jakobs (fjakobs)
-       * Sebastian Werner (wpbasti)
+       * Martin Wittemann (martinwittemann)
   
   ************************************************************************ */
 
   /**
-   * Event dispatcher for all bubbling events.
+   * Form interface for all form widgets. It includes the API for enabled,
+   * required and valid states.
    */
-  qx.Class.define("qx.event.dispatch.AbstractBubbling", {
-    extend: qx.core.Object,
-    implement: qx.event.IEventDispatcher,
-    type: "abstract",
-
+  qx.Interface.define("qx.ui.form.IForm", {
     /*
     *****************************************************************************
-       CONSTRUCTOR
+       EVENTS
     *****************************************************************************
     */
+    events: {
+      /** Fired when the enabled state was modified */
+      changeEnabled: "qx.event.type.Data",
 
-    /**
-     * Create a new instance
-     *
-     * @param manager {qx.event.Manager} Event manager for the window to use
-     */
-    construct: function construct(manager) {
-      this._manager = manager;
+      /** Fired when the valid state was modified */
+      changeValid: "qx.event.type.Data",
+
+      /** Fired when the invalidMessage was modified */
+      changeInvalidMessage: "qx.event.type.Data",
+
+      /** Fired when the required was modified */
+      changeRequired: "qx.event.type.Data"
     },
 
     /*
@@ -16315,234 +22727,116 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     members: {
       /*
       ---------------------------------------------------------------------------
-        EVENT DISPATCHER HELPER
+        ENABLED PROPERTY
       ---------------------------------------------------------------------------
       */
 
       /**
-       * Returns the parent of the given target
+       * Set the enabled state of the widget.
        *
-       * @abstract
-       * @param target {var} The target which parent should be found
-       * @return {var} The parent of the given target
+       * @param enabled {Boolean} The enabled state.
        */
-      _getParent: function _getParent(target) {
-        throw new Error("Missing implementation");
+      setEnabled: function setEnabled(enabled) {
+        return arguments.length == 1;
       },
+
+      /**
+       * Return the current set enabled state.
+       *
+       * @return {Boolean} If the widget is enabled.
+       */
+      getEnabled: function getEnabled() {},
 
       /*
       ---------------------------------------------------------------------------
-        EVENT DISPATCHER INTERFACE
+        REQUIRED PROPERTY
       ---------------------------------------------------------------------------
       */
-      // interface implementation
-      canDispatchEvent: function canDispatchEvent(target, event, type) {
-        return event.getBubbles();
+
+      /**
+       * Sets the required state of a widget.
+       *
+       * @param required {Boolean} A flag signaling if the widget is required.
+       */
+      setRequired: function setRequired(required) {
+        return arguments.length == 1;
       },
-      // interface implementation
-      dispatchEvent: function dispatchEvent(target, event, type) {
-        var parent = target;
-        var manager = this._manager;
-        var captureListeners, bubbleListeners;
-        var context; // Cache list for AT_TARGET
 
-        var targetList = [];
-        captureListeners = manager.getListeners(target, type, true);
-        bubbleListeners = manager.getListeners(target, type, false);
+      /**
+       * Return the current required state of the widget.
+       *
+       * @return {Boolean} True, if the widget is required.
+       */
+      getRequired: function getRequired() {},
 
-        if (captureListeners) {
-          targetList.push(captureListeners);
-        }
+      /*
+      ---------------------------------------------------------------------------
+        VALID PROPERTY
+      ---------------------------------------------------------------------------
+      */
 
-        if (bubbleListeners) {
-          targetList.push(bubbleListeners);
-        } // Cache list for CAPTURING_PHASE and BUBBLING_PHASE
+      /**
+       * Sets the valid state of the widget.
+       *
+       * @param valid {Boolean} The valid state of the widget.
+       */
+      setValid: function setValid(valid) {
+        return arguments.length == 1;
+      },
 
+      /**
+       * Returns the valid state of the widget.
+       *
+       * @return {Boolean} If the state of the widget is valid.
+       */
+      getValid: function getValid() {},
 
-        var parent = this._getParent(target);
+      /*
+      ---------------------------------------------------------------------------
+        INVALID MESSAGE PROPERTY
+      ---------------------------------------------------------------------------
+      */
 
-        var bubbleList = [];
-        var bubbleTargets = [];
-        var captureList = [];
-        var captureTargets = []; // Walk up the tree and look for event listeners
+      /**
+       * Sets the invalid message of the widget.
+       *
+       * @param message {String} The invalid message.
+       */
+      setInvalidMessage: function setInvalidMessage(message) {
+        return arguments.length == 1;
+      },
 
-        while (parent != null) {
-          // Attention:
-          // We do not follow the DOM2 events specifications here
-          // http://www.w3.org/TR/2000/REC-DOM-Level-2-Events-20001113/events.html#Events-flow-capture
-          // Opera is the only browser which conforms to the spec.
-          // Safari and Mozilla do it the same way like qooxdoo does
-          // and add the capture events of the target to the execution list.
-          captureListeners = manager.getListeners(parent, type, true);
+      /**
+       * Returns the invalid message of the widget.
+       *
+       * @return {String} The current set message.
+       */
+      getInvalidMessage: function getInvalidMessage() {},
 
-          if (captureListeners) {
-            captureList.push(captureListeners);
-            captureTargets.push(parent);
-          }
+      /*
+      ---------------------------------------------------------------------------
+        REQUIRED INVALID MESSAGE PROPERTY
+      ---------------------------------------------------------------------------
+      */
 
-          bubbleListeners = manager.getListeners(parent, type, false);
+      /**
+       * Sets the invalid message if required of the widget.
+       *
+       * @param message {String} The invalid message.
+       */
+      setRequiredInvalidMessage: function setRequiredInvalidMessage(message) {
+        return arguments.length == 1;
+      },
 
-          if (bubbleListeners) {
-            bubbleList.push(bubbleListeners);
-            bubbleTargets.push(parent);
-          }
-
-          parent = this._getParent(parent);
-        }
-
-        var self = this;
-        var tracker = {};
-        var __TRACE_LOGGING__P_121_0 = false; //(event._type == "pointerup" && event._target.className === "qx-toolbar-button-checked");
-
-        var __TRACE__P_121_1 = function __TRACE__P_121_1() {};
-
-        if (__TRACE_LOGGING__P_121_0) {
-          var serial = (this.SERIAL || 0) + 1;
-          this.SERIAL = serial + 1;
-
-          __TRACE__P_121_1 = function __TRACE__P_121_1() {
-            var args = [].slice.apply(arguments);
-            args.unshift("serial #" + serial + ": ");
-            console.log.apply(this, args);
-          };
-        }
-
-        qx.event.Utils["catch"](tracker, function () {
-          // This function must exist to suppress "unhandled rejection" messages from promises
-          __TRACE__P_121_1("Aborted serial=" + serial + ", type=" + event.getType());
-        }); // capturing phase
-
-        qx.event.Utils.then(tracker, function () {
-          // loop through the hierarchy in reverted order (from root)
-          event.setEventPhase(qx.event.type.Event.CAPTURING_PHASE);
-
-          __TRACE__P_121_1("captureList=" + captureList.length);
-
-          return qx.event.Utils.series(captureList, function (localList, i) {
-            __TRACE__P_121_1("captureList[" + i + "]: localList.length=" + localList.length);
-
-            var currentTarget = captureTargets[i];
-            event.setCurrentTarget(currentTarget);
-            var result = qx.event.Utils.series(localList, function (listener, listenerIndex) {
-              context = listener.context || currentTarget;
-              {
-                // warn if the context is disposed
-                if (context && context.isDisposed && context.isDisposed()) {
-                  self.warn("The context object '" + context + "' for the event '" + type + "' of '" + currentTarget + "'is already disposed.");
-                }
-              }
-
-              if (!self._manager.isBlacklisted(listener.unique)) {
-                __TRACE__P_121_1("captureList[" + i + "] => localList[" + listenerIndex + "] callListener");
-
-                return listener.handler.call(context, event);
-              } else {
-                __TRACE__P_121_1("captureList[" + i + "] => localList[" + listenerIndex + "] is blacklisted");
-              }
-            }, true);
-
-            if (result === qx.event.Utils.ABORT) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            if (event.getPropagationStopped()) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            return result;
-          });
-        }); // at target
-
-        qx.event.Utils.then(tracker, function () {
-          event.setEventPhase(qx.event.type.Event.AT_TARGET);
-          event.setCurrentTarget(target);
-
-          __TRACE__P_121_1("targetList=" + targetList.length);
-
-          return qx.event.Utils.series(targetList, function (localList, i) {
-            __TRACE__P_121_1("targetList[" + i + "] localList.length=" + localList.length);
-
-            var result = qx.event.Utils.series(localList, function (listener, listenerIndex) {
-              __TRACE__P_121_1("targetList[" + i + "] -> localList[" + listenerIndex + "] callListener");
-
-              context = listener.context || target;
-              {
-                // warn if the context is disposed
-                if (context && context.isDisposed && context.isDisposed()) {
-                  self.warn("The context object '" + context + "' for the event '" + type + "' of '" + target + "'is already disposed.");
-                }
-              }
-
-              __TRACE__P_121_1("Calling target serial=" + serial + ", type=" + event.getType());
-
-              return listener.handler.call(context, event);
-            }, true);
-
-            if (result === qx.event.Utils.ABORT) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            if (event.getPropagationStopped()) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            return result;
-          });
-        }); // bubbling phase
-        // loop through the hierarchy in normal order (to root)
-
-        qx.event.Utils.then(tracker, function () {
-          event.setEventPhase(qx.event.type.Event.BUBBLING_PHASE);
-
-          __TRACE__P_121_1("bubbleList=" + bubbleList.length);
-
-          return qx.event.Utils.series(bubbleList, function (localList, i) {
-            __TRACE__P_121_1("bubbleList[" + i + "] localList.length=" + localList.length);
-
-            var currentTarget = bubbleTargets[i];
-            event.setCurrentTarget(currentTarget);
-            var result = qx.event.Utils.series(localList, function (listener, listenerIndex) {
-              __TRACE__P_121_1("bubbleList[" + i + "] -> localList[" + listenerIndex + "] callListener");
-
-              context = listener.context || currentTarget;
-              {
-                // warn if the context is disposed
-                if (context && context.isDisposed && context.isDisposed()) {
-                  self.warn("The context object '" + context + "' for the event '" + type + "' of '" + currentTarget + "'is already disposed.");
-                }
-              }
-              return listener.handler.call(context, event);
-            }, true);
-
-            if (result === qx.event.Utils.ABORT) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            if (event.getPropagationStopped()) {
-              return qx.event.Utils.reject(tracker);
-            }
-
-            return result;
-          });
-        });
-
-        if (__TRACE_LOGGING__P_121_0) {
-          if (tracker.promise) {
-            __TRACE__P_121_1("events promised");
-
-            qx.event.Utils.then(tracker, function () {
-              __TRACE__P_121_1("events promised done");
-            });
-          } else {
-            __TRACE__P_121_1("events done");
-          }
-        }
-
-        return tracker.promise;
-      }
+      /**
+       * Returns the invalid message if required of the widget.
+       *
+       * @return {String} The current set message.
+       */
+      getRequiredInvalidMessage: function getRequiredInvalidMessage() {}
     }
   });
-  qx.event.dispatch.AbstractBubbling.$$dbClassInfo = $$dbClassInfo;
+  qx.ui.form.IForm.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -16552,93 +22846,30 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
         "usage": "dynamic",
         "require": true
       },
-      "qx.event.dispatch.AbstractBubbling": {
+      "qx.ui.core.Widget": {
+        "construct": true,
         "require": true
       },
-      "qx.event.Registration": {
-        "defer": "runtime",
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2007-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Fabian Jakobs (fjakobs)
-       * Sebastian Werner (wpbasti)
-  
-  ************************************************************************ */
-
-  /**
-   * Event dispatcher for all bubbling events on DOM elements.
-   */
-  qx.Class.define("qx.event.dispatch.DomBubbling", {
-    extend: qx.event.dispatch.AbstractBubbling,
-    statics: {
-      /** @type {Integer} Priority of this dispatcher */
-      PRIORITY: qx.event.Registration.PRIORITY_NORMAL
-    },
-    members: {
-      // overridden
-      _getParent: function _getParent(target) {
-        return target.parentNode;
-      },
-      // interface implementation
-      canDispatchEvent: function canDispatchEvent(target, event, type) {
-        return target.nodeType !== undefined && event.getBubbles();
-      }
-    },
-    defer: function defer(statics) {
-      qx.event.Registration.addDispatcher(statics);
-    }
-  });
-  qx.event.dispatch.DomBubbling.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
+      "qx.ui.core.MRemoteChildrenHandling": {
         "require": true
       },
-      "qx.Class": {
-        "usage": "dynamic",
+      "qx.ui.core.MRemoteLayoutHandling": {
         "require": true
       },
-      "qx.event.type.Native": {
+      "qx.ui.core.MContentPadding": {
         "require": true
       },
-      "qx.bom.client.OperatingSystem": {
+      "qx.ui.form.MForm": {
         "require": true
       },
-      "qx.bom.client.Engine": {
+      "qx.ui.form.IForm": {
         "require": true
-      }
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "os.name": {
-          "className": "qx.bom.client.OperatingSystem"
-        },
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        }
-      }
+      },
+      "qx.ui.layout.Canvas": {
+        "construct": true
+      },
+      "qx.ui.container.Composite": {},
+      "qx.ui.basic.Atom": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -16659,269 +22890,85 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
      Authors:
        * Sebastian Werner (wpbasti)
        * Andreas Ecker (ecker)
-       * Fabian Jakobs (fjakobs)
+       * Martin Wittemann (martinwittemann)
+       * Jonathan Weiß (jonathan_rass)
   
   ************************************************************************ */
 
   /**
-   * Common base class for all DOM events.
-   */
-  qx.Class.define("qx.event.type.Dom", {
-    extend: qx.event.type.Native,
-    statics: {
-      /** @type {Integer} The modifier mask for the shift key. */
-      SHIFT_MASK: 1,
-
-      /** @type {Integer} The modifier mask for the control key. */
-      CTRL_MASK: 2,
-
-      /** @type {Integer} The modifier mask for the alt key. */
-      ALT_MASK: 4,
-
-      /** @type {Integer} The modifier mask for the meta key (e.g. apple key on Macs). */
-      META_MASK: 8,
-
-      /** @type {Integer} The modifier mask for the CapsLock modifier. */
-      CAPSLOCK_MASK: 16,
-
-      /** @type {Integer} The modifier mask for the NumLock modifier. */
-      NUMLOCK_MASK: 32,
-
-      /** @type {Integer} The modifier mask for the ScrollLock modifier. */
-      SCROLLLOCK_MASK: 64
-    },
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Dom.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.shiftKey = nativeEvent.shiftKey;
-        clone.ctrlKey = nativeEvent.ctrlKey;
-        clone.altKey = nativeEvent.altKey;
-        clone.metaKey = nativeEvent.metaKey;
-
-        if (typeof nativeEvent.getModifierState === "function") {
-          clone.numLock = nativeEvent.getModifierState("NumLock");
-          clone.capsLock = nativeEvent.getModifierState("CapsLock");
-          clone.scrollLock = nativeEvent.getModifierState("ScrollLock");
-        } else {
-          clone.numLock = false;
-          clone.capsLock = false;
-          clone.scrollLock = false;
-        }
-
-        return clone;
-      },
-
-      /**
-       * Return in a bit map, which modifier keys are pressed. The constants
-       * {@link #SHIFT_MASK}, {@link #CTRL_MASK}, {@link #ALT_MASK},
-       * {@link #META_MASK} and {@link #CAPSLOCK_MASK} define the bit positions
-       * of the corresponding keys.
-       *
-       * @return {Integer} A bit map with the pressed modifier keys.
-       */
-      getModifiers: function getModifiers() {
-        var mask = 0;
-        var evt = this._native;
-
-        if (evt.shiftKey) {
-          mask |= qx.event.type.Dom.SHIFT_MASK;
-        }
-
-        if (evt.ctrlKey) {
-          mask |= qx.event.type.Dom.CTRL_MASK;
-        }
-
-        if (evt.altKey) {
-          mask |= qx.event.type.Dom.ALT_MASK;
-        }
-
-        if (evt.metaKey) {
-          mask |= qx.event.type.Dom.META_MASK;
-        }
-
-        return mask;
-      },
-
-      /**
-       * Return in a bit map, which lock keys are pressed. The constants
-       * {@link #CAPSLOCK_MASK}, {@link #NUMLOCK_MASK}, and {@link #SCROLLLOCK_MASK}
-       * define the bit positions of the corresponding keys.
-       *
-       * @return {Integer} A bit map with the locked keys.
-       */
-      getKeyLockState: function getKeyLockState() {
-        var mask = 0;
-        var evt = this._native;
-
-        if (evt.capsLock) {
-          mask |= qx.event.type.Dom.CAPSLOCK_MASK;
-        }
-
-        if (evt.numLock) {
-          mask |= qx.event.type.Dom.NUMLOCK_MASK;
-        }
-
-        if (evt.scrollLock) {
-          mask |= qx.event.type.Dom.SCROLLLOCK_MASK;
-        }
-
-        return mask;
-      },
-
-      /**
-       * Returns whether the ctrl key is pressed.
-       *
-       * @return {Boolean} whether the ctrl key is pressed.
-       */
-      isCtrlPressed: function isCtrlPressed() {
-        return this._native.ctrlKey;
-      },
-
-      /**
-       * Returns whether the shift key is pressed.
-       *
-       * @return {Boolean} whether the shift key is pressed.
-       */
-      isShiftPressed: function isShiftPressed() {
-        return this._native.shiftKey;
-      },
-
-      /**
-       * Returns whether the alt key is pressed.
-       *
-       * @return {Boolean} whether the alt key is pressed.
-       */
-      isAltPressed: function isAltPressed() {
-        return this._native.altKey;
-      },
-
-      /**
-       * Returns whether the meta key is pressed.
-       *
-       * @return {Boolean} whether the meta key is pressed.
-       */
-      isMetaPressed: function isMetaPressed() {
-        return this._native.metaKey;
-      },
-
-      /**
-       * Returns whether the caps-lock modifier is active
-       *
-       * @return {Boolean} whether the CapsLock key is pressed.
-       */
-      isCapsLocked: function isCapsLocked() {
-        return this._native.capsLock;
-      },
-
-      /**
-       * Returns whether the num-lock modifier is active
-       *
-       * @return {Boolean} whether the NumLock key is pressed.
-       */
-      isNumLocked: function isNumLocked() {
-        return this._native.numLock;
-      },
-
-      /**
-       * Returns whether the scroll-lock modifier is active
-       *
-       * @return {Boolean} whether the ScrollLock key is pressed.
-       */
-      isScrollLocked: function isScrollLocked() {
-        return this._native.scrollLock;
-      },
-
-      /**
-       * Returns whether the ctrl key or (on the Mac) the command key is pressed.
-       *
-       * @return {Boolean} <code>true</code> if the command key is pressed on the Mac
-       *           or the ctrl key is pressed on another system.
-       */
-      isCtrlOrCommandPressed: function isCtrlOrCommandPressed() {
-        // Opera seems to use ctrlKey for the cmd key so don't fix that for opera
-        // on mac [BUG #5884]
-        if (qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("engine.name") != "opera") {
-          return this._native.metaKey;
-        } else {
-          return this._native.ctrlKey;
-        }
-      }
-    }
-  });
-  qx.event.type.Dom.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Dom": {
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "require": true
-      },
-      "qx.dom.Node": {},
-      "qx.bom.Viewport": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "browser.name": {
-          "className": "qx.bom.client.Browser"
-        },
-        "browser.documentmode": {
-          "className": "qx.bom.client.Browser"
-        },
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Andreas Ecker (ecker)
-       * Fabian Jakobs (fjakobs)
-       * Christian Hagendorn (chris_schmidt)
-  
-  ************************************************************************ */
-
-  /**
-   * Mouse event object.
+   * Group boxes are used to group a set of form elements.
    *
-   * the interface of this class is based on the DOM Level 2 mouse event
-   * interface: http://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-eventgroupings-mouseevents
+   * @childControl frame {qx.ui.container.Composite} frame for the content widgets
+   * @childControl legend {qx.ui.basic.Atom} legend to show at top of the groupbox
    */
-  qx.Class.define("qx.event.type.Mouse", {
-    extend: qx.event.type.Dom,
+  qx.Class.define("qx.ui.groupbox.GroupBox", {
+    extend: qx.ui.core.Widget,
+    include: [qx.ui.core.MRemoteChildrenHandling, qx.ui.core.MRemoteLayoutHandling, qx.ui.core.MContentPadding, qx.ui.form.MForm],
+    implement: [qx.ui.form.IForm],
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+
+    /**
+     * @param legend {String?""} The group boxes legend
+     * @param icon {String?""} The icon of the legend
+     */
+    construct: function construct(legend, icon) {
+      qx.ui.core.Widget.constructor.call(this);
+
+      this._setLayout(new qx.ui.layout.Canvas()); // Sub widgets
+
+
+      this._createChildControl("frame");
+
+      this._createChildControl("legend"); // Processing parameters
+
+
+      if (legend != null) {
+        this.setLegend(legend);
+      }
+
+      if (icon != null) {
+        this.setIcon(icon);
+      }
+    },
+
+    /*
+    *****************************************************************************
+       PROPERTIES
+    *****************************************************************************
+    */
+    properties: {
+      // overridden
+      appearance: {
+        refine: true,
+        init: "groupbox"
+      },
+
+      /**
+       * Label of the legend sub widget. Set if the given string is
+       * valid. Otherwise the legend sub widget is not being displayed.
+       */
+      legend: {
+        check: "String",
+        apply: "_applyLegend",
+        event: "changeLegend",
+        nullable: true
+      },
+
+      /**
+       * Property for setting the position of the legend.
+       */
+      legendPosition: {
+        check: ["top", "middle"],
+        init: "middle",
+        apply: "_applyLegendPosition",
+        themeable: true
+      }
+    },
 
     /*
     *****************************************************************************
@@ -16932,3787 +22979,150 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     /* eslint-disable @qooxdoo/qx/no-refs-in-members */
     members: {
       // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Mouse.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone); // Fix for #9619 pointermove/mousemove events return wrong result in isLeftPressed()
-        // button only valid in button events. Undefined otherwise.
-        // see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
-
-
-        switch (nativeEvent.type) {
-          case "mousemove":
-          case "mouseenter":
-          case "mouseleave":
-          case "mouseover":
-          case "mouseout":
-            clone.button = -1;
-            break;
-
-          default:
-            clone.button = nativeEvent.button;
-            break;
-        }
-
-        clone.buttons = nativeEvent.buttons;
-        clone.clientX = Math.round(nativeEvent.clientX);
-        clone.clientY = Math.round(nativeEvent.clientY);
-        clone.pageX = nativeEvent.pageX ? Math.round(nativeEvent.pageX) : undefined;
-        clone.pageY = nativeEvent.pageY ? Math.round(nativeEvent.pageY) : undefined;
-        clone.screenX = Math.round(nativeEvent.screenX);
-        clone.screenY = Math.round(nativeEvent.screenY);
-        clone.wheelDelta = nativeEvent.wheelDelta;
-        clone.wheelDeltaX = nativeEvent.wheelDeltaX;
-        clone.wheelDeltaY = nativeEvent.wheelDeltaY;
-        clone.delta = nativeEvent.delta;
-        clone.deltaX = nativeEvent.deltaX;
-        clone.deltaY = nativeEvent.deltaY;
-        clone.deltaZ = nativeEvent.deltaZ;
-        clone.detail = nativeEvent.detail;
-        clone.axis = nativeEvent.axis;
-        clone.wheelX = nativeEvent.wheelX;
-        clone.wheelY = nativeEvent.wheelY;
-        clone.HORIZONTAL_AXIS = nativeEvent.HORIZONTAL_AXIS;
-        clone.srcElement = nativeEvent.srcElement;
-        clone.target = nativeEvent.target;
-        return clone;
-      },
 
       /**
-       * @type {Map} Contains the button ID to identifier data.
-       *
-       * @lint ignoreReferenceField(__buttonsDom2EventModel)
+       * @lint ignoreReferenceField(_forwardStates)
        */
-      __buttonsDom2EventModel__P_53_0: {
-        0: "left",
-        2: "right",
-        1: "middle"
-      },
-
-      /**
-       * @type {Map} Contains the button ID to identifier data.
-       *
-       * @lint ignoreReferenceField(__buttonsDom3EventModel)
-       */
-      __buttonsDom3EventModel__P_53_1: {
-        0: "none",
-        1: "left",
-        2: "right",
-        4: "middle"
-      },
-
-      /**
-       * @type {Map} Contains the button ID to identifier data.
-       *
-       * @lint ignoreReferenceField(__buttonsMshtmlEventModel)
-       */
-      __buttonsMshtmlEventModel__P_53_2: {
-        1: "left",
-        2: "right",
-        4: "middle"
+      _forwardStates: {
+        invalid: true
       },
       // overridden
-      stop: function stop() {
-        this.stopPropagation();
-      },
-
-      /**
-       * During mouse events caused by the depression or release of a mouse button,
-       * this method can be used to check which mouse button changed state.
-       *
-       * Only internet explorer can compute the button during mouse move events. For
-       * all other browsers the button only contains sensible data during
-       * "click" events like "click", "dblclick", "mousedown", "mouseup" or "contextmenu".
-       *
-       * But still, browsers act different on click:
-       * <pre>
-       * <- = left mouse button
-       * -> = right mouse button
-       * ^  = middle mouse button
-       *
-       * Browser | click, dblclick | contextmenu
-       * ---------------------------------------
-       * Firefox | <- ^ ->         | ->
-       * Chrome  | <- ^            | ->
-       * Safari  | <- ^            | ->
-       * IE      | <- (^ is <-)    | ->
-       * Opera   | <-              | -> (twice)
-       * </pre>
-       *
-       * @return {String} One of "left", "right", "middle" or "none"
-       */
-      getButton: function getButton() {
-        switch (this._type) {
-          case "contextmenu":
-            return "right";
-
-          case "click":
-            // IE does not support buttons on click --> assume left button
-            if (qx.core.Environment.get("browser.name") === "ie" && qx.core.Environment.get("browser.documentmode") < 9) {
-              return "left";
-            }
-
-          default:
-            if (!(qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") <= 8)) {
-              // if the button value is -1, we should use the DOM level 3 .buttons attribute
-              // the value -1 is only set for pointer events: http://msdn.microsoft.com/en-us/library/ie/ff974877(v=vs.85).aspx
-              if (this._native.button === -1) {
-                return this.__buttonsDom3EventModel__P_53_1[this._native.buttons] || "none";
-              }
-
-              return this.__buttonsDom2EventModel__P_53_0[this._native.button] || "none";
-            } else {
-              return this.__buttonsMshtmlEventModel__P_53_2[this._native.button] || "none";
-            }
-
-        }
-      },
-
-      /**
-       * Whether the left button is pressed
-       *
-       * @return {Boolean} true when the left button is pressed
-       */
-      isLeftPressed: function isLeftPressed() {
-        return this.getButton() === "left";
-      },
-
-      /**
-       * Whether the middle button is pressed
-       *
-       * @return {Boolean} true when the middle button is pressed
-       */
-      isMiddlePressed: function isMiddlePressed() {
-        return this.getButton() === "middle";
-      },
-
-      /**
-       * Whether the right button is pressed
-       *
-       * @return {Boolean} true when the right button is pressed
-       */
-      isRightPressed: function isRightPressed() {
-        return this.getButton() === "right";
-      },
-
-      /**
-       * Get a secondary event target related to an UI event. This attribute is
-       * used with the mouseover event to indicate the event target which the
-       * pointing device exited and with the mouseout event to indicate the
-       * event target which the pointing device entered.
-       *
-       * @return {Element} The secondary event target.
-       * @signature function()
-       */
-      getRelatedTarget: function getRelatedTarget() {
-        return this._relatedTarget;
-      },
-
-      /**
-       * Get the he horizontal coordinate at which the event occurred relative
-       * to the viewport.
-       *
-       * @return {Integer} The horizontal mouse position
-       */
-      getViewportLeft: function getViewportLeft() {
-        return Math.round(this._native.clientX);
-      },
-
-      /**
-       * Get the vertical coordinate at which the event occurred relative
-       * to the viewport.
-       *
-       * @return {Integer} The vertical mouse position
-       * @signature function()
-       */
-      getViewportTop: function getViewportTop() {
-        return Math.round(this._native.clientY);
-      },
-
-      /**
-       * Get the horizontal position at which the event occurred relative to the
-       * left of the document. This property takes into account any scrolling of
-       * the page.
-       *
-       * @return {Integer} The horizontal mouse position in the document.
-       */
-      getDocumentLeft: function getDocumentLeft() {
-        if (this._native.pageX !== undefined) {
-          return Math.round(this._native.pageX);
-        } else if (this._native.srcElement) {
-          var win = qx.dom.Node.getWindow(this._native.srcElement);
-          return Math.round(this._native.clientX) + qx.bom.Viewport.getScrollLeft(win);
-        } else {
-          return Math.round(this._native.clientX) + qx.bom.Viewport.getScrollLeft(window);
-        }
-      },
-
-      /**
-       * Get the vertical position at which the event occurred relative to the
-       * top of the document. This property takes into account any scrolling of
-       * the page.
-       *
-       * @return {Integer} The vertical mouse position in the document.
-       */
-      getDocumentTop: function getDocumentTop() {
-        if (this._native.pageY !== undefined) {
-          return Math.round(this._native.pageY);
-        } else if (this._native.srcElement) {
-          var win = qx.dom.Node.getWindow(this._native.srcElement);
-          return Math.round(this._native.clientY) + qx.bom.Viewport.getScrollTop(win);
-        } else {
-          return Math.round(this._native.clientY) + qx.bom.Viewport.getScrollTop(window);
-        }
-      },
-
-      /**
-       * Get the horizontal coordinate at which the event occurred relative to
-       * the origin of the screen coordinate system.
-       *
-       * Note: This value is usually not very useful unless you want to
-       * position a native popup window at this coordinate.
-       *
-       * @return {Integer} The horizontal mouse position on the screen.
-       */
-      getScreenLeft: function getScreenLeft() {
-        return Math.round(this._native.screenX);
-      },
-
-      /**
-       * Get the vertical coordinate at which the event occurred relative to
-       * the origin of the screen coordinate system.
-       *
-       * Note: This value is usually not very useful unless you want to
-       * position a native popup window at this coordinate.
-       *
-       * @return {Integer} The vertical mouse position on the screen.
-       */
-      getScreenTop: function getScreenTop() {
-        return Math.round(this._native.screenY);
-      }
-    }
-  });
-  qx.event.type.Mouse.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Mouse": {
-        "require": true
-      },
-      "qx.bom.Event": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Martin Wittemann (wittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * Pointer event object.
-   *
-   * the interface of this class is based on the pointer event interface:
-   * http://www.w3.org/TR/pointerevents/
-   */
-  qx.Class.define("qx.event.type.Pointer", {
-    extend: qx.event.type.Mouse,
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        clone = qx.event.type.Pointer.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-        clone.pointerId = nativeEvent.pointerId;
-        clone.width = nativeEvent.width;
-        clone.height = nativeEvent.height;
-        clone.pressure = nativeEvent.pressure;
-        clone.tiltX = nativeEvent.tiltX;
-        clone.tiltY = nativeEvent.tiltY;
-        clone.pointerType = nativeEvent.pointerType;
-        clone.isPrimary = nativeEvent.isPrimary;
-        clone._original = nativeEvent._original;
-        clone.MSPOINTER_TYPE_MOUSE = nativeEvent.MSPOINTER_TYPE_MOUSE;
-        clone.MSPOINTER_TYPE_PEN = nativeEvent.MSPOINTER_TYPE_PEN;
-        clone.MSPOINTER_TYPE_TOUCH = nativeEvent.MSPOINTER_TYPE_TOUCH;
-        return clone;
-      },
-      // overridden
-      getDocumentLeft: function getDocumentLeft() {
-        var x = qx.event.type.Pointer.superclass.prototype.getDocumentLeft.call(this); // iOS 6 does not copy pageX over to the fake pointer event
-
-        if (x == 0 && this.getPointerType() == "touch" && this._native._original !== undefined) {
-          x = Math.round(this._native._original.changedTouches[0].pageX) || 0;
-        }
-
-        return x;
-      },
-      // overridden
-      getDocumentTop: function getDocumentTop() {
-        var y = qx.event.type.Pointer.superclass.prototype.getDocumentTop.call(this); // iOS 6 does not copy pageY over to the fake pointer event
-
-        if (y == 0 && this.getPointerType() == "touch" && this._native._original !== undefined) {
-          y = Math.round(this._native._original.changedTouches[0].pageY) || 0;
-        }
-
-        return y;
-      },
-
-      /**
-       * Returns a unique identified for the pointer. This id is
-       * unique for all active pointers.
-       *
-       * @return {Number} The unique id.
-       */
-      getPointerId: function getPointerId() {
-        return this._native.pointerId || 0;
-      },
-
-      /**
-       * Returns the contact geometry in it's width.
-       *
-       * @return {Number} The number of pixels (width) of the contact geometry.
-       */
-      getWidth: function getWidth() {
-        return this._native.width || 0;
-      },
-
-      /**
-       * Returns the contact geometry in it's height.
-       *
-       * @return {Number} The number of pixels (height) of the contact geometry.
-       */
-      getHeight: function getHeight() {
-        return this._native.height || 0;
-      },
-
-      /**
-       * Returns the pressure of the pointer in a rage from 0 to 1.
-       *
-       * @return {Number} <code>1</code> for full pressure. The default is 0.
-       */
-      getPressure: function getPressure() {
-        return this._native.pressure || 0;
-      },
-
-      /**
-       * Returns the plane angle in degrees between the Y-Z plane and the
-       * plane containing e.g. the stylus and the Y axis.
-       *
-       * @return {Number} A value between -90 and 90. The default is 0.
-       */
-      getTiltX: function getTiltX() {
-        return this._native.tiltX || 0;
-      },
-
-      /**
-       * Returns the plane angle in degrees between the X-Z plane and the
-       * plane containing e.g. the stylus and the X axis.
-       *
-       * @return {Number} A value between -90 and 90. The default is 0.
-       */
-      getTiltY: function getTiltY() {
-        return this._native.tiltY || 0;
-      },
-      // overridden
-      getOriginalTarget: function getOriginalTarget() {
-        if (this._native && this._native._original) {
-          // fake pointer events
-          var orig = this._native._original; // In IE8, the original event can be a DispCEventObj which throws an
-          // exception when trying to access its properties.
-
-          try {
-            // touch events have a wrong target compared to mouse events
-            if (orig.type.indexOf("touch") == 0) {
-              if (orig.changedTouches[0]) {
-                return document.elementFromPoint(orig.changedTouches[0].clientX, orig.changedTouches[0].clientY);
-              }
-            }
-          } catch (ex) {
-            return qx.bom.Event.getTarget(this._native);
-          }
-
-          return qx.bom.Event.getTarget(orig);
-        } else if (this._native) {
-          // native pointer events
-          return qx.bom.Event.getTarget(this._native);
-        }
-
-        return qx.event.type.Pointer.superclass.prototype.getOriginalTarget.call(this);
-      },
-
-      /**
-       * Returns the device type which the event triggered. This can be one
-       * of the following strings: <code>mouse</code>, <code>wheel</code>,
-       * <code>pen</code> or <code>touch</code>.
-       *
-       * @return {String} The type of the pointer.
-       */
-      getPointerType: function getPointerType() {
-        if (typeof this._native.pointerType == "string") {
-          return this._native.pointerType;
-        }
-
-        if (typeof this._native.pointerType == "number") {
-          if (this._native.pointerType == this._native.MSPOINTER_TYPE_MOUSE) {
-            return "mouse";
-          }
-
-          if (this._native.pointerType == this._native.MSPOINTER_TYPE_PEN) {
-            return "pen";
-          }
-
-          if (this._native.pointerType == this._native.MSPOINTER_TYPE_TOUCH) {
-            return "touch";
-          }
-        }
-
-        return "";
-      },
-
-      /**
-       * Returns whether the pointer is the primary pointer.
-       *
-       * @return {Boolean} <code>true</code>, if it's the primary pointer.
-       */
-      isPrimary: function isPrimary() {
-        return !!this._native.isPrimary;
-      }
-    }
-  });
-  qx.event.type.Pointer.$$dbClassInfo = $$dbClassInfo;
-})();
-
-function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.bom.client.Event": {
-        "require": true
-      },
-      "qx.lang.Object": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "event.customevent": {
-          "className": "qx.bom.client.Event"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Cross-browser custom UI event
-   */
-  qx.Bootstrap.define("qx.event.type.dom.Custom", {
-    extend: Object,
-    statics: {
-      PROPERTIES: {
-        bubbles: false,
-        cancelable: true
-      }
-    },
-
-    /**
-     * @param type {String} event type
-     * @param domEvent {Event} Native event that will be used as a template for the new event
-     * @param customProps {Map} Map of event properties (will override the domEvent's values)
-     * @return {Event} event object
-     */
-    construct: function construct(type, domEvent, customProps) {
-      this._type = type;
-      this._event = this._createEvent();
-
-      this._initEvent(domEvent, customProps);
-
-      this._event._original = domEvent;
-
-      this._event.preventDefault = function () {
-        if (this._original.preventDefault) {
-          this._original.preventDefault();
-        } else {
-          // In IE8, the original event can be a DispCEventObj which throws an
-          // exception when trying to access its properties.
-          try {
-            this._original.returnValue = false;
-          } catch (ex) {}
-        }
-      };
-
-      if (this._event.stopPropagation) {
-        this._event._nativeStopPropagation = this._event.stopPropagation;
-      }
-
-      this._event.stopPropagation = function () {
-        this._stopped = true;
-
-        if (this._nativeStopPropagation) {
-          this._original.stopPropagation();
-
-          this._nativeStopPropagation();
-        } else {
-          this._original.cancelBubble = true;
-        }
-      };
-
-      return this._event;
-    },
-    members: {
-      _type: null,
-      _event: null,
-
-      /**
-       * Creates a custom event object
-       * @return {Event} event object
-       */
-      _createEvent: function _createEvent() {
-        var evt;
-
-        if (qx.core.Environment.get("event.customevent")) {
-          evt = new window.CustomEvent(this._type);
-        } else if (typeof document.createEvent == "function") {
-          evt = document.createEvent("UIEvents");
-        } else if (_typeof(document.createEventObject) == "object") {
-          // IE8 doesn't support custom event types
-          evt = {};
-          evt.type = this._type;
-        }
-
-        return evt;
-      },
-
-      /**
-       * Initializes a custom event
-       *
-       * @param domEvent {Event} Native event that will be used as a template for the new event
-       * @param customProps {Map?} Map of event properties (will override the domEvent's values)
-       */
-      _initEvent: function _initEvent(domEvent, customProps) {
-        customProps = customProps || {};
-        var properties = qx.lang.Object.clone(qx.event.type.dom.Custom.PROPERTIES);
-
-        for (var prop in customProps) {
-          properties[prop] = customProps[prop];
-        }
-
-        if (this._event.initEvent) {
-          this._event.initEvent(this._type, properties.bubbles, properties.cancelable);
-        }
-
-        for (var prop in properties) {
-          try {
-            this._event[prop] = properties[prop];
-          } catch (ex) {//Nothing - strict mode prevents writing to read only properties
-          }
-        }
-      }
-    }
-  });
-  qx.event.type.dom.Custom.$$dbClassInfo = $$dbClassInfo;
-})();
-
-function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.dom.Custom": {
-        "construct": true,
-        "require": true
-      },
-      "qx.dom.Node": {},
-      "qx.bom.Viewport": {},
-      "qx.bom.client.Event": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.bom.client.OperatingSystem": {
-        "defer": "load",
-        "require": true
-      }
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "event.mouseevent": {
-          "className": "qx.bom.client.Event"
-        },
-        "event.mousecreateevent": {
-          "className": "qx.bom.client.Event"
-        },
-        "engine.name": {
-          "defer": true,
-          "className": "qx.bom.client.Engine"
-        },
-        "os.name": {
-          "defer": true,
-          "className": "qx.bom.client.OperatingSystem"
-        },
-        "os.version": {
-          "defer": true,
-          "className": "qx.bom.client.OperatingSystem"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Synthetic pointer event
-   */
-  qx.Bootstrap.define("qx.event.type.dom.Pointer", {
-    extend: qx.event.type.dom.Custom,
-    statics: {
-      MOUSE_PROPERTIES: ["bubbles", "cancelable", "view", "detail", "screenX", "screenY", "clientX", "clientY", "pageX", "pageY", "ctrlKey", "altKey", "shiftKey", "metaKey", "button", "which", "relatedTarget", // IE8 properties:
-      "fromElement", "toElement"],
-      POINTER_PROPERTIES: {
-        pointerId: 1,
-        width: 0,
-        height: 0,
-        pressure: 0.5,
-        tiltX: 0,
-        tiltY: 0,
-        pointerType: "",
-        isPrimary: false
-      },
-      READONLY_PROPERTIES: [],
-      BIND_METHODS: ["getPointerType", "getViewportLeft", "getViewportTop", "getDocumentLeft", "getDocumentTop", "getScreenLeft", "getScreenTop"],
-
-      /**
-       * Returns the device type which the event triggered. This can be one
-       * of the following strings: <code>mouse</code>, <code>pen</code>
-       * or <code>touch</code>.
-       *
-       * @return {String} The type of the pointer.
-       */
-      getPointerType: function getPointerType() {
-        if (typeof this.pointerType == "string") {
-          return this.pointerType;
-        }
-
-        if (typeof this.pointerType == "number") {
-          if (this.pointerType == this.MSPOINTER_TYPE_MOUSE) {
-            return "mouse";
-          }
-
-          if (this.pointerType == this.MSPOINTER_TYPE_PEN) {
-            return "pen";
-          }
-
-          if (this.pointerType == this.MSPOINTER_TYPE_TOUCH) {
-            return "touch";
-          }
-        }
-
-        return "";
-      },
-
-      /**
-       * Get the horizontal coordinate at which the event occurred relative
-       * to the viewport.
-       *
-       * @return {Number} The horizontal mouse position
-       */
-      getViewportLeft: function getViewportLeft() {
-        return this.clientX;
-      },
-
-      /**
-       * Get the vertical coordinate at which the event occurred relative
-       * to the viewport.
-       *
-       * @return {Number} The vertical mouse position
-       * @signature function()
-       */
-      getViewportTop: function getViewportTop() {
-        return this.clientY;
-      },
-
-      /**
-       * Get the horizontal position at which the event occurred relative to the
-       * left of the document. This property takes into account any scrolling of
-       * the page.
-       *
-       * @return {Number} The horizontal mouse position in the document.
-       */
-      getDocumentLeft: function getDocumentLeft() {
-        if (this.pageX !== undefined) {
-          return this.pageX;
-        } else {
-          var win = qx.dom.Node.getWindow(this.srcElement);
-          return this.clientX + qx.bom.Viewport.getScrollLeft(win);
-        }
-      },
-
-      /**
-       * Get the vertical position at which the event occurred relative to the
-       * top of the document. This property takes into account any scrolling of
-       * the page.
-       *
-       * @return {Number} The vertical mouse position in the document.
-       */
-      getDocumentTop: function getDocumentTop() {
-        if (this.pageY !== undefined) {
-          return this.pageY;
-        } else {
-          var win = qx.dom.Node.getWindow(this.srcElement);
-          return this.clientY + qx.bom.Viewport.getScrollTop(win);
-        }
-      },
-
-      /**
-       * Get the horizontal coordinate at which the event occurred relative to
-       * the origin of the screen coordinate system.
-       *
-       * Note: This value is usually not very useful unless you want to
-       * position a native popup window at this coordinate.
-       *
-       * @return {Number} The horizontal mouse position on the screen.
-       */
-      getScreenLeft: function getScreenLeft() {
-        return this.screenX;
-      },
-
-      /**
-       * Get the vertical coordinate at which the event occurred relative to
-       * the origin of the screen coordinate system.
-       *
-       * Note: This value is usually not very useful unless you want to
-       * position a native popup window at this coordinate.
-       *
-       * @return {Number} The vertical mouse position on the screen.
-       */
-      getScreenTop: function getScreenTop() {
-        return this.screenY;
-      },
-
-      /**
-       * Manipulates the event object, adding methods if they're not
-       * already present
-       *
-       * @param event {Event} Native event object
-       */
-      normalize: function normalize(event) {
-        var bindMethods = qx.event.type.dom.Pointer.BIND_METHODS;
-
-        for (var i = 0, l = bindMethods.length; i < l; i++) {
-          if (typeof event[bindMethods[i]] != "function") {
-            event[bindMethods[i]] = qx.event.type.dom.Pointer[bindMethods[i]].bind(event);
-          }
-        }
-      }
-    },
-    construct: function construct(type, domEvent, customProps) {
-      return qx.event.type.dom.Custom.constructor.call(this, type, domEvent, customProps);
-    },
-    members: {
-      _createEvent: function _createEvent() {
-        var evt;
-
-        if (qx.core.Environment.get("event.mouseevent")) {
-          evt = new window.MouseEvent(this._type);
-        } else if (typeof document.createEvent == "function") {
-          /* In IE9, the pageX property of synthetic MouseEvents is always 0
-          and cannot be overridden, so we create a plain UIEvent and add
-          the mouse event properties ourselves. */
-          evt = document.createEvent(qx.core.Environment.get("event.mousecreateevent"));
-        } else if (_typeof(document.createEventObject) == "object") {
-          // IE8 doesn't support custom event types
-          evt = {};
-          evt.type = this._type;
-        }
-
-        return evt;
-      },
-      _initEvent: function _initEvent(domEvent, customProps) {
-        customProps = customProps || {};
-        var evt = this._event;
-        var properties = {};
-        qx.event.type.dom.Pointer.normalize(domEvent);
-        Object.keys(qx.event.type.dom.Pointer.POINTER_PROPERTIES).concat(qx.event.type.dom.Pointer.MOUSE_PROPERTIES).forEach(function (propName) {
-          if (typeof customProps[propName] !== "undefined") {
-            properties[propName] = customProps[propName];
-          } else if (typeof domEvent[propName] !== "undefined") {
-            properties[propName] = domEvent[propName];
-          } else if (typeof qx.event.type.dom.Pointer.POINTER_PROPERTIES[propName] !== "undefined") {
-            properties[propName] = qx.event.type.dom.Pointer.POINTER_PROPERTIES[propName];
-          }
-        });
-        var buttons;
-
-        switch (domEvent.which) {
-          case 1:
-            buttons = 1;
-            break;
-
-          case 2:
-            buttons = 4;
-            break;
-
-          case 3:
-            buttons = 2;
-            break;
-
-          default:
-            buttons = 0;
-        }
-
-        if (buttons !== undefined) {
-          properties.buttons = buttons;
-          properties.pressure = buttons ? 0.5 : 0;
-        }
-
-        if (evt.initMouseEvent) {
-          evt.initMouseEvent(this._type, properties.bubbles, properties.cancelable, properties.view, properties.detail, properties.screenX, properties.screenY, properties.clientX, properties.clientY, properties.ctrlKey, properties.altKey, properties.shiftKey, properties.metaKey, properties.button, properties.relatedTarget);
-        } else if (evt.initUIEvent) {
-          evt.initUIEvent(this._type, properties.bubbles, properties.cancelable, properties.view, properties.detail);
-        }
-
-        for (var prop in properties) {
-          if (evt[prop] !== properties[prop] && qx.event.type.dom.Pointer.READONLY_PROPERTIES.indexOf(prop) === -1) {
-            try {
-              evt[prop] = properties[prop];
-            } catch (ex) {// Nothing - cannot override properties in strict mode
-            }
-          }
-        } // normalize Windows 8 pointer types
-
-
-        switch (evt.pointerType) {
-          case domEvent.MSPOINTER_TYPE_MOUSE:
-            evt.pointerType = "mouse";
-            break;
-
-          case domEvent.MSPOINTER_TYPE_PEN:
-            evt.pointerType = "pen";
-            break;
-
-          case domEvent.MSPOINTER_TYPE_TOUCH:
-            evt.pointerType = "touch";
-            break;
-        }
-
-        if (evt.pointerType == "mouse") {
-          evt.isPrimary = true;
-        }
-      }
-    },
-    defer: function defer(statics) {
-      if (qx.core.Environment.get("engine.name") == "gecko") {
-        statics.READONLY_PROPERTIES.push("buttons");
-      } else if (qx.core.Environment.get("os.name") == "ios" && parseFloat(qx.core.Environment.get("os.version")) >= 8) {
-        statics.READONLY_PROPERTIES = statics.READONLY_PROPERTIES.concat(statics.MOUSE_PROPERTIES);
-      }
-    }
-  });
-  qx.event.type.dom.Pointer.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.bom.client.Event": {
-        "require": true,
-        "construct": true
-      },
-      "qx.bom.client.Device": {
-        "require": true,
-        "construct": true
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "construct": true,
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "construct": true,
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "construct": true,
-        "require": true
-      },
-      "qx.lang.Function": {},
-      "qx.dom.Node": {},
-      "qx.event.Emitter": {},
-      "qx.bom.Event": {},
-      "qx.event.type.dom.Pointer": {},
-      "qx.bom.client.OperatingSystem": {
-        "require": true
-      },
-      "qx.lang.Array": {},
-      "qx.event.Utils": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "engine.name": {
-          "load": true,
-          "className": "qx.bom.client.Engine",
-          "construct": true
-        },
-        "browser.documentmode": {
-          "load": true,
-          "className": "qx.bom.client.Browser",
-          "construct": true
-        },
-        "event.mspointer": {
-          "construct": true,
-          "className": "qx.bom.client.Event"
-        },
-        "device.touch": {
-          "construct": true,
-          "className": "qx.bom.client.Device"
-        },
-        "os.name": {
-          "className": "qx.bom.client.OperatingSystem"
-        },
-        "event.dispatchevent": {
-          "className": "qx.bom.client.Event"
-        },
-        "browser.name": {
-          "className": "qx.bom.client.Browser"
-        },
-        "browser.version": {
-          "className": "qx.bom.client.Browser"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Low-level pointer event handler.
-   *
-   * @require(qx.bom.client.Event)
-   * @require(qx.bom.client.Device)
-   */
-  qx.Bootstrap.define("qx.event.handler.PointerCore", {
-    extend: Object,
-    implement: [qx.core.IDisposable],
-    statics: {
-      MOUSE_TO_POINTER_MAPPING: {
-        mousedown: "pointerdown",
-        mouseup: "pointerup",
-        mousemove: "pointermove",
-        mouseout: "pointerout",
-        mouseover: "pointerover"
-      },
-      TOUCH_TO_POINTER_MAPPING: {
-        touchstart: "pointerdown",
-        touchend: "pointerup",
-        touchmove: "pointermove",
-        touchcancel: "pointercancel"
-      },
-      MSPOINTER_TO_POINTER_MAPPING: {
-        MSPointerDown: "pointerdown",
-        MSPointerMove: "pointermove",
-        MSPointerUp: "pointerup",
-        MSPointerCancel: "pointercancel",
-        MSPointerLeave: "pointerleave",
-        MSPointerEnter: "pointerenter",
-        MSPointerOver: "pointerover",
-        MSPointerOut: "pointerout"
-      },
-      POINTER_TO_GESTURE_MAPPING: {
-        pointerdown: "gesturebegin",
-        pointerup: "gesturefinish",
-        pointercancel: "gesturecancel",
-        pointermove: "gesturemove"
-      },
-      LEFT_BUTTON: qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") <= 8 ? 1 : 0,
-      SIM_MOUSE_DISTANCE: 25,
-      SIM_MOUSE_DELAY: 2500,
-
-      /**
-       * Coordinates of the last touch. This needs to be static because the target could
-       * change between touch and simulated mouse events. Touch events will be detected
-       * by one instance which moves the target. The simulated mouse events will be fired with
-       * a delay which causes another target and with that, another instance of this handler.
-       * last touch was.
-       */
-      __lastTouch__P_94_0: null
-    },
-
-    /**
-     * Create a new instance
-     *
-     * @param target {Element} element on which to listen for native touch events
-     * @param emitter {qx.event.Emitter?} Event emitter (used if dispatchEvent
-     * is not supported, e.g. in IE8)
-     */
-    construct: function construct(target, emitter) {
-      this.__defaultTarget__P_94_1 = target;
-      this.__emitter__P_94_2 = emitter;
-      this.__eventNames__P_94_3 = [];
-      this.__buttonStates__P_94_4 = [];
-      this.__activeTouches__P_94_5 = [];
-      this._processedFlag = "$$qx" + this.classname.substr(this.classname.lastIndexOf(".") + 1) + "Processed";
-      var engineName = qx.core.Environment.get("engine.name");
-      var docMode = parseInt(qx.core.Environment.get("browser.documentmode"), 10);
-
-      if (engineName == "mshtml" && docMode == 10) {
-        // listen to native prefixed events and custom unprefixed (see bug #8921)
-        this.__eventNames__P_94_3 = ["MSPointerDown", "MSPointerMove", "MSPointerUp", "MSPointerCancel", "MSPointerOver", "MSPointerOut", "pointerdown", "pointermove", "pointerup", "pointercancel", "pointerover", "pointerout"];
-
-        this._initPointerObserver();
-      } else {
-        if (qx.core.Environment.get("event.mspointer")) {
-          this.__nativePointerEvents__P_94_6 = true;
-        }
-
-        this.__eventNames__P_94_3 = ["pointerdown", "pointermove", "pointerup", "pointercancel", "pointerover", "pointerout"];
-
-        this._initPointerObserver();
-      }
-
-      if (!qx.core.Environment.get("event.mspointer")) {
-        if (qx.core.Environment.get("device.touch")) {
-          this.__eventNames__P_94_3 = ["touchstart", "touchend", "touchmove", "touchcancel"];
-
-          this._initObserver(this._onTouchEvent);
-        }
-
-        this.__eventNames__P_94_3 = ["mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "contextmenu"];
-
-        this._initObserver(this._onMouseEvent);
-      }
-    },
-    members: {
-      __defaultTarget__P_94_1: null,
-      __emitter__P_94_2: null,
-      __eventNames__P_94_3: null,
-      __nativePointerEvents__P_94_6: false,
-      __wrappedListener__P_94_7: null,
-      __lastButtonState__P_94_8: 0,
-      __buttonStates__P_94_4: null,
-      __primaryIdentifier__P_94_9: null,
-      __activeTouches__P_94_5: null,
-      _processedFlag: null,
-
-      /**
-       * Adds listeners to native pointer events if supported
-       */
-      _initPointerObserver: function _initPointerObserver() {
-        this._initObserver(this._onPointerEvent);
-      },
-
-      /**
-       * Register native event listeners
-       * @param callback {Function} listener callback
-       * @param useEmitter {Boolean} attach listener to Emitter instead of
-       * native event
-       */
-      _initObserver: function _initObserver(callback, useEmitter) {
-        this.__wrappedListener__P_94_7 = qx.lang.Function.listener(callback, this);
-
-        this.__eventNames__P_94_3.forEach(function (type) {
-          if (useEmitter && qx.dom.Node.isDocument(this.__defaultTarget__P_94_1)) {
-            if (!this.__defaultTarget__P_94_1.$$emitter) {
-              this.__defaultTarget__P_94_1.$$emitter = new qx.event.Emitter();
-            }
-
-            this.__defaultTarget__P_94_1.$$emitter.on(type, this.__wrappedListener__P_94_7);
-          } else {
-            qx.bom.Event.addNativeListener(this.__defaultTarget__P_94_1, type, this.__wrappedListener__P_94_7);
-          }
-        }.bind(this));
-      },
-
-      /**
-       * Handler for native pointer events
-       * @param domEvent {Event}  Native DOM event
-       */
-      _onPointerEvent: function _onPointerEvent(domEvent) {
-        if (!qx.core.Environment.get("event.mspointer") || // workaround for bug #8533
-        qx.core.Environment.get("browser.documentmode") === 10 && domEvent.type.toLowerCase().indexOf("ms") == -1) {
-          return;
-        }
-
-        if (!this.__nativePointerEvents__P_94_6) {
-          domEvent.stopPropagation();
-        }
-
-        var type = qx.event.handler.PointerCore.MSPOINTER_TO_POINTER_MAPPING[domEvent.type] || domEvent.type;
-        var target = qx.bom.Event.getTarget(domEvent);
-        var evt = new qx.event.type.dom.Pointer(type, domEvent);
-
-        this._fireEvent(evt, type, target);
-      },
-
-      /**
-       * Handler for touch events
-       * @param domEvent {Event} Native DOM event
-       */
-      _onTouchEvent: function _onTouchEvent(domEvent) {
-        if (domEvent[this._processedFlag]) {
-          return;
-        }
-
-        domEvent[this._processedFlag] = true;
-        var type = qx.event.handler.PointerCore.TOUCH_TO_POINTER_MAPPING[domEvent.type];
-        var changedTouches = domEvent.changedTouches;
-
-        this._determineActiveTouches(domEvent.type, changedTouches); // Detecting vacuum touches. (Touches which are not active anymore, but did not fire a touchcancel event)
-
-
-        if (domEvent.touches.length < this.__activeTouches__P_94_5.length) {
-          // Firing pointer cancel for previously active touches.
-          for (var i = this.__activeTouches__P_94_5.length - 1; i >= 0; i--) {
-            var cancelEvent = new qx.event.type.dom.Pointer("pointercancel", domEvent, {
-              identifier: this.__activeTouches__P_94_5[i].identifier,
-              target: domEvent.target,
-              pointerType: "touch",
-              pointerId: this.__activeTouches__P_94_5[i].identifier + 2
+      _createChildControlImpl: function _createChildControlImpl(id, hash) {
+        var control;
+
+        switch (id) {
+          case "frame":
+            control = new qx.ui.container.Composite();
+
+            this._add(control, {
+              left: 0,
+              top: 6,
+              right: 0,
+              bottom: 0
             });
 
-            this._fireEvent(cancelEvent, "pointercancel", domEvent.target);
-          } // Reset primary identifier
+            break;
 
+          case "legend":
+            control = new qx.ui.basic.Atom();
+            control.addListener("resize", this._repositionFrame, this);
 
-          this.__primaryIdentifier__P_94_9 = null; // cleanup of active touches array.
-
-          this.__activeTouches__P_94_5 = []; // Do nothing after pointer cancel.
-
-          return;
-        }
-
-        if (domEvent.type == "touchstart" && this.__primaryIdentifier__P_94_9 === null) {
-          this.__primaryIdentifier__P_94_9 = changedTouches[0].identifier;
-        }
-
-        for (var i = 0, l = changedTouches.length; i < l; i++) {
-          var touch = changedTouches[i];
-          var touchTarget = domEvent.view.document.elementFromPoint(touch.clientX, touch.clientY) || domEvent.target;
-          var touchProps = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            pageX: touch.pageX,
-            pageY: touch.pageY,
-            identifier: touch.identifier,
-            screenX: touch.screenX,
-            screenY: touch.screenY,
-            target: touchTarget,
-            pointerType: "touch",
-            pointerId: touch.identifier + 2
-          };
-
-          if (domEvent.type == "touchstart") {
-            // Fire pointerenter before pointerdown
-            var overEvt = new qx.event.type.dom.Pointer("pointerover", domEvent, touchProps);
-
-            this._fireEvent(overEvt, "pointerover", touchProps.target);
-          }
-
-          if (touch.identifier == this.__primaryIdentifier__P_94_9) {
-            touchProps.isPrimary = true; // always simulate left click on touch interactions for primary pointer
-
-            touchProps.button = 0;
-            touchProps.buttons = 1;
-            qx.event.handler.PointerCore.__lastTouch__P_94_0 = {
-              x: touch.clientX,
-              y: touch.clientY,
-              time: new Date().getTime()
-            };
-          }
-
-          var evt = new qx.event.type.dom.Pointer(type, domEvent, touchProps);
-
-          this._fireEvent(evt, type, touchProps.target);
-
-          if (domEvent.type == "touchend" || domEvent.type == "touchcancel") {
-            // Fire pointerout after pointerup
-            var outEvt = new qx.event.type.dom.Pointer("pointerout", domEvent, touchProps); // fire on the original target to make sure over / out event are on the same target
-
-            this._fireEvent(outEvt, "pointerout", domEvent.target);
-
-            if (this.__primaryIdentifier__P_94_9 == touch.identifier) {
-              this.__primaryIdentifier__P_94_9 = null;
-            }
-          }
-        }
-      },
-
-      /**
-       * Handler for touch events
-       * @param domEvent {Event} Native DOM event
-       */
-      _onMouseEvent: function _onMouseEvent(domEvent) {
-        if (domEvent[this._processedFlag]) {
-          return;
-        }
-
-        domEvent[this._processedFlag] = true;
-
-        if (this._isSimulatedMouseEvent(domEvent.clientX, domEvent.clientY)) {
-          /*
-            Simulated MouseEvents are fired by browsers directly after TouchEvents
-            for improving compatibility. They should not trigger PointerEvents.
-          */
-          return;
-        }
-
-        if (domEvent.type == "mousedown") {
-          this.__buttonStates__P_94_4[domEvent.which] = 1;
-        } else if (domEvent.type == "mouseup") {
-          if (qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("engine.name") == "gecko") {
-            if (this.__buttonStates__P_94_4[domEvent.which] != 1 && domEvent.ctrlKey) {
-              this.__buttonStates__P_94_4[1] = 0;
-            }
-          }
-
-          this.__buttonStates__P_94_4[domEvent.which] = 0;
-        }
-
-        var type = qx.event.handler.PointerCore.MOUSE_TO_POINTER_MAPPING[domEvent.type];
-        var target = qx.bom.Event.getTarget(domEvent);
-        var buttonsPressed = qx.lang.Array.sum(this.__buttonStates__P_94_4);
-        var mouseProps = {
-          pointerType: "mouse",
-          pointerId: 1
-        }; // if the button state changes but not from or to zero
-
-        if (this.__lastButtonState__P_94_8 != buttonsPressed && buttonsPressed !== 0 && this.__lastButtonState__P_94_8 !== 0) {
-          var moveEvt = new qx.event.type.dom.Pointer("pointermove", domEvent, mouseProps);
-
-          this._fireEvent(moveEvt, "pointermove", target);
-        }
-
-        this.__lastButtonState__P_94_8 = buttonsPressed; // pointerdown should only trigger form the first pressed button.
-
-        if (domEvent.type == "mousedown" && buttonsPressed > 1) {
-          return;
-        } // pointerup should only trigger if user releases all buttons.
-
-
-        if (domEvent.type == "mouseup" && buttonsPressed > 0) {
-          return;
-        }
-
-        if (domEvent.type == "contextmenu") {
-          this.__buttonStates__P_94_4[domEvent.which] = 0;
-          return;
-        }
-
-        var evt = new qx.event.type.dom.Pointer(type, domEvent, mouseProps);
-
-        this._fireEvent(evt, type, target);
-      },
-
-      /**
-       * Determines the current active touches.
-       * @param type {String} the DOM event type.
-       * @param changedTouches {Array} the current changed touches.
-       */
-      _determineActiveTouches: function _determineActiveTouches(type, changedTouches) {
-        if (type == "touchstart") {
-          for (var i = 0; i < changedTouches.length; i++) {
-            this.__activeTouches__P_94_5.push(changedTouches[i]);
-          }
-        } else if (type == "touchend" || type == "touchcancel") {
-          var updatedActiveTouches = [];
-
-          for (var i = 0; i < this.__activeTouches__P_94_5.length; i++) {
-            var add = true;
-
-            for (var j = 0; j < changedTouches.length; j++) {
-              if (this.__activeTouches__P_94_5[i].identifier == changedTouches[j].identifier) {
-                add = false;
-                break;
-              }
-            }
-
-            if (add) {
-              updatedActiveTouches.push(this.__activeTouches__P_94_5[i]);
-            }
-          }
-
-          this.__activeTouches__P_94_5 = updatedActiveTouches;
-        }
-      },
-
-      /**
-       * Detects whether the given MouseEvent position is identical to the previously fired TouchEvent position.
-       * If <code>true</code> the corresponding event can be identified as simulated.
-       * @param x {Integer} current mouse x
-       * @param y {Integer} current mouse y
-       * @return {Boolean} <code>true</code> if passed mouse position is a synthetic MouseEvent.
-       */
-      _isSimulatedMouseEvent: function _isSimulatedMouseEvent(x, y) {
-        var touch = qx.event.handler.PointerCore.__lastTouch__P_94_0;
-
-        if (touch) {
-          var timeSinceTouch = new Date().getTime() - touch.time;
-          var dist = qx.event.handler.PointerCore.SIM_MOUSE_DISTANCE;
-          var distX = Math.abs(x - qx.event.handler.PointerCore.__lastTouch__P_94_0.x);
-          var distY = Math.abs(y - qx.event.handler.PointerCore.__lastTouch__P_94_0.y);
-
-          if (timeSinceTouch < qx.event.handler.PointerCore.SIM_MOUSE_DELAY) {
-            if (distX < dist || distY < dist) {
-              return true;
-            }
-          }
-        }
-
-        return false;
-      },
-
-      /**
-       * Removes native pointer event listeners.
-       */
-      _stopObserver: function _stopObserver() {
-        for (var i = 0; i < this.__eventNames__P_94_3.length; i++) {
-          qx.bom.Event.removeNativeListener(this.__defaultTarget__P_94_1, this.__eventNames__P_94_3[i], this.__wrappedListener__P_94_7);
-        }
-      },
-
-      /**
-       * Fire a touch event with the given parameters
-       *
-       * @param domEvent {Event} DOM event
-       * @param type {String ? null} type of the event
-       * @param target {Element ? null} event target
-       * @return {qx.Promise?} a promise, if one was returned by event handlers
-       */
-      _fireEvent: function _fireEvent(domEvent, type, target) {
-        target = target || domEvent.target;
-        type = type || domEvent.type;
-        var gestureEvent;
-
-        if ((domEvent.pointerType !== "mouse" || domEvent.button <= qx.event.handler.PointerCore.LEFT_BUTTON) && (type == "pointerdown" || type == "pointerup" || type == "pointermove")) {
-          gestureEvent = new qx.event.type.dom.Pointer(qx.event.handler.PointerCore.POINTER_TO_GESTURE_MAPPING[type], domEvent);
-          qx.event.type.dom.Pointer.normalize(gestureEvent);
-
-          try {
-            gestureEvent.srcElement = target;
-          } catch (ex) {// Nothing - strict mode prevents writing to read only properties
-          }
-        }
-
-        if (qx.core.Environment.get("event.dispatchevent")) {
-          var tracker = {};
-
-          if (!this.__nativePointerEvents__P_94_6) {
-            qx.event.Utils.then(tracker, function () {
-              return target.dispatchEvent(domEvent);
+            this._add(control, {
+              left: 0,
+              right: 0
             });
-          }
 
-          if (gestureEvent) {
-            qx.event.Utils.then(tracker, function () {
-              return target.dispatchEvent(gestureEvent);
-            });
-          }
-
-          return tracker.promise;
-        } else {
-          if (qx.core.Environment.get("browser.name") === "msie" && qx.core.Environment.get("browser.version") < 9) {
-            // ensure compatibility with native events for IE8
-            try {
-              domEvent.srcElement = target;
-            } catch (ex) {// Nothing - strict mode prevents writing to read only properties
-            }
-          }
-
-          while (target) {
-            if (target.$$emitter) {
-              domEvent.currentTarget = target;
-
-              if (!domEvent._stopped) {
-                target.$$emitter.emit(type, domEvent);
-              }
-
-              if (gestureEvent && !gestureEvent._stopped) {
-                gestureEvent.currentTarget = target;
-                target.$$emitter.emit(gestureEvent.type, gestureEvent);
-              }
-            }
-
-            target = target.parentNode;
-          }
+            break;
         }
+
+        return control || qx.ui.groupbox.GroupBox.superclass.prototype._createChildControlImpl.call(this, id);
       },
 
       /**
-       * Dispose this object
-       */
-      dispose: function dispose() {
-        this._stopObserver();
-
-        this.__defaultTarget__P_94_1 = this.__emitter__P_94_2 = null;
-      }
-    }
-  });
-  qx.event.handler.PointerCore.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.event.dispatch.DomBubbling": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.event.type.Pointer": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.event.type.dom.Pointer": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.handler.PointerCore": {
-        "construct": true,
-        "require": true
-      },
-      "qx.event.IEventHandler": {
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.event.Registration": {
-        "defer": "runtime",
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "require": true
-      },
-      "qx.bom.Event": {},
-      "qx.event.Utils": {},
-      "qx.event.type.Data": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        },
-        "browser.documentmode": {
-          "className": "qx.bom.client.Browser"
-        },
-        "browser.name": {
-          "className": "qx.bom.client.Browser"
-        },
-        "browser.version": {
-          "className": "qx.bom.client.Browser"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Unified pointer event handler.
-   * @require(qx.event.dispatch.DomBubbling)
-   * @require(qx.event.type.Pointer) // load-time dependency for early native events
-   * @require(qx.event.type.dom.Pointer)
-   */
-  qx.Class.define("qx.event.handler.Pointer", {
-    extend: qx.event.handler.PointerCore,
-    implement: [qx.event.IEventHandler, qx.core.IDisposable],
-    statics: {
-      /** @type {Integer} Priority of this handler */
-      PRIORITY: qx.event.Registration.PRIORITY_NORMAL,
-
-      /** @type {Map} Supported event types */
-      SUPPORTED_TYPES: {
-        pointermove: 1,
-        pointerover: 1,
-        pointerout: 1,
-        pointerdown: 1,
-        pointerup: 1,
-        pointercancel: 1,
-        gesturebegin: 1,
-        gesturemove: 1,
-        gesturefinish: 1,
-        gesturecancel: 1
-      },
-
-      /** @type {Integer} Which target check to use */
-      TARGET_CHECK: qx.event.IEventHandler.TARGET_DOMNODE + qx.event.IEventHandler.TARGET_DOCUMENT,
-
-      /** @type {Integer} Whether the method "canHandleEvent" must be called */
-      IGNORE_CAN_HANDLE: true
-    },
-
-    /**
-     * Create a new instance
-     *
-     * @param manager {qx.event.Manager} Event manager for the window to use
-     */
-    construct: function construct(manager) {
-      // Define shorthands
-      this.__manager__P_48_0 = manager;
-      this.__window__P_48_1 = manager.getWindow();
-      this.__root__P_48_2 = this.__window__P_48_1.document;
-      qx.event.handler.PointerCore.apply(this, [this.__root__P_48_2]);
-    },
-    members: {
-      __manager__P_48_0: null,
-      __window__P_48_1: null,
-      __root__P_48_2: null,
-      // interface implementation
-      canHandleEvent: function canHandleEvent(target, type) {},
-      // interface implementation
-      registerEvent: function registerEvent(target, type, capture) {// Nothing needs to be done here
-      },
-      // interface implementation
-      unregisterEvent: function unregisterEvent(target, type, capture) {// Nothing needs to be done here
-      },
-      // overridden
-      _initPointerObserver: function _initPointerObserver() {
-        var useEmitter = false;
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") < 9) {
-          // Workaround for bug #8293: Use an emitter to listen to the
-          // pointer events fired by a pointer handler attached by qxWeb.
-          useEmitter = true;
-        }
-
-        this._initObserver(this._onPointerEvent, useEmitter);
-      },
-
-      /**
-       * Fire a pointer event with the given parameters
+       * Returns the element, to which the content padding should be applied.
        *
-       * @param domEvent {Event} DOM event
-       * @param type {String ? null} type of the event
-       * @param target {Element ? null} event target
+       * @return {qx.ui.core.Widget} The content padding target.
        */
-      _fireEvent: function _fireEvent(domEvent, type, target) {
-        if (!target) {
-          target = qx.bom.Event.getTarget(domEvent);
-        } // respect anonymous elements
-
-
-        while (target && target.getAttribute && target.getAttribute("qxanonymous")) {
-          target = target.parentNode;
-        }
-
-        if (!type) {
-          type = domEvent.type;
-        }
-
-        type = qx.event.handler.PointerCore.MSPOINTER_TO_POINTER_MAPPING[type] || type;
-
-        if (target && target.nodeType) {
-          qx.event.type.dom.Pointer.normalize(domEvent);
-
-          if (qx.core.Environment.get("browser.name") === "msie" && qx.core.Environment.get("browser.version") < 9) {
-            // ensure compatibility with native events for IE8
-            try {
-              domEvent.srcElement = target;
-            } catch (ex) {// Nothing - cannot change properties in strict mode
-            }
-          }
-
-          var tracker = {};
-          var self = this;
-          qx.event.Utils.track(tracker, function () {
-            return qx.event.Registration.fireEvent(target, type, qx.event.type.Pointer, [domEvent, target, null, true, true]);
-          });
-          qx.event.Utils.then(tracker, function () {
-            if ((domEvent.getPointerType() !== "mouse" || domEvent.button <= qx.event.handler.PointerCore.LEFT_BUTTON) && (type == "pointerdown" || type == "pointerup" || type == "pointermove" || type == "pointercancel")) {
-              return qx.event.Registration.fireEvent(self.__root__P_48_2, qx.event.handler.PointerCore.POINTER_TO_GESTURE_MAPPING[type], qx.event.type.Pointer, [domEvent, target, null, false, false]);
-            }
-          });
-          qx.event.Utils.then(tracker, function () {
-            // Fire user action event
-            return qx.event.Registration.fireEvent(self.__window__P_48_1, "useraction", qx.event.type.Data, [type]);
-          });
-          return tracker.promise;
-        }
-      },
-      // overridden
-      _onPointerEvent: function _onPointerEvent(domEvent) {
-        if (domEvent._original && domEvent._original[this._processedFlag]) {
-          return;
-        }
-
-        var type = qx.event.handler.PointerCore.MSPOINTER_TO_POINTER_MAPPING[domEvent.type] || domEvent.type;
-        return this._fireEvent(domEvent, type, qx.bom.Event.getTarget(domEvent));
-      },
-
-      /**
-       * Dispose this object
-       */
-      dispose: function dispose() {
-        this.__callBase__P_48_3("dispose");
-
-        this.__manager__P_48_0 = this.__window__P_48_1 = this.__root__P_48_2 = null;
-      },
-
-      /**
-       * Call overridden method.
-       *
-       * @param method {String} Name of the overridden method.
-       * @param args {Array} Arguments.
-       */
-      __callBase__P_48_3: function __callBase__P_48_3(method, args) {
-        qx.event.handler.PointerCore.prototype[method].apply(this, args || []);
-      }
-    },
-    defer: function defer(statics) {
-      qx.event.Registration.addHandler(statics);
-      qx.event.Registration.getManager(document).getHandler(statics);
-    }
-  });
-  qx.event.handler.Pointer.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.bom.client.Device": {
-        "require": true
-      },
-      "qx.bom.client.Engine": {
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "require": true
-      },
-      "qx.bom.client.Event": {
-        "require": true
-      },
-      "qx.bom.Event": {},
-      "qx.bom.AnimationFrame": {},
-      "qx.lang.Function": {},
-      "qx.event.type.dom.Custom": {},
-      "qx.util.Wheel": {},
-      "qx.bom.client.OperatingSystem": {
-        "require": true
-      },
-      "qx.event.Timer": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "device.touch": {
-          "load": true,
-          "className": "qx.bom.client.Device"
-        },
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        },
-        "browser.documentmode": {
-          "className": "qx.bom.client.Browser"
-        },
-        "event.mousewheel": {
-          "className": "qx.bom.client.Event"
-        },
-        "event.dispatchevent": {
-          "className": "qx.bom.client.Event"
-        },
-        "os.name": {
-          "className": "qx.bom.client.OperatingSystem"
-        },
-        "os.version": {
-          "className": "qx.bom.client.OperatingSystem"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Listens for (native or synthetic) pointer events and fires events
-   * for gestures like "tap" or "swipe"
-   */
-  qx.Bootstrap.define("qx.event.handler.GestureCore", {
-    extend: Object,
-    implement: [qx.core.IDisposable],
-    statics: {
-      TYPES: ["tap", "swipe", "longtap", "dbltap", "track", "trackstart", "trackend", "rotate", "pinch", "roll"],
-      GESTURE_EVENTS: ["gesturebegin", "gesturefinish", "gesturemove", "gesturecancel"],
-
-      /** @type {Map} Maximum distance between a pointer-down and pointer-up event, values are configurable */
-      TAP_MAX_DISTANCE: {
-        touch: 40,
-        mouse: 5,
-        pen: 20
-      },
-      // values are educated guesses
-
-      /** @type {Map} Maximum distance between two subsequent taps, values are configurable */
-      DOUBLETAP_MAX_DISTANCE: {
-        touch: 10,
-        mouse: 4,
-        pen: 10
-      },
-      // values are educated guesses
-
-      /** @type {Map} The direction of a swipe relative to the axis */
-      SWIPE_DIRECTION: {
-        x: ["left", "right"],
-        y: ["up", "down"]
-      },
-
-      /**
-       * @type {Integer} The time delta in milliseconds to fire a long tap event.
-       */
-      LONGTAP_TIME: qx.core.Environment.get("device.touch") ? 500 : 99999,
-
-      /**
-       * @type {Integer} Maximum time between two tap events that will still trigger a
-       * dbltap event.
-       */
-      DOUBLETAP_TIME: 500,
-
-      /**
-       * @type {Integer} Factor which is used for adapting the delta of the mouse wheel
-       * event to the roll events,
-       */
-      ROLL_FACTOR: 18,
-
-      /**
-       * @type {Integer} Factor which is used for adapting the delta of the touchpad gesture
-       * event to the roll events,
-       */
-      TOUCHPAD_ROLL_FACTOR: 1,
-
-      /**
-       * @type {Integer} Minimum number of wheel events to receive during the
-       * TOUCHPAD_WHEEL_EVENTS_PERIOD to detect a touchpad.
-       */
-      TOUCHPAD_WHEEL_EVENTS_THRESHOLD: 10,
-
-      /**
-       * @type {Integer} Period (in ms) during which the wheel events are counted in order
-       * to detect a touchpad.
-       */
-      TOUCHPAD_WHEEL_EVENTS_PERIOD: 100,
-
-      /**
-       * @type {Integer} Timeout (in ms) after which the touchpad detection is reset if no wheel
-       * events are received in the meantime.
-       */
-      TOUCHPAD_WHEEL_EVENTS_TIMEOUT: 5000
-    },
-
-    /**
-     * @param target {Element} DOM Element that should fire gesture events
-     * @param emitter {qx.event.Emitter?} Event emitter (used if dispatchEvent
-     * is not supported, e.g. in IE8)
-     */
-    construct: function construct(target, emitter) {
-      this.__defaultTarget__P_49_0 = target;
-      this.__emitter__P_49_1 = emitter;
-      this.__gesture__P_49_2 = {};
-      this.__lastTap__P_49_3 = {};
-      this.__stopMomentum__P_49_4 = {};
-      this.__momentum__P_49_5 = {};
-      this.__rollEvents__P_49_6 = [];
-
-      this._initObserver();
-    },
-    members: {
-      __defaultTarget__P_49_0: null,
-      __emitter__P_49_1: null,
-      __gesture__P_49_2: null,
-      __eventName__P_49_7: null,
-      __primaryTarget__P_49_8: null,
-      __isMultiPointerGesture__P_49_9: null,
-      __initialAngle__P_49_10: null,
-      __lastTap__P_49_3: null,
-      __rollImpulseId__P_49_11: null,
-      __stopMomentum__P_49_4: null,
-      __initialDistance__P_49_12: null,
-      __momentum__P_49_5: null,
-      __rollEvents__P_49_6: null,
-      __rollEventsCountStart__P_49_13: 0,
-      __rollEventsCount__P_49_14: 0,
-      __touchPadDetectionPerformed__P_49_15: false,
-      __lastRollEventTime__P_49_16: 0,
-
-      /**
-       * Register pointer event listeners
-       */
-      _initObserver: function _initObserver() {
-        qx.event.handler.GestureCore.GESTURE_EVENTS.forEach(function (gestureType) {
-          qxWeb(this.__defaultTarget__P_49_0).on(gestureType, this.checkAndFireGesture, this);
-        }.bind(this));
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") < 9) {
-          qxWeb(this.__defaultTarget__P_49_0).on("dblclick", this._onDblClick, this);
-        } // list to wheel events
-
-
-        var data = qx.core.Environment.get("event.mousewheel");
-        qxWeb(data.target).on(data.type, this._fireRoll, this);
-      },
-
-      /**
-       * Remove native pointer event listeners.
-       */
-      _stopObserver: function _stopObserver() {
-        qx.event.handler.GestureCore.GESTURE_EVENTS.forEach(function (pointerType) {
-          qxWeb(this.__defaultTarget__P_49_0).off(pointerType, this.checkAndFireGesture, this);
-        }.bind(this));
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") < 9) {
-          qxWeb(this.__defaultTarget__P_49_0).off("dblclick", this._onDblClick, this);
-        }
-
-        var data = qx.core.Environment.get("event.mousewheel");
-        qxWeb(data.target).off(data.type, this._fireRoll, this);
-      },
-
-      /**
-       * Checks if a gesture was made and fires the gesture event.
-       *
-       * @param domEvent {qx.event.type.Pointer} DOM event
-       * @param type {String ? null} type of the event
-       * @param target {Element ? null} event target
-       */
-      checkAndFireGesture: function checkAndFireGesture(domEvent, type, target) {
-        if (!type) {
-          type = domEvent.type;
-        }
-
-        if (!target) {
-          target = qx.bom.Event.getTarget(domEvent);
-        }
-
-        if (type == "gesturebegin") {
-          this.gestureBegin(domEvent, target);
-        } else if (type == "gesturemove") {
-          this.gestureMove(domEvent, target);
-        } else if (type == "gesturefinish") {
-          this.gestureFinish(domEvent, target);
-        } else if (type == "gesturecancel") {
-          this.gestureCancel(domEvent.pointerId);
-        }
-      },
-
-      /**
-       * Helper method for gesture start.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      gestureBegin: function gestureBegin(domEvent, target) {
-        if (this.__gesture__P_49_2[domEvent.pointerId]) {
-          this.__stopLongTapTimer__P_49_17(this.__gesture__P_49_2[domEvent.pointerId]);
-
-          delete this.__gesture__P_49_2[domEvent.pointerId];
-        }
-        /*
-          If the dom event's target or one of its ancestors have
-          a gesture handler, we don't need to fire the gesture again
-          since it bubbles.
-         */
-
-
-        if (this._hasIntermediaryHandler(target)) {
-          return;
-        }
-
-        this.__gesture__P_49_2[domEvent.pointerId] = {
-          startTime: new Date().getTime(),
-          lastEventTime: new Date().getTime(),
-          startX: domEvent.clientX,
-          startY: domEvent.clientY,
-          clientX: domEvent.clientX,
-          clientY: domEvent.clientY,
-          velocityX: 0,
-          velocityY: 0,
-          target: target,
-          isTap: true,
-          isPrimary: domEvent.isPrimary,
-          longTapTimer: window.setTimeout(this.__fireLongTap__P_49_18.bind(this, domEvent, target), qx.event.handler.GestureCore.LONGTAP_TIME)
-        };
-
-        if (domEvent.isPrimary) {
-          this.__isMultiPointerGesture__P_49_9 = false;
-          this.__primaryTarget__P_49_8 = target;
-
-          this.__fireTrack__P_49_19("trackstart", domEvent, target);
-        } else {
-          this.__isMultiPointerGesture__P_49_9 = true;
-
-          if (Object.keys(this.__gesture__P_49_2).length === 2) {
-            this.__initialAngle__P_49_10 = this._calcAngle();
-            this.__initialDistance__P_49_12 = this._calcDistance();
-          }
-        }
-      },
-
-      /**
-       * Helper method for gesture move.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      gestureMove: function gestureMove(domEvent, target) {
-        var gesture = this.__gesture__P_49_2[domEvent.pointerId];
-
-        if (gesture) {
-          var oldClientX = gesture.clientX;
-          var oldClientY = gesture.clientY;
-          gesture.clientX = domEvent.clientX;
-          gesture.clientY = domEvent.clientY;
-          gesture.lastEventTime = new Date().getTime();
-
-          if (oldClientX) {
-            gesture.velocityX = gesture.clientX - oldClientX;
-          }
-
-          if (oldClientY) {
-            gesture.velocityY = gesture.clientY - oldClientY;
-          }
-
-          if (Object.keys(this.__gesture__P_49_2).length === 2) {
-            this.__fireRotate__P_49_20(domEvent, gesture.target);
-
-            this.__firePinch__P_49_21(domEvent, gesture.target);
-          }
-
-          if (!this.__isMultiPointerGesture__P_49_9) {
-            this.__fireTrack__P_49_19("track", domEvent, gesture.target);
-
-            this._fireRoll(domEvent, "touch", gesture.target);
-          } // abort long tap timer if the distance is too big
-
-
-          if (gesture.isTap) {
-            gesture.isTap = this._isBelowTapMaxDistance(domEvent);
-
-            if (!gesture.isTap) {
-              this.__stopLongTapTimer__P_49_17(gesture);
-            }
-          }
-        }
-      },
-
-      /**
-       * Checks if a DOM element located between the target of a gesture
-       * event and the element this handler is attached to has a gesture
-       * handler of its own.
-       *
-       * @param target {Element} The gesture event's target
-       * @return {Boolean}
-       */
-      _hasIntermediaryHandler: function _hasIntermediaryHandler(target) {
-        while (target && target !== this.__defaultTarget__P_49_0) {
-          if (target.$$gestureHandler) {
-            return true;
-          }
-
-          target = target.parentNode;
-        }
-
-        return false;
-      },
-
-      /**
-       * Helper method for gesture end.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      gestureFinish: function gestureFinish(domEvent, target) {
-        // If no start position is available for this pointerup event, cancel gesture recognition.
-        if (!this.__gesture__P_49_2[domEvent.pointerId]) {
-          return;
-        }
-
-        var gesture = this.__gesture__P_49_2[domEvent.pointerId]; // delete the long tap
-
-        this.__stopLongTapTimer__P_49_17(gesture);
-        /*
-          If the dom event's target or one of its ancestors have
-          a gesture handler, we don't need to fire the gesture again
-          since it bubbles.
-         */
-
-
-        if (this._hasIntermediaryHandler(target)) {
-          return;
-        } // always start the roll impulse on the original target
-
-
-        this.__handleRollImpulse__P_49_22(gesture.velocityX, gesture.velocityY, domEvent, gesture.target);
-
-        this.__fireTrack__P_49_19("trackend", domEvent, gesture.target);
-
-        if (gesture.isTap) {
-          if (target !== gesture.target) {
-            delete this.__gesture__P_49_2[domEvent.pointerId];
-            return;
-          }
-
-          this._fireEvent(domEvent, "tap", domEvent.target || target);
-
-          var isDblTap = false;
-
-          if (Object.keys(this.__lastTap__P_49_3).length > 0) {
-            // delete old tap entries
-            var limit = Date.now() - qx.event.handler.GestureCore.DOUBLETAP_TIME;
-
-            for (var time in this.__lastTap__P_49_3) {
-              if (time < limit) {
-                delete this.__lastTap__P_49_3[time];
-              } else {
-                var lastTap = this.__lastTap__P_49_3[time];
-
-                var isBelowDoubleTapDistance = this.__isBelowDoubleTapDistance__P_49_23(lastTap.x, lastTap.y, domEvent.clientX, domEvent.clientY, domEvent.getPointerType());
-
-                var isSameTarget = lastTap.target === (domEvent.target || target);
-                var isSameButton = lastTap.button === domEvent.button;
-
-                if (isBelowDoubleTapDistance && isSameButton && isSameTarget) {
-                  isDblTap = true;
-                  delete this.__lastTap__P_49_3[time];
-
-                  this._fireEvent(domEvent, "dbltap", domEvent.target || target);
-                }
-              }
-            }
-          }
-
-          if (!isDblTap) {
-            this.__lastTap__P_49_3[Date.now()] = {
-              x: domEvent.clientX,
-              y: domEvent.clientY,
-              target: domEvent.target || target,
-              button: domEvent.button
-            };
-          }
-        } else if (!this._isBelowTapMaxDistance(domEvent)) {
-          var swipe = this.__getSwipeGesture__P_49_24(domEvent, target);
-
-          if (swipe) {
-            domEvent.swipe = swipe;
-
-            this._fireEvent(domEvent, "swipe", gesture.target || target);
-          }
-        }
-
-        delete this.__gesture__P_49_2[domEvent.pointerId];
-      },
-
-      /**
-       * Stops the momentum scrolling currently running.
-       *
-       * @param id {Integer} The timeoutId of a 'roll' event
-       */
-      stopMomentum: function stopMomentum(id) {
-        this.__stopMomentum__P_49_4[id] = true;
-      },
-
-      /**
-       * Cancels the gesture if running.
-       * @param id {Number} The pointer Id.
-       */
-      gestureCancel: function gestureCancel(id) {
-        if (this.__gesture__P_49_2[id]) {
-          this.__stopLongTapTimer__P_49_17(this.__gesture__P_49_2[id]);
-
-          delete this.__gesture__P_49_2[id];
-        }
-
-        if (this.__momentum__P_49_5[id]) {
-          this.stopMomentum(this.__momentum__P_49_5[id]);
-          delete this.__momentum__P_49_5[id];
-        }
-      },
-
-      /**
-       * Update the target of a running gesture. This is used in virtual widgets
-       * when the DOM element changes.
-       *
-       * @param id {String} The pointer id.
-       * @param target {Element} The new target element.
-       * @internal
-       */
-      updateGestureTarget: function updateGestureTarget(id, target) {
-        this.__gesture__P_49_2[id].target = target;
-      },
-
-      /**
-       * Method which will be called recursively to provide a momentum scrolling.
-       * @param deltaX {Number} The last offset in X direction
-       * @param deltaY {Number} The last offset in Y direction
-       * @param domEvent {Event} The original gesture event
-       * @param target {Element} The target of the momentum roll events
-       * @param time {Number ?} The time in ms between the last two calls
-       */
-      __handleRollImpulse__P_49_22: function __handleRollImpulse__P_49_22(deltaX, deltaY, domEvent, target, time) {
-        var oldTimeoutId = domEvent.timeoutId;
-
-        if (!time && this.__momentum__P_49_5[domEvent.pointerId]) {
-          // new roll impulse started, stop the old one
-          this.stopMomentum(this.__momentum__P_49_5[domEvent.pointerId]);
-        } // do nothing if we don't need to scroll
-
-
-        if (Math.abs(deltaY) < 1 && Math.abs(deltaX) < 1 || this.__stopMomentum__P_49_4[oldTimeoutId] || !this.getWindow()) {
-          delete this.__stopMomentum__P_49_4[oldTimeoutId];
-          delete this.__momentum__P_49_5[domEvent.pointerId];
-          return;
-        }
-
-        if (!time) {
-          time = 1;
-          var startFactor = 2.8;
-          deltaY = deltaY / startFactor;
-          deltaX = deltaX / startFactor;
-        }
-
-        time += 0.0006;
-        deltaY = deltaY / time;
-        deltaX = deltaX / time; // set up a new timer with the new delta
-
-        var timeoutId = qx.bom.AnimationFrame.request(qx.lang.Function.bind(function (deltaX, deltaY, domEvent, target, time) {
-          this.__handleRollImpulse__P_49_22(deltaX, deltaY, domEvent, target, time);
-        }, this, deltaX, deltaY, domEvent, target, time));
-        deltaX = Math.round(deltaX * 100) / 100;
-        deltaY = Math.round(deltaY * 100) / 100; // scroll the desired new delta
-
-        domEvent.delta = {
-          x: -deltaX,
-          y: -deltaY
-        };
-        domEvent.momentum = true;
-        domEvent.timeoutId = timeoutId;
-        this.__momentum__P_49_5[domEvent.pointerId] = timeoutId;
-
-        this._fireEvent(domEvent, "roll", domEvent.target || target);
-      },
-
-      /**
-       * Calculates the angle of the primary and secondary pointer.
-       * @return {Number} the rotation angle of the 2 pointers.
-       */
-      _calcAngle: function _calcAngle() {
-        var pointerA = null;
-        var pointerB = null;
-
-        for (var pointerId in this.__gesture__P_49_2) {
-          var gesture = this.__gesture__P_49_2[pointerId];
-
-          if (pointerA === null) {
-            pointerA = gesture;
-          } else {
-            pointerB = gesture;
-          }
-        }
-
-        var x = pointerA.clientX - pointerB.clientX;
-        var y = pointerA.clientY - pointerB.clientY;
-        return (360 + Math.atan2(y, x) * (180 / Math.PI)) % 360;
-      },
-
-      /**
-       * Calculates the scaling distance between two pointers.
-       * @return {Number} the calculated distance.
-       */
-      _calcDistance: function _calcDistance() {
-        var pointerA = null;
-        var pointerB = null;
-
-        for (var pointerId in this.__gesture__P_49_2) {
-          var gesture = this.__gesture__P_49_2[pointerId];
-
-          if (pointerA === null) {
-            pointerA = gesture;
-          } else {
-            pointerB = gesture;
-          }
-        }
-
-        var scale = Math.sqrt(Math.pow(pointerA.clientX - pointerB.clientX, 2) + Math.pow(pointerA.clientY - pointerB.clientY, 2));
-        return scale;
-      },
-
-      /**
-       * Checks if the distance between the x/y coordinates of DOM event
-       * exceeds TAP_MAX_DISTANCE and returns the result.
-       *
-       * @param domEvent {Event} The DOM event from the browser.
-       * @return {Boolean|null} true if distance is below TAP_MAX_DISTANCE.
-       */
-      _isBelowTapMaxDistance: function _isBelowTapMaxDistance(domEvent) {
-        var delta = this._getDeltaCoordinates(domEvent);
-
-        var maxDistance = qx.event.handler.GestureCore.TAP_MAX_DISTANCE[domEvent.getPointerType()];
-
-        if (!delta) {
-          return null;
-        }
-
-        return Math.abs(delta.x) <= maxDistance && Math.abs(delta.y) <= maxDistance;
-      },
-
-      /**
-       * Checks if the distance between the x1/y1 and x2/y2 is
-       * below the TAP_MAX_DISTANCE and returns the result.
-       *
-       * @param x1 {Number} The x position of point one.
-       * @param y1 {Number} The y position of point one.
-       * @param x2 {Number} The x position of point two.
-       * @param y2 {Number} The y position of point two.
-       * @param type {String} The pointer type e.g. "mouse"
-       * @return {Boolean} <code>true</code>, if points are in range
-       */
-      __isBelowDoubleTapDistance__P_49_23: function __isBelowDoubleTapDistance__P_49_23(x1, y1, x2, y2, type) {
-        var clazz = qx.event.handler.GestureCore;
-        var inX = Math.abs(x1 - x2) < clazz.DOUBLETAP_MAX_DISTANCE[type];
-        var inY = Math.abs(y1 - y2) < clazz.DOUBLETAP_MAX_DISTANCE[type];
-        return inX && inY;
-      },
-
-      /**
-       * Calculates the delta coordinates in relation to the position on <code>pointerstart</code> event.
-       * @param domEvent {Event} The DOM event from the browser.
-       * @return {Map} containing the deltaX as x, and deltaY as y.
-       */
-      _getDeltaCoordinates: function _getDeltaCoordinates(domEvent) {
-        var gesture = this.__gesture__P_49_2[domEvent.pointerId];
-
-        if (!gesture) {
-          return null;
-        }
-
-        var deltaX = domEvent.clientX - gesture.startX;
-        var deltaY = domEvent.clientY - gesture.startY;
-        var axis = "x";
-
-        if (Math.abs(deltaX / deltaY) < 1) {
-          axis = "y";
-        }
-
-        return {
-          x: deltaX,
-          y: deltaY,
-          axis: axis
-        };
-      },
-
-      /**
-       * Fire a gesture event with the given parameters
-       *
-       * @param domEvent {Event} DOM event
-       * @param type {String} type of the event
-       * @param target {Element ? null} event target
-       * @return {qx.Promise?} a promise, if one or more of the event handlers returned a promise
-       */
-      _fireEvent: function _fireEvent(domEvent, type, target) {
-        // The target may have been removed, e.g. menu hide on tap
-        if (!this.__defaultTarget__P_49_0) {
-          return;
-        }
-
-        var evt;
-
-        if (qx.core.Environment.get("event.dispatchevent")) {
-          evt = new qx.event.type.dom.Custom(type, domEvent, {
-            bubbles: true,
-            swipe: domEvent.swipe,
-            scale: domEvent.scale,
-            angle: domEvent.angle,
-            delta: domEvent.delta,
-            pointerType: domEvent.pointerType,
-            momentum: domEvent.momentum
-          });
-          return target.dispatchEvent(evt);
-        } else if (this.__emitter__P_49_1) {
-          evt = new qx.event.type.dom.Custom(type, domEvent, {
-            target: this.__defaultTarget__P_49_0,
-            currentTarget: this.__defaultTarget__P_49_0,
-            srcElement: this.__defaultTarget__P_49_0,
-            swipe: domEvent.swipe,
-            scale: domEvent.scale,
-            angle: domEvent.angle,
-            delta: domEvent.delta,
-            pointerType: domEvent.pointerType,
-            momentum: domEvent.momentum
-          });
-
-          this.__emitter__P_49_1.emit(type, domEvent);
-        }
-      },
-
-      /**
-       * Fire "tap" and "dbltap" events after a native "dblclick"
-       * event to fix IE 8's broken mouse event sequence.
-       *
-       * @param domEvent {Event} dblclick event
-       */
-      _onDblClick: function _onDblClick(domEvent) {
-        var target = qx.bom.Event.getTarget(domEvent);
-
-        this._fireEvent(domEvent, "tap", target);
-
-        this._fireEvent(domEvent, "dbltap", target);
-      },
-
-      /**
-       * Returns the swipe gesture when the user performed a swipe.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       * @return {Map|null} returns the swipe data when the user performed a swipe, null if the gesture was no swipe.
-       */
-      __getSwipeGesture__P_49_24: function __getSwipeGesture__P_49_24(domEvent, target) {
-        var gesture = this.__gesture__P_49_2[domEvent.pointerId];
-
-        if (!gesture) {
-          return null;
-        }
-
-        var clazz = qx.event.handler.GestureCore;
-
-        var deltaCoordinates = this._getDeltaCoordinates(domEvent);
-
-        var duration = new Date().getTime() - gesture.startTime;
-        var axis = Math.abs(deltaCoordinates.x) >= Math.abs(deltaCoordinates.y) ? "x" : "y";
-        var distance = deltaCoordinates[axis];
-        var direction = clazz.SWIPE_DIRECTION[axis][distance < 0 ? 0 : 1];
-        var velocity = duration !== 0 ? distance / duration : 0;
-        var swipe = {
-          startTime: gesture.startTime,
-          duration: duration,
-          axis: axis,
-          direction: direction,
-          distance: distance,
-          velocity: velocity
-        };
-        return swipe;
-      },
-
-      /**
-       * Fires a track event.
-       *
-       * @param type {String} the track type
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      __fireTrack__P_49_19: function __fireTrack__P_49_19(type, domEvent, target) {
-        domEvent.delta = this._getDeltaCoordinates(domEvent);
-
-        this._fireEvent(domEvent, type, domEvent.target || target);
-      },
-
-      /**
-       * Fires a roll event.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       * @param rollFactor {Integer} the roll factor to apply
-       */
-      __fireRollEvent__P_49_25: function __fireRollEvent__P_49_25(domEvent, target, rollFactor) {
-        domEvent.delta = {
-          x: qx.util.Wheel.getDelta(domEvent, "x") * rollFactor,
-          y: qx.util.Wheel.getDelta(domEvent, "y") * rollFactor
-        };
-        domEvent.delta.axis = Math.abs(domEvent.delta.x / domEvent.delta.y) < 1 ? "y" : "x";
-        domEvent.pointerType = "wheel";
-
-        this._fireEvent(domEvent, "roll", domEvent.target || target);
-      },
-
-      /**
-       * Triggers the adaptative roll scrolling.
-       *
-       * @param target {Element} event target
-       */
-      __performAdaptativeRollScrolling__P_49_26: function __performAdaptativeRollScrolling__P_49_26(target) {
-        var rollFactor = qx.event.handler.GestureCore.ROLL_FACTOR;
-
-        if (qx.util.Wheel.IS_TOUCHPAD) {
-          // The domEvent was generated by a touchpad
-          rollFactor = qx.event.handler.GestureCore.TOUCHPAD_ROLL_FACTOR;
-        }
-
-        this.__lastRollEventTime__P_49_16 = new Date().getTime();
-        var reLength = this.__rollEvents__P_49_6.length;
-
-        for (var i = 0; i < reLength; i++) {
-          var domEvent = this.__rollEvents__P_49_6[i];
-
-          this.__fireRollEvent__P_49_25(domEvent, target, rollFactor);
-        }
-
-        this.__rollEvents__P_49_6 = [];
-      },
-
-      /**
-       * Ends touch pad detection process.
-       */
-      __endTouchPadDetection__P_49_27: function __endTouchPadDetection__P_49_27() {
-        if (this.__rollEvents__P_49_6.length > qx.event.handler.GestureCore.TOUCHPAD_WHEEL_EVENTS_THRESHOLD) {
-          qx.util.Wheel.IS_TOUCHPAD = true;
-        } else {
-          qx.util.Wheel.IS_TOUCHPAD = false;
-        }
-
-        this.__touchPadDetectionPerformed__P_49_15 = true;
-      },
-
-      /**
-       * Is touchpad detection enabled ? Default implementation activates it only for Mac OS after Sierra (>= 10.12).
-       * @return {boolean} true if touchpad detection should occur.
-       * @internal
-       */
-      _isTouchPadDetectionEnabled: function _isTouchPadDetectionEnabled() {
-        return qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("os.version") >= 10.12;
-      },
-
-      /**
-       * Fires a roll event after determining the roll factor to apply. Mac OS Sierra (10.12+)
-       * introduces a lot more wheel events fired from the trackpad, so the roll factor to be applied
-       * has to be reduced in order to make the scrolling less sensitive.
-       *
-       * @param domEvent {Event} DOM event
-       * @param type {String} The type of the dom event
-       * @param target {Element} event target
-       */
-      _fireRoll: function _fireRoll(domEvent, type, target) {
-        var now;
-        var detectionTimeout;
-
-        if (domEvent.type === qx.core.Environment.get("event.mousewheel").type) {
-          if (this._isTouchPadDetectionEnabled()) {
-            now = new Date().getTime();
-            detectionTimeout = qx.event.handler.GestureCore.TOUCHPAD_WHEEL_EVENTS_TIMEOUT;
-
-            if (this.__lastRollEventTime__P_49_16 > 0 && now - this.__lastRollEventTime__P_49_16 > detectionTimeout) {
-              // The detection timeout was reached. A new detection step should occur.
-              this.__touchPadDetectionPerformed__P_49_15 = false;
-              this.__rollEvents__P_49_6 = [];
-              this.__lastRollEventTime__P_49_16 = 0;
-            }
-
-            if (!this.__touchPadDetectionPerformed__P_49_15) {
-              // We are into a detection session. We count the events so that we can decide if
-              // they were fired by a real mouse wheel or a touchpad. Just swallow them until the
-              // detection period is over.
-              if (this.__rollEvents__P_49_6.length === 0) {
-                // detection starts
-                this.__rollEventsCountStart__P_49_13 = now;
-                qx.event.Timer.once(function () {
-                  if (!this.__touchPadDetectionPerformed__P_49_15) {
-                    // There were not enough events during the TOUCHPAD_WHEEL_EVENTS_PERIOD to actually
-                    // trigger a scrolling. Trigger it manually.
-                    this.__endTouchPadDetection__P_49_27();
-
-                    this.__performAdaptativeRollScrolling__P_49_26(target);
-                  }
-                }, this, qx.event.handler.GestureCore.TOUCHPAD_WHEEL_EVENTS_PERIOD + 50);
-              }
-
-              this.__rollEvents__P_49_6.push(domEvent);
-
-              this.__rollEventsCount__P_49_14++;
-
-              if (now - this.__rollEventsCountStart__P_49_13 > qx.event.handler.GestureCore.TOUCHPAD_WHEEL_EVENTS_PERIOD) {
-                this.__endTouchPadDetection__P_49_27();
-              }
-            }
-
-            if (this.__touchPadDetectionPerformed__P_49_15) {
-              if (this.__rollEvents__P_49_6.length === 0) {
-                this.__rollEvents__P_49_6.push(domEvent);
-              } // Detection is done. We can now decide the roll factor to apply to the delta.
-              // Default to a real mouse wheel event as opposed to a touchpad one.
-
-
-              this.__performAdaptativeRollScrolling__P_49_26(target);
-            }
-          } else {
-            this.__fireRollEvent__P_49_25(domEvent, target, qx.event.handler.GestureCore.ROLL_FACTOR);
-          }
-        } else {
-          var gesture = this.__gesture__P_49_2[domEvent.pointerId];
-          domEvent.delta = {
-            x: -gesture.velocityX,
-            y: -gesture.velocityY,
-            axis: Math.abs(gesture.velocityX / gesture.velocityY) < 1 ? "y" : "x"
-          };
-
-          this._fireEvent(domEvent, "roll", domEvent.target || target);
-        }
-      },
-
-      /**
-       * Fires a rotate event.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      __fireRotate__P_49_20: function __fireRotate__P_49_20(domEvent, target) {
-        if (!domEvent.isPrimary) {
-          var angle = this._calcAngle();
-
-          domEvent.angle = Math.round((angle - this.__initialAngle__P_49_10) % 360);
-
-          this._fireEvent(domEvent, "rotate", this.__primaryTarget__P_49_8);
-        }
-      },
-
-      /**
-       * Fires a pinch event.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      __firePinch__P_49_21: function __firePinch__P_49_21(domEvent, target) {
-        if (!domEvent.isPrimary) {
-          var distance = this._calcDistance();
-
-          var scale = distance / this.__initialDistance__P_49_12;
-          domEvent.scale = Math.round(scale * 100) / 100;
-
-          this._fireEvent(domEvent, "pinch", this.__primaryTarget__P_49_8);
-        }
-      },
-
-      /**
-       * Fires the long tap event.
-       *
-       * @param domEvent {Event} DOM event
-       * @param target {Element} event target
-       */
-      __fireLongTap__P_49_18: function __fireLongTap__P_49_18(domEvent, target) {
-        var gesture = this.__gesture__P_49_2[domEvent.pointerId];
-
-        if (gesture) {
-          this._fireEvent(domEvent, "longtap", domEvent.target || target);
-
-          gesture.longTapTimer = null;
-          gesture.isTap = false;
-        }
-      },
-
-      /**
-       * Stops the time for the long tap event.
-       * @param gesture {Map} Data may representing the gesture.
-       */
-      __stopLongTapTimer__P_49_17: function __stopLongTapTimer__P_49_17(gesture) {
-        if (gesture.longTapTimer) {
-          window.clearTimeout(gesture.longTapTimer);
-          gesture.longTapTimer = null;
-        }
-      },
-
-      /**
-       * Dispose the current instance
-       */
-      dispose: function dispose() {
-        for (var gesture in this.__gesture__P_49_2) {
-          this.__stopLongTapTimer__P_49_17(gesture);
-        }
-
-        this._stopObserver();
-
-        this.__defaultTarget__P_49_0 = this.__emitter__P_49_1 = null;
-      }
-    }
-  });
-  qx.event.handler.GestureCore.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2010 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Tino Butz (tbtz)
-  
-  ************************************************************************ */
-
-  /**
-   * Tap is a single pointer gesture fired when one pointer goes down and up on
-   * the same location.
-   */
-  qx.Class.define("qx.event.type.Tap", {
-    extend: qx.event.type.Pointer
-  });
-  qx.event.type.Tap.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2010 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Tino Butz (tbtz)
-  
-  ************************************************************************ */
-
-  /**
-   * Swipe is a single pointer gesture fired when a pointer is moved in one direction.
-   * It contains some additional data like the primary axis, the velocity and the distance.
-   */
-  qx.Class.define("qx.event.type.Swipe", {
-    extend: qx.event.type.Pointer,
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Swipe.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.swipe = nativeEvent.swipe;
-        return clone;
-      },
-
-      /**
-       * Returns the start time of the performed swipe.
-       *
-       * @return {Integer} the start time
-       */
-      getStartTime: function getStartTime() {
-        return this._native.swipe.startTime;
-      },
-
-      /**
-       * Returns the duration the performed swipe took.
-       *
-       * @return {Integer} the duration
-       */
-      getDuration: function getDuration() {
-        return this._native.swipe.duration;
-      },
-
-      /**
-       * Returns whether the performed swipe was on the x or y axis.
-       *
-       * @return {String} "x"/"y" axis
-       */
-      getAxis: function getAxis() {
-        return this._native.swipe.axis;
-      },
-
-      /**
-       * Returns the direction of the performed swipe in reference to the axis.
-       * y = up / down
-       * x = left / right
-       *
-       * @return {String} the direction
-       */
-      getDirection: function getDirection() {
-        return this._native.swipe.direction;
-      },
-
-      /**
-       * Returns the velocity of the performed swipe.
-       *
-       * @return {Number} the velocity
-       */
-      getVelocity: function getVelocity() {
-        return this._native.swipe.velocity;
-      },
-
-      /**
-       * Returns the distance of the performed swipe.
-       *
-       * @return {Integer} the distance
-       */
-      getDistance: function getDistance() {
-        return this._native.swipe.distance;
-      }
-    }
-  });
-  qx.event.type.Swipe.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-  
-  ************************************************************************ */
-
-  /**
-   * Rotate is a multi pointer gesture fired when two finger moved around
-   * a single point. It contains the angle of the rotation.
-   */
-  qx.Class.define("qx.event.type.Rotate", {
-    extend: qx.event.type.Pointer,
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Rotate.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.angle = nativeEvent.angle;
-        return clone;
-      },
-
-      /**
-       * Returns a number with the current calculated angle between the primary and secondary active pointers.
-       *
-       * @return {Number} the angle of the two active pointers.
-       */
-      getAngle: function getAngle() {
-        return this._native.angle;
-      }
-    }
-  });
-  qx.event.type.Rotate.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-  
-  ************************************************************************ */
-
-  /**
-   * Pinch is a multi pointer gesture fired when two finger moved towards
-   * or away from each other. It contains the scaling factor of the pinch.
-   */
-  qx.Class.define("qx.event.type.Pinch", {
-    extend: qx.event.type.Pointer,
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Pinch.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.scale = nativeEvent.scale;
-        return clone;
-      },
-
-      /**
-       * Returns the calculated scale of this event.
-       *
-       * @return {Float} the scale value of this event.
-       */
-      getScale: function getScale() {
-        return this._native.scale;
-      }
-    }
-  });
-  qx.event.type.Pinch.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Christopher Zuendorf (czuendorf)
-  
-  ************************************************************************ */
-
-  /**
-   * Track is a single pointer gesture and contains of a three vent types:
-   * <code>trackstart</code>, <code>track</code> and <code>trackend</code>. These
-   * events will be fired when a pointer grabs an item and moves the pointer on it.
-   */
-  qx.Class.define("qx.event.type.Track", {
-    extend: qx.event.type.Pointer,
-    members: {
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Track.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.delta = nativeEvent.delta;
-        return clone;
-      },
-
-      /**
-       * Returns a map with the calculated delta coordinates and axis,
-       * relative to the position on <code>trackstart</code> event.
-       *
-       * @return {Map} a map with contains the delta as <code>x</code> and
-       * <code>y</code> and the movement axis as <code>axis</code>.
-       */
-      getDelta: function getDelta() {
-        return this._native.delta;
-      }
-    }
-  });
-  qx.event.type.Track.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.type.Pointer": {
-        "require": true
-      },
-      "qx.event.Registration": {},
-      "qx.event.handler.Gesture": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Martin Wittemann (wittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * Roll event object.
-   */
-  qx.Class.define("qx.event.type.Roll", {
-    extend: qx.event.type.Pointer,
-    members: {
-      // overridden
-      stop: function stop() {
-        this.stopPropagation();
-        this.preventDefault();
-      },
-      // overridden
-      _cloneNativeEvent: function _cloneNativeEvent(nativeEvent, clone) {
-        var clone = qx.event.type.Roll.superclass.prototype._cloneNativeEvent.call(this, nativeEvent, clone);
-
-        clone.delta = nativeEvent.delta;
-        clone.momentum = nativeEvent.momentum;
-        clone.timeoutId = nativeEvent.timeoutId;
-        return clone;
-      },
-
-      /**
-       * Boolean flag to indicate if this event was triggered by a momentum.
-       * @return {Boolean} <code>true</code>, if the event is momentum based
-       */
-      getMomentum: function getMomentum() {
-        return this._native.momentum;
-      },
-
-      /**
-       * Stops the momentum events.
-       */
-      stopMomentum: function stopMomentum() {
-        if (this._native.timeoutId) {
-          qx.event.Registration.getManager(this._originalTarget).getHandler(qx.event.handler.Gesture).stopMomentum(this._native.timeoutId);
-        }
-      },
-
-      /**
-       * Returns a map with the calculated delta coordinates and axis,
-       * relative to the last <code>roll</code> event.
-       *
-       * @return {Map} a map with contains the delta as <code>x</code> and
-       * <code>y</code>
-       */
-      getDelta: function getDelta() {
-        return this._native.delta;
-      }
-    }
-  });
-  qx.event.type.Roll.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.event.handler.Pointer": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.event.handler.GestureCore": {
-        "construct": true,
-        "require": true
-      },
-      "qx.event.IEventHandler": {
-        "require": true
-      },
-      "qx.core.IDisposable": {
-        "require": true
-      },
-      "qx.event.Registration": {
-        "defer": "runtime",
-        "require": true
-      },
-      "qx.event.type.Tap": {
-        "require": true
-      },
-      "qx.event.type.Swipe": {
-        "require": true
-      },
-      "qx.event.type.Rotate": {
-        "require": true
-      },
-      "qx.event.type.Pinch": {
-        "require": true
-      },
-      "qx.event.type.Track": {
-        "require": true
-      },
-      "qx.event.type.Roll": {
-        "require": true
-      },
-      "qx.lang.Function": {},
-      "qx.bom.client.Engine": {
-        "require": true
-      },
-      "qx.bom.client.Browser": {
-        "require": true
-      },
-      "qx.bom.Event": {},
-      "qx.bom.client.Event": {},
-      "qx.event.type.Pointer": {},
-      "qx.event.type.Data": {}
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "engine.name": {
-          "className": "qx.bom.client.Engine"
-        },
-        "browser.documentmode": {
-          "className": "qx.bom.client.Browser"
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2014 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Unified gesture event handler.
-   *
-   * @require(qx.event.handler.Pointer)
-   */
-  qx.Class.define("qx.event.handler.Gesture", {
-    extend: qx.event.handler.GestureCore,
-    implement: [qx.event.IEventHandler, qx.core.IDisposable],
-    statics: {
-      /** @type {Integer} Priority of this handler */
-      PRIORITY: qx.event.Registration.PRIORITY_NORMAL,
-
-      /** @type {Map} Supported event types */
-      SUPPORTED_TYPES: {
-        tap: 1,
-        swipe: 1,
-        longtap: 1,
-        dbltap: 1,
-        rotate: 1,
-        pinch: 1,
-        track: 1,
-        trackstart: 1,
-        trackend: 1,
-        roll: 1
-      },
-      GESTURE_EVENTS: ["gesturebegin", "gesturefinish", "gesturemove", "gesturecancel"],
-
-      /** @type {Integer} Which target check to use */
-      TARGET_CHECK: qx.event.IEventHandler.TARGET_DOMNODE + qx.event.IEventHandler.TARGET_DOCUMENT,
-
-      /** @type {Integer} Whether the method "canHandleEvent" must be called */
-      IGNORE_CAN_HANDLE: true,
-      EVENT_CLASSES: {
-        tap: qx.event.type.Tap,
-        longtap: qx.event.type.Tap,
-        dbltap: qx.event.type.Tap,
-        swipe: qx.event.type.Swipe,
-        rotate: qx.event.type.Rotate,
-        pinch: qx.event.type.Pinch,
-        track: qx.event.type.Track,
-        trackstart: qx.event.type.Track,
-        trackend: qx.event.type.Track,
-        roll: qx.event.type.Roll
-      }
-    },
-
-    /**
-     * Create a new instance
-     *
-     * @param manager {qx.event.Manager} Event manager for the window to use
-     */
-    construct: function construct(manager) {
-      // Define shorthands
-      this.__manager__P_17_0 = manager;
-      this.__window__P_17_1 = manager.getWindow();
-      this.__root__P_17_2 = this.__window__P_17_1.document;
-      qx.event.handler.GestureCore.apply(this, [this.__root__P_17_2]);
-    },
-    members: {
-      __manager__P_17_0: null,
-      __window__P_17_1: null,
-      __root__P_17_2: null,
-      __listener__P_17_3: null,
-      __onDblClickWrapped__P_17_4: null,
-      __fireRollWrapped__P_17_5: null,
-
-      /**
-       * Getter for the internal __window object
-       * @return {Window} DOM window instance
-       */
-      getWindow: function getWindow() {
-        return this.__window__P_17_1;
-      },
-      // interface implementation
-      canHandleEvent: function canHandleEvent(target, type) {},
-      // interface implementation
-      registerEvent: function registerEvent(target, type, capture) {// Nothing needs to be done here
-      },
-      // interface implementation
-      unregisterEvent: function unregisterEvent(target, type, capture) {// Nothing needs to be done here
-      },
-      // overridden
-      _initObserver: function _initObserver() {
-        this.__listener__P_17_3 = qx.lang.Function.listener(this.checkAndFireGesture, this);
-        qx.event.handler.Gesture.GESTURE_EVENTS.forEach(function (type) {
-          qx.event.Registration.addListener(this.__root__P_17_2, type, this.__listener__P_17_3, this);
-        }.bind(this));
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") < 9) {
-          this.__onDblClickWrapped__P_17_4 = qx.lang.Function.listener(this._onDblClick, this);
-          qx.bom.Event.addNativeListener(this.__root__P_17_2, "dblclick", this.__onDblClickWrapped__P_17_4);
-        } // list to wheel events
-
-
-        var data = qx.bom.client.Event.getMouseWheel(this.__window__P_17_1);
-        this.__fireRollWrapped__P_17_5 = qx.lang.Function.listener(this._fireRoll, this); // replaced the useCapture (4th parameter) from this to true
-        // see https://github.com/qooxdoo/qooxdoo/pull/9292
-
-        qx.bom.Event.addNativeListener(data.target, data.type, this.__fireRollWrapped__P_17_5, true, false);
-      },
-
-      /**
-       * Checks if a gesture was made and fires the gesture event.
-       *
-       * @param pointerEvent {qx.event.type.Pointer} Pointer event
-       * @param type {String ? null} type of the event
-       * @param target {Element ? null} event target
-       */
-      checkAndFireGesture: function checkAndFireGesture(pointerEvent, type, target) {
-        this.__callBase__P_17_6("checkAndFireGesture", [pointerEvent.getNativeEvent(), pointerEvent.getType(), pointerEvent.getTarget()]);
-      },
-      // overridden
-      _stopObserver: function _stopObserver() {
-        qx.event.handler.Gesture.GESTURE_EVENTS.forEach(function (type) {
-          qx.event.Registration.removeListener(this.__root__P_17_2, type, this.__listener__P_17_3);
-        }.bind(this));
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") < 9) {
-          qx.bom.Event.removeNativeListener(this.__root__P_17_2, "dblclick", this.__onDblClickWrapped__P_17_4);
-        }
-
-        var data = qx.bom.client.Event.getMouseWheel(this.__window__P_17_1);
-        qx.bom.Event.removeNativeListener(data.target, data.type, this.__fireRollWrapped__P_17_5);
-      },
-      // overridden
-      _hasIntermediaryHandler: function _hasIntermediaryHandler(target) {
-        /* This check is irrelevant for qx.Desktop since there is only one
-           gesture handler */
-        return false;
-      },
-
-      /**
-       * Fire a touch event with the given parameters
-       *
-       * @param domEvent {Event} DOM event
-       * @param type {String ? null} type of the event
-       * @param target {Element ? null} event target
-       */
-      _fireEvent: function _fireEvent(domEvent, type, target) {
-        if (!target) {
-          target = qx.bom.Event.getTarget(domEvent);
-        }
-
-        if (!type) {
-          type = domEvent.type;
-        }
-
-        var eventTypeClass = qx.event.handler.Gesture.EVENT_CLASSES[type] || qx.event.type.Pointer;
-
-        if (target && target.nodeType) {
-          qx.event.Registration.fireEvent(target, type, eventTypeClass, [domEvent, target, null, true, true]);
-        } // Fire user action event
-
-
-        qx.event.Registration.fireEvent(this.__window__P_17_1, "useraction", qx.event.type.Data, [type]);
-      },
-
-      /**
-       * Dispose this object
-       */
-      dispose: function dispose() {
-        this._stopObserver();
-
-        this.__callBase__P_17_6("dispose");
-
-        this.__manager__P_17_0 = this.__window__P_17_1 = this.__root__P_17_2 = this.__onDblClickWrapped__P_17_4 = null;
-      },
-
-      /**
-       * Call overridden method.
-       *
-       * @param method {String} Name of the overridden method.
-       * @param args {Array} Arguments.
-       */
-      __callBase__P_17_6: function __callBase__P_17_6(method, args) {
-        qx.event.handler.GestureCore.prototype[method].apply(this, args || []);
-      }
-    },
-    defer: function defer(statics) {
-      qx.event.Registration.addHandler(statics);
-      qx.event.Registration.addListener(window, "appinitialized", function () {
-        qx.event.Registration.getManager(document).getHandler(statics);
-      });
-    }
-  });
-  qx.event.handler.Gesture.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.event.handler.Window": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.event.handler.Keyboard": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.event.handler.Gesture": {
-        "require": true,
-        "defer": "runtime"
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.bom.Stylesheet": {},
-      "qx.log.Logger": {},
-      "qx.core.ObjectRegistry": {},
-      "qx.event.Registration": {
-        "defer": "runtime"
-      },
-      "qx.log.appender.Formatter": {},
-      "qx.event.type.Tap": {},
-      "qx.event.type.Pointer": {},
-      "qx.dom.Hierarchy": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-  
-  ************************************************************************ */
-
-  /**
-   * Feature-rich console appender for the qooxdoo logging system.
-   *
-   * Creates a small inline element which is placed in the top-right corner
-   * of the window. Prints all messages with a nice color highlighting.
-   *
-   * * Allows user command inputs.
-   * * Command history enabled by default (Keyboard up/down arrows).
-   * * Lazy creation on first open.
-   * * Clearing the console using a button.
-   * * Display of offset (time after loading) of each message
-   * * Supports keyboard shortcuts F7 or Ctrl+D to toggle the visibility
-   *
-   * Note this class must be disposed of after use
-   *
-   * @require(qx.event.handler.Window)
-   * @require(qx.event.handler.Keyboard)
-   * @require(qx.event.handler.Gesture)
-   */
-  qx.Class.define("qx.log.appender.Console", {
-    statics: {
-      /*
-      ---------------------------------------------------------------------------
-        INITIALIZATION AND SHUTDOWN
-      ---------------------------------------------------------------------------
-      */
-      __main__P_3_0: null,
-      __log__P_3_1: null,
-      __cmd__P_3_2: null,
-      __lastCommand__P_3_3: null,
-
-      /**
-       * Initializes the console, building HTML and pushing last
-       * log messages to the output window.
-       *
-       */
-      init: function init() {
-        // Build style sheet content
-        var style = [".qxconsole{z-index:10000;width:600px;height:300px;top:0px;right:0px;position:absolute;border-left:1px solid black;color:black;border-bottom:1px solid black;color:black;font-family:Consolas,Monaco,monospace;font-size:11px;line-height:1.2;}", ".qxconsole .control{background:#cdcdcd;border-bottom:1px solid black;padding:4px 8px;}", ".qxconsole .control a{text-decoration:none;color:black;}", ".qxconsole .messages{background:white;height:100%;width:100%;overflow:auto;}", ".qxconsole .messages div{padding:0px 4px;}", ".qxconsole .messages .user-command{color:blue}", ".qxconsole .messages .user-result{background:white}", ".qxconsole .messages .user-error{background:#FFE2D5}", ".qxconsole .messages .level-debug{background:white}", ".qxconsole .messages .level-info{background:#DEEDFA}", ".qxconsole .messages .level-warn{background:#FFF7D5}", ".qxconsole .messages .level-error{background:#FFE2D5}", ".qxconsole .messages .level-user{background:#E3EFE9}", ".qxconsole .messages .type-string{color:black;font-weight:normal;}", ".qxconsole .messages .type-number{color:#155791;font-weight:normal;}", ".qxconsole .messages .type-boolean{color:#15BC91;font-weight:normal;}", ".qxconsole .messages .type-array{color:#CC3E8A;font-weight:bold;}", ".qxconsole .messages .type-map{color:#CC3E8A;font-weight:bold;}", ".qxconsole .messages .type-key{color:#565656;font-style:italic}", ".qxconsole .messages .type-class{color:#5F3E8A;font-weight:bold}", ".qxconsole .messages .type-instance{color:#565656;font-weight:bold}", ".qxconsole .messages .type-stringify{color:#565656;font-weight:bold}", ".qxconsole .command{background:white;padding:2px 4px;border-top:1px solid black;}", ".qxconsole .command input{width:100%;border:0 none;font-family:Consolas,Monaco,monospace;font-size:11px;line-height:1.2;}", ".qxconsole .command input:focus{outline:none;}"]; // Include stylesheet
-
-        qx.bom.Stylesheet.createElement(style.join("")); // Build markup
-
-        var markup = ['<div class="qxconsole">', '<div class="control"><a href="javascript:qx.log.appender.Console.clear()">Clear</a> | <a href="javascript:qx.log.appender.Console.toggle()">Hide</a></div>', '<div class="messages">', "</div>", '<div class="command">', '<input type="text"/>', "</div>", "</div>"]; // Insert HTML to access DOM node
-
-        var wrapper = document.createElement("DIV");
-        wrapper.innerHTML = markup.join("");
-        var main = wrapper.firstChild;
-        document.body.appendChild(wrapper.firstChild); // Make important DOM nodes available
-
-        this.__main__P_3_0 = main;
-        this.__log__P_3_1 = main.childNodes[1];
-        this.__cmd__P_3_2 = main.childNodes[2].firstChild; // Correct height of messages frame
-
-        this.__onResize__P_3_4(); // Finally register to log engine
-
-
-        qx.log.Logger.register(this); // Register to object manager
-
-        qx.core.ObjectRegistry.register(this);
-      },
-
-      /**
-       * Used by the object registry to dispose this instance e.g. remove listeners etc.
-       *
-       */
-      dispose: function dispose() {
-        qx.event.Registration.removeListener(document.documentElement, "keypress", this.__onKeyPress__P_3_5, this);
-        qx.log.Logger.unregister(this);
+      _getContentPaddingTarget: function _getContentPaddingTarget() {
+        return this.getChildControl("frame");
       },
 
       /*
       ---------------------------------------------------------------------------
-        INSERT & CLEAR
+        LEGEND HANDLING
       ---------------------------------------------------------------------------
       */
+      // property apply
+      _applyLegend: function _applyLegend(value, old) {
+        var control = this.getChildControl("legend");
 
-      /**
-       * Clears the current console output.
-       *
-       */
-      clear: function clear() {
-        // Remove all messages
-        this.__log__P_3_1.innerHTML = "";
-      },
-
-      /**
-       * Processes a single log entry
-       *
-       * @signature function(entry)
-       * @param entry {Map} The entry to process
-       */
-      process: function process(entry) {
-        // Append new content
-        var formatter = qx.log.appender.Formatter.getFormatter();
-
-        this.__log__P_3_1.appendChild(formatter.toHtml(entry)); // Scroll down
-
-
-        this.__scrollDown__P_3_6();
-      },
-
-      /**
-       * Automatically scroll down to the last line
-       */
-      __scrollDown__P_3_6: function __scrollDown__P_3_6() {
-        this.__log__P_3_1.scrollTop = this.__log__P_3_1.scrollHeight;
-      },
-
-      /*
-      ---------------------------------------------------------------------------
-        VISIBILITY TOGGLING
-      ---------------------------------------------------------------------------
-      */
-
-      /** @type {Boolean} Flag to store last visibility status */
-      __visible__P_3_7: true,
-
-      /**
-       * Toggles the visibility of the console between visible and hidden.
-       *
-       */
-      toggle: function toggle() {
-        if (!this.__main__P_3_0) {
-          this.init();
-        } else if (this.__main__P_3_0.style.display == "none") {
-          this.show();
+        if (value !== null) {
+          control.setLabel(value);
+          control.show();
         } else {
-          this.__main__P_3_0.style.display = "none";
+          control.exclude();
         }
       },
 
       /**
-       * Shows the console.
-       *
+       * Apply method for applying the legend position. It calls the
+       * {@link #_repositionFrame} method.
        */
-      show: function show() {
-        if (!this.__main__P_3_0) {
-          this.init();
-        } else {
-          this.__main__P_3_0.style.display = "block";
-          this.__log__P_3_1.scrollTop = this.__log__P_3_1.scrollHeight;
+      _applyLegendPosition: function _applyLegendPosition(e) {
+        if (this.getChildControl("legend").getBounds()) {
+          this._repositionFrame();
+        }
+      },
+
+      /**
+       * Repositions the frame of the group box dependent on the
+       * {@link #legendPosition} property.
+       */
+      _repositionFrame: function _repositionFrame() {
+        var legend = this.getChildControl("legend");
+        var frame = this.getChildControl("frame"); // get the current height of the legend
+
+        var height = legend.getBounds().height; // check for the property legend position
+
+        if (this.getLegendPosition() == "middle") {
+          frame.setLayoutProperties({
+            top: Math.round(height / 2)
+          });
+        } else if (this.getLegendPosition() == "top") {
+          frame.setLayoutProperties({
+            top: height
+          });
         }
       },
 
       /*
       ---------------------------------------------------------------------------
-        COMMAND LINE SUPPORT
+        GETTER FOR SUB WIDGETS
       ---------------------------------------------------------------------------
       */
 
-      /** @type {Array} List of all previous commands. */
-      __history__P_3_8: [],
-
       /**
-       * Executes the currently given command
+       * The children container needed by the {@link qx.ui.core.MRemoteChildrenHandling}
+       * mixin
        *
+       * @return {qx.ui.container.Composite} pane sub widget
        */
-      execute: function execute() {
-        var value = this.__cmd__P_3_2.value;
-
-        if (value == "") {
-          return;
-        }
-
-        if (value == "clear") {
-          this.clear();
-          return;
-        }
-
-        var command = document.createElement("div");
-        var formatter = qx.log.appender.Formatter.getFormatter();
-        command.innerHTML = formatter.escapeHTML(">>> " + value);
-        command.className = "user-command";
-
-        this.__history__P_3_8.push(value);
-
-        this.__lastCommand__P_3_3 = this.__history__P_3_8.length;
-
-        this.__log__P_3_1.appendChild(command);
-
-        this.__scrollDown__P_3_6();
-
-        try {
-          var ret = window.eval(value);
-        } catch (ex) {
-          qx.log.Logger.error(ex);
-        }
-
-        if (ret !== undefined) {
-          qx.log.Logger.debug(ret);
-        }
+      getChildrenContainer: function getChildrenContainer() {
+        return this.getChildControl("frame");
       },
 
       /*
       ---------------------------------------------------------------------------
-        EVENT LISTENERS
+        SETTER/GETTER
       ---------------------------------------------------------------------------
       */
 
       /**
-       * Event handler for resize listener
+       * Sets the icon of the legend sub widget.
        *
-       * @param e {Event} Event object
+       * @param icon {String} source of the new icon of the legend sub widget
        */
-      __onResize__P_3_4: function __onResize__P_3_4(e) {
-        this.__log__P_3_1.style.height = this.__main__P_3_0.clientHeight - this.__main__P_3_0.firstChild.offsetHeight - this.__main__P_3_0.lastChild.offsetHeight + "px";
+      setIcon: function setIcon(icon) {
+        this.getChildControl("legend").setIcon(icon);
       },
 
       /**
-       * Event handler for keydown listener
+       * Accessor method for the icon of the legend sub widget
        *
-       * @param e {Event} Event object
+       * @return {String} source of the new icon of the legend sub widget
        */
-      __onKeyPress__P_3_5: function __onKeyPress__P_3_5(e) {
-        if (e instanceof qx.event.type.Tap || e instanceof qx.event.type.Pointer) {
-          var target = e.getTarget();
-
-          if (target && target.className && target.className.indexOf && target.className.indexOf("navigationbar") != -1) {
-            this.toggle();
-          }
-
-          return;
-        }
-
-        var iden = e.getKeyIdentifier(); // Console toggling
-
-        if (iden == "F7" || iden == "D" && e.isCtrlPressed()) {
-          this.toggle();
-          e.preventDefault();
-        } // Not yet created
-
-
-        if (!this.__main__P_3_0) {
-          return;
-        } // Active element not in console
-
-
-        if (!qx.dom.Hierarchy.contains(this.__main__P_3_0, e.getTarget())) {
-          return;
-        } // Command execution
-
-
-        if (iden == "Enter" && this.__cmd__P_3_2.value != "") {
-          this.execute();
-          this.__cmd__P_3_2.value = "";
-        } // History management
-
-
-        if (iden == "Up" || iden == "Down") {
-          this.__lastCommand__P_3_3 += iden == "Up" ? -1 : 1;
-          this.__lastCommand__P_3_3 = Math.min(Math.max(0, this.__lastCommand__P_3_3), this.__history__P_3_8.length);
-          var entry = this.__history__P_3_8[this.__lastCommand__P_3_3];
-          this.__cmd__P_3_2.value = entry || "";
-
-          this.__cmd__P_3_2.select();
-        }
+      getIcon: function getIcon() {
+        return this.getChildControl("legend").getIcon();
       }
-    },
-
-    /*
-    *****************************************************************************
-       DEFER
-    *****************************************************************************
-    */
-    defer: function defer(statics) {
-      qx.event.Registration.addListener(document.documentElement, "keypress", statics.__onKeyPress__P_3_5, statics);
-      qx.event.Registration.addListener(document.documentElement, "longtap", statics.__onKeyPress__P_3_5, statics);
     }
   });
-  qx.log.appender.Console.$$dbClassInfo = $$dbClassInfo;
+  qx.ui.groupbox.GroupBox.$$dbClassInfo = $$dbClassInfo;
 })();
-//# sourceMappingURL=package-5.js.map?dt=1656768192775
+//# sourceMappingURL=package-5.js.map?dt=1656769538886
 qx.$$packageData['5'] = {
   "locales": {},
   "resources": {},
-  "translations": {}
+  "translations": {
+    "en": {}
+  }
 };

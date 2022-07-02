@@ -1434,5 +1434,7 @@
     },
     "jsdoc": {}
   },
-  "descendants": []
+  "descendants": [
+    "qx.ui.table.columnmodel.Resize"
+  ]
 }

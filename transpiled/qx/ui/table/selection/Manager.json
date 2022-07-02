@@ -491,5 +491,7 @@
       }
     }
   },
-  "descendants": []
+  "descendants": [
+    "qx.ui.treevirtual.SelectionManager"
+  ]
 }

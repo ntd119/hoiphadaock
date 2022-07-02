@@ -686,6 +686,7 @@
   },
   "descendants": [
     "qx.ui.table.cellrenderer.Default",
-    "qx.ui.table.cellrenderer.AbstractImage"
+    "qx.ui.table.cellrenderer.AbstractImage",
+    "qx.ui.treevirtual.SimpleTreeDataCellRenderer"
   ]
 }

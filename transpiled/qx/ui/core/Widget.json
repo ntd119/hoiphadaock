@@ -10623,6 +10623,7 @@
     "qx.ui.form.Slider",
     "qx.ui.toolbar.ToolBar",
     "qx.ui.toolbar.Separator",
-    "qx.ui.toolbar.Part"
+    "qx.ui.toolbar.Part",
+    "qx.ui.groupbox.GroupBox"
   ]
 }

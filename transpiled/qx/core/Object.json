@@ -3980,6 +3980,9 @@
     "qx.ui.table.celleditor.AbstractField",
     "qx.ui.window.Manager",
     "qx.event.AcceleratingTimer",
-    "qx.io.request.AbstractRequest"
+    "qx.io.request.AbstractRequest",
+    "qx.ui.table.columnmodel.resizebehavior.Abstract",
+    "qx.ui.form.RadioGroup",
+    "qx.ui.core.SingleSelectionManager"
   ]
 }

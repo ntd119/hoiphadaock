@@ -10338,5 +10338,7 @@
     },
     "jsdoc": {}
   },
-  "descendants": []
+  "descendants": [
+    "qx.ui.treevirtual.TreeVirtual"
+  ]
 }

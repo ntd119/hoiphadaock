@@ -1212,6 +1212,7 @@
     }
   },
   "descendants": [
-    "qx.ui.table.model.Simple"
+    "qx.ui.table.model.Simple",
+    "qx.ui.treevirtual.SimpleTreeDataModel"
   ]
 }

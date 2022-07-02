@@ -577,6 +577,7 @@
     }
   },
   "descendants": [
-    "qx.ui.table.cellrenderer.Conditional"
+    "qx.ui.table.cellrenderer.Conditional",
+    "qx.ui.treevirtual.DefaultDataCellRenderer"
   ]
 }
