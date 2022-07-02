@@ -36,7 +36,15 @@
     extend: qx.application.Standalone,
     members: {
       createTable: function createTable() {
-        // table model
+        var BACKGROUND_LO = "#F33232";
+        var BACKGROUND_LAI = "#00E11A";
+        var BACKGROUND_TRAN = "#860D98";
+        var BACKGROUND_TANG = "#00E11A";
+        var BACKGROUND_DUNG = "#FEA50C";
+        var BACKGROUND_GIAM = "#F33232";
+        var BACKGROUND_SAN = "#0A8AE3";
+        var BACKGROUND_NONE = "#FFFFFF"; // table model
+
         var tableModel = new qx.ui.table.model.Simple();
         tableModel.setColumns(["STT", "Mã CK", "Name", "Người mua", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
         var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
@@ -61,18 +69,31 @@
             nguoiMua = cp["buyer"];
             stock_name = filter_data["Name"]; // Giá hiện tại
 
-            giaHienTai = filter_data["Price"] * 1000; // Lãi/lỗ
+            giaHienTai = filter_data["Price"] * 1000; // Phần trăm thay đổi hiện tại
+
+            percent_current = filter_data["Percent"];
+            color_percent_current = BACKGROUND_DUNG;
+
+            if (percent_current == 0) {
+              color_percent_current = BACKGROUND_DUNG;
+            } else if (percent_current > 0) {
+              color_percent_current = BACKGROUND_TANG;
+            } else if (percent_current < 0) {
+              color_percent_current = BACKGROUND_GIAM;
+            }
+
+            giaHienTai_html = "<div style='background-color: " + color_percent_current + ";'>" + giaHienTai + "(" + percent_current + "%)</div>"; // Lãi/lỗ
 
             percent_change = parseFloat((giaHienTai - giaDaMua) / giaDaMua * 100).toFixed(2);
-            color = "#00E11A";
+            color = BACKGROUND_LAI;
 
             if (percent_change < 0) {
-              color = "#F33232";
+              color = BACKGROUND_LO;
             }
 
             percent_change_html = "<div style='background-color: " + color + ";'>" + percent_change + "%</div>";
             console.log(filter_data);
-            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, percent_change_html, giaHienTai]);
+            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, percent_change_html, giaHienTai_html]);
           };
 
           for (var key in cpDaMua) {
@@ -82,6 +103,9 @@
             var nguoiMua;
             var stock_name;
             var giaHienTai;
+            var percent_current;
+            var color_percent_current;
+            var giaHienTai_html;
             var percent_change;
             var color;
             var percent_change_html;
@@ -100,6 +124,7 @@
         var selectionMode = qx.ui.table.selection.Model.MULTIPLE_INTERVAL_SELECTION;
         table.getSelectionModel().setSelectionMode(selectionMode);
         table.getTableColumnModel().setDataCellRenderer(5, new qx.ui.table.cellrenderer.Html());
+        table.getTableColumnModel().setDataCellRenderer(6, new qx.ui.table.cellrenderer.Html());
         return table;
       },
       call_api: function call_api() {
@@ -122,4 +147,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656760631163
+//# sourceMappingURL=CpDaMua.js.map?dt=1656763883165
