@@ -41,6 +41,10 @@
         var tableModel = new qx.ui.table.model.Simple();
         tableModel.setColumns(["STT", "Mã CK", "Name", "Ai Mua?", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
         var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
+
+        var cpDaMua = this._read_file();
+
+        console.log(cpDaMua);
         var rowData = [];
 
         for (var row = 0; row < 100; row++) {
@@ -80,20 +84,26 @@
         table.getTableColumnModel().setDataCellRenderer(2, newRenderer);
         var renderer = new qx.ui.table.cellrenderer.Image();
         table.getTableColumnModel().setDataCellRenderer(3, renderer);
+        return table;
+      },
+      call_api: function call_api() {
         var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
         request.setAccept("application/json");
         request.setParser("json");
         request.addListener("success", function (e) {
           var req = e.getTarget();
           var response = req.getResponse();
-          console.log(response);
         }, this);
         request.send();
-        return table;
+      },
+      _read_file: function _read_file() {
+        var file_name = "data/da_mua.json";
+        var text = '{"EIB":{"bought":31400},"HBC":{"bought":21100},"OCB":{"bought":20350},"VHC":{"bought":102500},"BCM":{"bought":72300},"LPB":{"bought":13150},"CTG":{"bought":25250},"VSH":{"bought":46100},"DPM":{"bought":48900},"VIB":{"bought":20900},"VIP":{"bought":6330},"AST":{"bought":57900}}';
+        return JSON.parse(text);
       }
     }
   });
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656724636280
+//# sourceMappingURL=CpDaMua.js.map?dt=1656726889789

@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-02T01:05:38.169Z",
+      "mtime": "2022-07-02T01:55:15.018Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -12039,7 +12039,7 @@
       "hasDefer": null
     },
     "hoiphadaock.CpDaMua": {
-      "mtime": "2022-07-02T01:17:15.364Z",
+      "mtime": "2022-07-02T01:54:48.827Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -12066,7 +12066,7 @@
     }
   },
   "manglePrefixes": {
-    "nextPrefix": 206,
+    "nextPrefix": 207,
     "classPrefixes": {
       "qx.Class": "__P_2_",
       "qx.log.appender.Console": "__P_3_",
@@ -12272,7 +12272,8 @@
       "qx.bom.request.Xhr": "__P_203_",
       "qx.bom.request.Script": "__P_204_",
       "qx.util.ResponseParser": "__P_205_",
-      "qx.util.Serializer": "__P_206_"
+      "qx.util.Serializer": "__P_206_",
+      "hoiphadaock.CpDaMua": "__P_207_"
     }
   }
 }

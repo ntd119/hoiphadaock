@@ -14,9 +14,9 @@
         "index": 338
       },
       "end": {
-        "line": 104,
+        "line": 130,
         "column": 3,
-        "index": 4002
+        "index": 4628
       }
     },
     "jsdoc": {
@@ -44,13 +44,45 @@
           "index": 438
         },
         "end": {
-          "line": 102,
+          "line": 107,
           "column": 5,
-          "index": 3990
+          "index": 3769
         }
       },
       "type": "function",
       "access": "public"
+    },
+    "call_api": {
+      "location": {
+        "start": {
+          "line": 108,
+          "column": 4,
+          "index": 3776
+        },
+        "end": {
+          "line": 123,
+          "column": 5,
+          "index": 4212
+        }
+      },
+      "type": "function",
+      "access": "public"
+    },
+    "_read_file": {
+      "location": {
+        "start": {
+          "line": 124,
+          "column": 4,
+          "index": 4219
+        },
+        "end": {
+          "line": 128,
+          "column": 5,
+          "index": 4616
+        }
+      },
+      "type": "function",
+      "access": "protected"
     },
     "getQxOwner": {
       "type": "function",
