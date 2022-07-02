@@ -27,12 +27,18 @@
       "default": {
         size: 16,
         lineHeight: 1.4,
-        family: ["Segoe UI"],
+        family: ["Serif"],
         color: "#212529"
+      },
+      bold: {
+        size: 12,
+        lineHeight: 1.4,
+        family: ["Lucida Grande"],
+        bold: true
       }
     }
   });
   hoiphadaock.theme.Font.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Font.js.map?dt=1656765909887
+//# sourceMappingURL=Font.js.map?dt=1656766738910
