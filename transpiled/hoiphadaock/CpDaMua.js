@@ -60,9 +60,11 @@
             nguoiMua = cp["buyer"];
             stock_name = filter_data["Name"]; // Giá hiện tại
 
-            giaHienTai = filter_data["Price"] * 1000;
+            giaHienTai = filter_data["Price"] * 1000; // Lãi/lỗ
+
+            percent_change = parseFloat((giaHienTai - giaDaMua) / giaDaMua * 100).toFixed(2);
             console.log(filter_data);
-            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, "", giaHienTai]);
+            rowData.push([index++, key, stock_name, nguoiMua, giaDaMua, percent_change + "%", giaHienTai]);
           };
 
           for (var key in cpDaMua) {
@@ -72,6 +74,7 @@
             var nguoiMua;
             var stock_name;
             var giaHienTai;
+            var percent_change;
 
             _loop(key);
           }
@@ -108,4 +111,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656728693108
+//# sourceMappingURL=CpDaMua.js.map?dt=1656728943328
