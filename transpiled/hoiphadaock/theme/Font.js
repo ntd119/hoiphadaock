@@ -31,9 +31,9 @@
         color: "#212529"
       },
       bold: {
-        size: 12,
+        size: 16,
         lineHeight: 1.4,
-        family: ["Lucida Grande"],
+        family: ["Serif"],
         bold: true
       }
     }
@@ -41,4 +41,4 @@
   hoiphadaock.theme.Font.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Font.js.map?dt=1656766738910
+//# sourceMappingURL=Font.js.map?dt=1656768184555
