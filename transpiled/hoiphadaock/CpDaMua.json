@@ -1,7 +1,7 @@
 {
-  "className": "hoiphadaock.Application",
+  "className": "hoiphadaock.CpDaMua",
   "packageName": "hoiphadaock",
-  "name": "Application",
+  "name": "CpDaMua",
   "superClass": "qx.application.Standalone",
   "interfaces": [],
   "mixins": [],
@@ -11,12 +11,12 @@
       "start": {
         "line": 16,
         "column": 0,
-        "index": 323
+        "index": 338
       },
       "end": {
-        "line": 55,
+        "line": 104,
         "column": 3,
-        "index": 1516
+        "index": 3789
       }
     },
     "jsdoc": {
@@ -36,40 +36,21 @@
   },
   "type": "class",
   "members": {
-    "main": {
+    "createTable": {
       "location": {
         "start": {
-          "line": 32,
+          "line": 20,
           "column": 4,
-          "index": 781
+          "index": 438
         },
         "end": {
-          "line": 53,
+          "line": 102,
           "column": 5,
-          "index": 1506
+          "index": 3777
         }
       },
-      "jsdoc": {
-        "@description": [
-          {
-            "name": "@description",
-            "body": "<p>This method contains the initial application code and gets called\n during startup of the application</p>"
-          }
-        ],
-        "@lint": [
-          {
-            "name": "@lint",
-            "body": "ignoreDeprecated(alert)"
-          }
-        ]
-      },
       "type": "function",
-      "access": "public",
-      "overriddenFrom": "qx.application.AbstractGui",
-      "appearsIn": [
-        "qx.application.AbstractGui",
-        "qx.application.IApplication"
-      ]
+      "access": "public"
     },
     "getQxOwner": {
       "type": "function",

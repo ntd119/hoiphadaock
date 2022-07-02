@@ -54053,7 +54053,9 @@ qx.$$loader = {
     "10",
     "11",
     "12",
-    "13"
+    "13",
+    "14",
+    "15"
   ]
 },
   packages : {
@@ -54091,7 +54093,7 @@ qx.$$loader = {
   },
   "6": {
     "uris": [
-      "../transpiled/hoiphadaock/theme/Color.js"
+      "../transpiled/hoiphadaock/CpDaMua.js"
     ]
   },
   "7": {
@@ -54101,7 +54103,7 @@ qx.$$loader = {
   },
   "8": {
     "uris": [
-      "../transpiled/hoiphadaock/theme/Decoration.js"
+      "../transpiled/hoiphadaock/theme/Color.js"
     ]
   },
   "9": {
@@ -54111,7 +54113,7 @@ qx.$$loader = {
   },
   "10": {
     "uris": [
-      "../transpiled/hoiphadaock/theme/Font.js"
+      "../transpiled/hoiphadaock/theme/Decoration.js"
     ]
   },
   "11": {
@@ -54121,13 +54123,23 @@ qx.$$loader = {
   },
   "12": {
     "uris": [
-      "../transpiled/hoiphadaock/theme/Appearance.js",
-      "../transpiled/hoiphadaock/theme/Theme.js"
+      "../transpiled/hoiphadaock/theme/Font.js"
     ]
   },
   "13": {
     "uris": [
       "package-13.js"
+    ]
+  },
+  "14": {
+    "uris": [
+      "../transpiled/hoiphadaock/theme/Appearance.js",
+      "../transpiled/hoiphadaock/theme/Theme.js"
+    ]
+  },
+  "15": {
+    "uris": [
+      "package-15.js"
     ]
   }
 },
@@ -54570,6 +54582,12 @@ qx.$$packageData['10'] = {
 };
 
 qx.$$packageData['12'] = {
+  "locales": {},
+  "resources": {},
+  "translations": {}
+};
+
+qx.$$packageData['14'] = {
   "locales": {},
   "resources": {},
   "translations": {}

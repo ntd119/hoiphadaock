@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-02T00:55:13.869Z",
+      "mtime": "2022-07-02T01:05:38.169Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -19,12 +19,7 @@
         },
         "qx.log.appender.Native": {},
         "qx.log.appender.Console": {},
-        "qx.ui.table.model.Simple": {},
-        "qx.ui.table.Table": {},
-        "qx.ui.table.selection.Model": {},
-        "qx.ui.table.cellrenderer.Conditional": {},
-        "qx.ui.table.cellrenderer.Image": {},
-        "qx.io.request.Xhr": {}
+        "hoiphadaock.CpDaMua": {}
       },
       "extends": "qx.application.Standalone",
       "include": [],
@@ -12042,6 +12037,32 @@
       "include": [],
       "implement": [],
       "hasDefer": null
+    },
+    "hoiphadaock.CpDaMua": {
+      "mtime": "2022-07-02T01:05:34.241Z",
+      "libraryName": "hoiphadaock",
+      "dependsOn": {
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.application.Standalone": {
+          "load": true
+        },
+        "qx.ui.table.model.Simple": {},
+        "qx.ui.table.Table": {},
+        "qx.ui.table.selection.Model": {},
+        "qx.ui.table.cellrenderer.Conditional": {},
+        "qx.ui.table.cellrenderer.Image": {},
+        "qx.io.request.Xhr": {}
+      },
+      "extends": "qx.application.Standalone",
+      "include": [],
+      "implement": [],
+      "hasDefer": null,
+      "assets": [
+        "hoiphadaock/*"
+      ]
     }
   },
   "manglePrefixes": {
