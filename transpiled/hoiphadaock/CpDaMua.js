@@ -45,14 +45,12 @@
         var BACKGROUND_SAN = "#0A8AE3";
         var BACKGROUND_NONE = "#FFFFFF"; // table model
 
-        var tableModel = new qx.ui.table.model.Simple();
+        var tableModel = this._tableModel = new qx.ui.table.model.Simple();
         tableModel.setColumns(["Mã CK", "Name", "Người mua", "Giá mua", "Lãi/Lỗ", "Giá hiện tại", "Giá min \ntrong tuần", "Giá max \ntrong tuần", "% Giá Max-Min", "% Giá hiện tại\nso với giá max", "Min Time", "Max Time", "Giá trần", "Giá sàn", "Giá mở cửa", "Có trong\nInfina"]);
-        var image = ["icon/16/actions/dialog-ok.png", "icon/16/actions/dialog-cancel.png"];
 
         var cpDaMua = this._read_file();
 
         var rowData = [];
-        var index = 1;
         var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
         request.setAccept("application/json");
         request.setParser("json");
@@ -114,6 +112,8 @@
           }
 
           tableModel.setData(rowData);
+
+          this._tableModel.setValue(1, 1, "xxx");
         }, this);
         request.send(); // table
 
@@ -150,4 +150,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656770577446
+//# sourceMappingURL=CpDaMua.js.map?dt=1656824803972

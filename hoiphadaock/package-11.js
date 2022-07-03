@@ -77,7 +77,7 @@
   });
   qx.theme.indigo.Font.$$dbClassInfo = $$dbClassInfo;
 })();
-//# sourceMappingURL=package-11.js.map?dt=1656770583294
+//# sourceMappingURL=package-11.js.map?dt=1656824809373
 qx.$$packageData['11'] = {
   "locales": {},
   "resources": {},
