@@ -59,7 +59,7 @@
           edge: 30
         }); // tree
 
-        var tree = new qx.ui.treevirtual.TreeVirtual(["Tree", "Permissions", "Last Accessed"]);
+        var tree = new qx.ui.treevirtual.TreeVirtual("Select");
         tree.set({
           width: 400
         });
@@ -82,22 +82,9 @@
         var te1_1;
         dataModel.addBranch(te1, "Files", true);
         te1_1 = dataModel.addBranch(te1, "Workspace", true);
-        var te = dataModel.addLeaf(te1_1, "Windows (C:)");
-        dataModel.setColumnData(te, 1, "-rwxr-xr-x");
-        dataModel.setColumnData(te, 2, "2007-01-30 22:54:03");
-        te = dataModel.addLeaf(te1_1, "Documents (D:)");
-        dataModel.setColumnData(te, 1, "-rwxr-xr-x");
-        dataModel.setColumnData(te, 2, "2007-01-30 22:54:03");
-        dataModel.addBranch(te1, "Network", true);
-        te = dataModel.addBranch(te1, "Trash", true); // tree.nodeSetCellStyle(te, "background-color: cyan;");
+        dataModel.addBranch(te1, "Network", true); // tree.nodeSetCellStyle(te, "background-color: cyan;");
 
         var te2 = dataModel.addBranch(null, "Inbox", true);
-        te = dataModel.addBranch(te2, "Spam", false);
-
-        for (var i = 1; i < 3000; i++) {
-          dataModel.addLeaf(te, "Spam Message #" + i);
-        }
-
         dataModel.addBranch(te2, "Sent", false);
         dataModel.addBranch(te2, "Trash", false);
         dataModel.addBranch(te2, "Data", false);
@@ -187,4 +174,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656843051346
+//# sourceMappingURL=Application.js.map?dt=1656843554933
