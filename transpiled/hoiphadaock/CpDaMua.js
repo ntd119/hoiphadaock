@@ -10,6 +10,7 @@
       },
       "qx.ui.table.model.Simple": {},
       "qx.io.request.Xhr": {},
+      "qx.event.Timer": {},
       "qx.ui.table.Table": {},
       "qx.ui.table.selection.Model": {},
       "qx.ui.table.cellrenderer.Html": {}
@@ -90,7 +91,6 @@
             }
 
             percent_change_html = "<div style='background-color: " + color + ";'>" + percent_change + "%</div>";
-            console.log(filter_data);
             rowData.push([key, stock_name, nguoiMua, giaDaMua, percent_change_html, giaHienTai_html]);
           };
 
@@ -112,9 +112,14 @@
           }
 
           tableModel.setData(rowData);
+          var timer = new qx.event.Timer(1000);
+          timer.addListener("interval", function (e) {
+            var cpdamua = new hoiphadaock.CpDaMua();
 
-          this._tableModel.setValue(1, 1, "xxx");
-        }, this);
+            cpdamua._update_table(cpDaMua._tableModel);
+          }, this);
+          timer.start();
+        });
         request.send(); // table
 
         var table = new qx.ui.table.Table(tableModel);
@@ -127,6 +132,10 @@
           width: 700
         });
         return table;
+      },
+      _update_table: function _update_table(tableModel) {
+        // tableModel.setValue(1, 1, "xxx");
+        console.log(new Date());
       },
       call_api: function call_api() {
         var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
@@ -150,4 +159,4 @@
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656824803972
+//# sourceMappingURL=CpDaMua.js.map?dt=1656833307950

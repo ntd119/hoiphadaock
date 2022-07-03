@@ -103,10 +103,9 @@
         var commandFrame = new qx.ui.groupbox.GroupBox("Danh sách cổ phiếu");
         commandFrame.setLayout(new qx.ui.layout.VBox(8));
         hBox.add(commandFrame);
-        var cpdamua = new hoiphadaock.CpDaMua(); //   this.getRoot().add(cpdamua.createTable());
-        // var o = new qx.ui.basic.Atom("Current Selection: ");
-
-        commandFrame.add(cpdamua.createTable()); // o = new qx.ui.form.TextField();
+        var cpdamua = new hoiphadaock.CpDaMua();
+        var table = cpdamua.createTable();
+        commandFrame.add(table); // o = new qx.ui.form.TextField();
         // o.set({ readOnly: true });
         // commandFrame.add(o);
         // tree.addListener(
@@ -185,4 +184,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656769532892
+//# sourceMappingURL=Application.js.map?dt=1656832413511
