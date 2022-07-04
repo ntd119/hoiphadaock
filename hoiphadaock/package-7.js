@@ -1,6 +1,1081 @@
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.Bootstrap": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.bom.client.Engine": {},
+      "qx.core.Environment": {
+        "defer": "runtime"
+      }
+    },
+    "environment": {
+      "provided": ["io.maxrequests", "io.ssl", "io.xhr"],
+      "required": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Carsten Lergenmueller (carstenl)
+       * Fabian Jakobs (fbjakobs)
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * Determines browser-dependent information about the transport layer.
+   *
+   * This class is used by {@link qx.core.Environment} and should not be used
+   * directly. Please check its class comment for details how to use it.
+   *
+   * @internal
+   */
+  qx.Bootstrap.define("qx.bom.client.Transport", {
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /**
+       * Returns the maximum number of parallel requests the current browser
+       * supports per host addressed.
+       *
+       * Note that this assumes one connection can support one request at a time
+       * only. Technically, this is not correct when pipelining is enabled (which
+       * it currently is only for IE 8 and Opera). In this case, the number
+       * returned will be too low, as one connection supports multiple pipelined
+       * requests. This is accepted for now because pipelining cannot be
+       * detected from JavaScript and because modern browsers have enough
+       * parallel connections already - it's unlikely an app will require more
+       * than 4 parallel XMLHttpRequests to one server at a time.
+       *
+       * @internal
+       * @return {Integer} Maximum number of parallel requests
+       */
+      getMaxConcurrentRequestCount: function getMaxConcurrentRequestCount() {
+        var maxConcurrentRequestCount; // Parse version numbers.
+
+        var versionParts = qx.bom.client.Engine.getVersion().split(".");
+        var versionMain = 0;
+        var versionMajor = 0;
+        var versionMinor = 0; // Main number
+
+        if (versionParts[0]) {
+          versionMain = versionParts[0];
+        } // Major number
+
+
+        if (versionParts[1]) {
+          versionMajor = versionParts[1];
+        } // Minor number
+
+
+        if (versionParts[2]) {
+          versionMinor = versionParts[2];
+        } // IE 8 gives the max number of connections in a property
+        // see http://msdn.microsoft.com/en-us/library/cc197013(VS.85).aspx
+
+
+        if (window.maxConnectionsPerServer) {
+          maxConcurrentRequestCount = window.maxConnectionsPerServer;
+        } else if (qx.bom.client.Engine.getName() == "opera") {
+          // Opera: 8 total
+          // see http://operawiki.info/HttpProtocol
+          maxConcurrentRequestCount = 8;
+        } else if (qx.bom.client.Engine.getName() == "webkit") {
+          // Safari: 4
+          // http://www.stevesouders.com/blog/2008/03/20/roundup-on-parallel-connections/
+          // Bug #6917: Distinguish Chrome from Safari, Chrome has 6 connections
+          //       according to
+          //      http://stackoverflow.com/questions/561046/how-many-concurrent-ajax-xmlhttprequest-requests-are-allowed-in-popular-browser
+          maxConcurrentRequestCount = 4;
+        } else if (qx.bom.client.Engine.getName() == "gecko" && (versionMain > 1 || versionMain == 1 && versionMajor > 9 || versionMain == 1 && versionMajor == 9 && versionMinor >= 1)) {
+          // FF 3.5 (== Gecko 1.9.1): 6 Connections.
+          // see  http://gemal.dk/blog/2008/03/18/firefox_3_beta_5_will_have_improved_connection_parallelism/
+          maxConcurrentRequestCount = 6;
+        } else {
+          // Default is 2, as demanded by RFC 2616
+          // see http://blogs.msdn.com/ie/archive/2005/04/11/407189.aspx
+          maxConcurrentRequestCount = 2;
+        }
+
+        return maxConcurrentRequestCount;
+      },
+
+      /**
+       * Checks whether the app is loaded with SSL enabled which means via https.
+       *
+       * @internal
+       * @return {Boolean} <code>true</code>, if the app runs on https
+       */
+      getSsl: function getSsl() {
+        return window.location.protocol === "https:";
+      },
+
+      /**
+       * Checks what kind of XMLHttpRequest object the browser supports
+       * for the current protocol, if any.
+       *
+       * The standard XMLHttpRequest is preferred over ActiveX XMLHTTP.
+       *
+       * @internal
+       * @return {String}
+       *  <code>"xhr"</code>, if the browser provides standard XMLHttpRequest.<br/>
+       *  <code>"activex"</code>, if the browser provides ActiveX XMLHTTP.<br/>
+       *  <code>""</code>, if there is not XHR support at all.
+       */
+      getXmlHttpRequest: function getXmlHttpRequest() {
+        // Standard XHR can be disabled in IE's security settings,
+        // therefore provide ActiveX as fallback. Additionally,
+        // standard XHR in IE7 is broken for file protocol.
+        var supports = window.ActiveXObject ? function () {
+          if (window.location.protocol !== "file:") {
+            try {
+              new window.XMLHttpRequest();
+              return "xhr";
+            } catch (noXhr) {}
+          }
+
+          try {
+            new window.ActiveXObject("Microsoft.XMLHTTP");
+            return "activex";
+          } catch (noActiveX) {}
+        }() : function () {
+          try {
+            new window.XMLHttpRequest();
+            return "xhr";
+          } catch (noXhr) {}
+        }();
+        return supports || "";
+      }
+    },
+    defer: function defer(statics) {
+      qx.core.Environment.add("io.maxrequests", statics.getMaxConcurrentRequestCount);
+      qx.core.Environment.add("io.ssl", statics.getSsl);
+      qx.core.Environment.add("io.xhr", statics.getXmlHttpRequest);
+    }
+  });
+  qx.bom.client.Transport.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.core.Environment": {
+        "defer": "load",
+        "require": true
+      },
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.bom.client.Device": {},
+      "qx.bom.client.Engine": {
+        "defer": "load",
+        "require": true
+      },
+      "qx.bom.client.Transport": {
+        "defer": "load",
+        "require": true
+      },
+      "qx.util.LibraryManager": {
+        "defer": "runtime"
+      }
+    },
+    "environment": {
+      "provided": [],
+      "required": {
+        "engine.name": {
+          "className": "qx.bom.client.Engine",
+          "defer": true
+        },
+        "io.ssl": {
+          "className": "qx.bom.client.Transport",
+          "defer": true
+        }
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Fabian Jakobs (fjakobs)
+  
+  ************************************************************************ */
+
+  /**
+   * Contains information about images (size, format, clipping, ...) and
+   * other resources like CSS files, local data, ...
+   */
+  qx.Class.define("qx.util.ResourceManager", {
+    extend: qx.core.Object,
+    type: "singleton",
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      qx.core.Object.constructor.call(this);
+    },
+
+    /*
+    *****************************************************************************
+       STATICS
+    *****************************************************************************
+    */
+    statics: {
+      /** @type {Map} the shared image registry */
+      __registry__P_105_0: qx.$$resources || {},
+
+      /** @type {Map} prefix per library used in HTTPS mode for IE */
+      __urlPrefix__P_105_1: {}
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      /**
+       * Detects whether there is a high-resolution image available.
+       * A high-resolution image is assumed to have the same file name as
+       * the parameter source, but with a pixelRatio identifier before the file
+       * extension, like "@2x".
+       * Medium Resolution: "example.png", high-resolution: "example@2x.png"
+       *
+       * @param lowResImgSrc {String} source of the low resolution image.
+       * @param factor {Number} Factor to find the right image. If not set calculated by getDevicePixelRatio()
+       * @return {String|Boolean} If a high-resolution image source.
+       */
+      findHighResolutionSource: function findHighResolutionSource(lowResImgSrc, factor) {
+        var pixelRatioCandidates = ["3", "2", "1.5"]; // Calculate the optimal ratio, based on the rem scale factor of the application and the device pixel ratio.
+
+        if (!factor) {
+          factor = parseFloat(qx.bom.client.Device.getDevicePixelRatio().toFixed(2));
+        }
+
+        if (factor <= 1) {
+          return false;
+        }
+
+        var i = pixelRatioCandidates.length;
+
+        while (i > 0 && factor > pixelRatioCandidates[--i]) {}
+
+        var hiResImgSrc;
+        var k; // Search for best img with a higher resolution.
+
+        for (k = i; k >= 0; k--) {
+          hiResImgSrc = this.getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
+
+          if (hiResImgSrc) {
+            return hiResImgSrc;
+          }
+        } // Search for best img with a lower resolution.
+
+
+        for (k = i + 1; k < pixelRatioCandidates.length; k++) {
+          hiResImgSrc = this.getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
+
+          if (hiResImgSrc) {
+            return hiResImgSrc;
+          }
+        }
+
+        return null;
+      },
+
+      /**
+       * Returns the source name for the high-resolution image based on the passed
+       * parameters.
+       * @param source {String} the source of the medium resolution image.
+       * @param pixelRatio {Number} the pixel ratio of the high-resolution image.
+       * @return {String} the high-resolution source name or null if no source could be found.
+       */
+      getHighResolutionSource: function getHighResolutionSource(source, pixelRatio) {
+        var fileExtIndex = source.lastIndexOf(".");
+
+        if (fileExtIndex > -1) {
+          var pixelRatioIdentifier = "@" + pixelRatio + "x";
+          var candidate = source.slice(0, fileExtIndex) + pixelRatioIdentifier + source.slice(fileExtIndex);
+
+          if (this.has(candidate)) {
+            return candidate;
+          }
+        }
+
+        return null;
+      },
+
+      /**
+       * Get all known resource IDs.
+       *
+       * @param pathfragment{String|null|undefined} an optional path fragment to check against with id.indexOf(pathfragment)
+       * @return {Array|null} an array containing the IDs or null if the registry is not initialized
+       */
+      getIds: function getIds(pathfragment) {
+        var registry = qx.util.ResourceManager.__registry__P_105_0;
+
+        if (!registry) {
+          return null;
+        }
+
+        return Object.keys(registry).filter(function (key) {
+          return !pathfragment || key.indexOf(pathfragment) != -1;
+        });
+      },
+
+      /**
+       * Whether the registry has information about the given resource.
+       *
+       * @param id {String} The resource to get the information for
+       * @return {Boolean} <code>true</code> when the resource is known.
+       */
+      has: function has(id) {
+        return !!qx.util.ResourceManager.__registry__P_105_0[id];
+      },
+
+      /**
+       * Get information about an resource.
+       *
+       * @param id {String} The resource to get the information for
+       * @return {Array} Registered data or <code>null</code>
+       */
+      getData: function getData(id) {
+        return qx.util.ResourceManager.__registry__P_105_0[id] || null;
+      },
+
+      /**
+       * Returns the width of the given resource ID,
+       * when it is not a known image <code>0</code> is
+       * returned.
+       *
+       * @param id {String} Resource identifier
+       * @return {Integer} The image width, maybe <code>null</code> when the width is unknown
+       */
+      getImageWidth: function getImageWidth(id) {
+        var size;
+
+        if (id && id.startsWith("@")) {
+          var part = id.split("/");
+          size = parseInt(part[2], 10);
+
+          if (size) {
+            id = part[0] + "/" + part[1];
+          }
+        }
+
+        var entry = qx.util.ResourceManager.__registry__P_105_0[id]; // [ width, height, codepoint ]
+
+        if (size && entry) {
+          var width = Math.ceil(size / entry[1] * entry[0]);
+          return width;
+        }
+
+        return entry ? entry[0] : null;
+      },
+
+      /**
+       * Returns the height of the given resource ID,
+       * when it is not a known image <code>0</code> is
+       * returned.
+       *
+       * @param id {String} Resource identifier
+       * @return {Integer} The image height, maybe <code>null</code> when the height is unknown
+       */
+      getImageHeight: function getImageHeight(id) {
+        if (id && id.startsWith("@")) {
+          var part = id.split("/");
+          var size = parseInt(part[2], 10);
+
+          if (size) {
+            return size;
+          }
+        }
+
+        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
+        return entry ? entry[1] : null;
+      },
+
+      /**
+       * Returns the format of the given resource ID,
+       * when it is not a known image <code>null</code>
+       * is returned.
+       *
+       * @param id {String} Resource identifier
+       * @return {String} File format of the image
+       */
+      getImageFormat: function getImageFormat(id) {
+        if (id && id.startsWith("@")) {
+          return "font";
+        }
+
+        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
+        return entry ? entry[2] : null;
+      },
+
+      /**
+       * Returns the format of the combined image (png, gif, ...), if the given
+       * resource identifier is an image contained in one, or the empty string
+       * otherwise.
+       *
+       * @param id {String} Resource identifier
+       * @return {String} The type of the combined image containing id
+       */
+      getCombinedFormat: function getCombinedFormat(id) {
+        var clippedtype = "";
+        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
+        var isclipped = entry && entry.length > 4 && typeof entry[4] == "string" && this.constructor.__registry__P_105_0[entry[4]];
+
+        if (isclipped) {
+          var combId = entry[4];
+          var combImg = this.constructor.__registry__P_105_0[combId];
+          clippedtype = combImg[2];
+        }
+
+        return clippedtype;
+      },
+
+      /**
+       * Converts the given resource ID to a full qualified URI
+       *
+       * @param id {String} Resource ID
+       * @return {String} Resulting URI
+       */
+      toUri: function toUri(id) {
+        if (id == null) {
+          return id;
+        }
+
+        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
+
+        if (!entry) {
+          return id;
+        }
+
+        if (typeof entry === "string") {
+          var lib = entry;
+        } else {
+          var lib = entry[3]; // no lib reference
+          // may mean that the image has been registered dynamically
+
+          if (!lib) {
+            return id;
+          }
+        }
+
+        var urlPrefix = "";
+
+        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("io.ssl")) {
+          urlPrefix = qx.util.ResourceManager.__urlPrefix__P_105_1[lib];
+        }
+
+        return urlPrefix + qx.util.LibraryManager.getInstance().get(lib, "resourceUri") + "/" + id;
+      },
+
+      /**
+       * Construct a data: URI for an image resource.
+       *
+       * Constructs a data: URI for a given resource id, if this resource is
+       * contained in a base64 combined image. If this is not the case (e.g.
+       * because the combined image has not been loaded yet), returns the direct
+       * URI to the image file itself.
+       *
+       * @param resid {String} resource id of the image
+       * @return {String} "data:" or "http:" URI
+       */
+      toDataUri: function toDataUri(resid) {
+        var resentry = this.constructor.__registry__P_105_0[resid];
+        var combined = resentry ? this.constructor.__registry__P_105_0[resentry[4]] : null;
+        var uri;
+
+        if (combined) {
+          var resstruct = combined[4][resid];
+          uri = "data:image/" + resstruct["type"] + ";" + resstruct["encoding"] + "," + resstruct["data"];
+        } else {
+          uri = this.toUri(resid);
+        }
+
+        return uri;
+      },
+
+      /**
+       * Checks whether a given resource id for an image is a font handle.
+       *
+       * @param resid {String} resource id of the image
+       * @return {Boolean} True if it's a font URI
+       */
+      isFontUri: function isFontUri(resid) {
+        return resid ? resid.startsWith("@") : false;
+      },
+
+      /**
+       * Returns the correct char code, ignoring scale postfix.
+       *
+       * The resource ID can be a ligature name (eg `@FontAwesome/heart` or `@MaterialIcons/home/16`),
+       * or a hex character code (eg `@FontAwesome/f004` or `@FontAwesome/f004/16`)
+       *
+       * @param source {String} resource id of the image
+       * @returns charCode of the glyph
+       */
+      fromFontUriToCharCode: function fromFontUriToCharCode(source) {
+        var sparts = source.split("/");
+        var fontSource = source;
+
+        if (sparts.length > 2) {
+          fontSource = sparts[0] + "/" + sparts[1];
+        }
+
+        var resource = this.getData(fontSource);
+        var charCode = null;
+
+        if (resource) {
+          charCode = resource[2];
+        } else {
+          var hexString = source.match(/@([^/]+)\/(.*)$/)[2];
+
+          if (hexString) {
+            charCode = parseInt(hexString, 16);
+
+            if (isNaN(charCode)) {
+              charCode = null;
+            }
+          }
+        }
+
+        if (!charCode) {
+          throw new Error("Cannot determine charCode from source: ".concat(source));
+        }
+
+        return charCode;
+      }
+    },
+    defer: function defer(statics) {
+      if (qx.core.Environment.get("engine.name") == "mshtml") {
+        // To avoid a "mixed content" warning in IE when the application is
+        // delivered via HTTPS a prefix has to be added. This will transform the
+        // relative URL to an absolute one in IE.
+        // Though this warning is only displayed in conjunction with images which
+        // are referenced as a CSS "background-image", every resource path is
+        // changed when the application is served with HTTPS.
+        if (qx.core.Environment.get("io.ssl")) {
+          for (var lib in qx.$$libraries) {
+            var resourceUri;
+
+            if (qx.util.LibraryManager.getInstance().get(lib, "resourceUri")) {
+              resourceUri = qx.util.LibraryManager.getInstance().get(lib, "resourceUri");
+            } else {
+              // default for libraries without a resourceUri set
+              statics.__urlPrefix__P_105_1[lib] = "";
+              continue;
+            }
+
+            var href; //first check if there is base url set
+
+            var baseElements = document.getElementsByTagName("base");
+
+            if (baseElements.length > 0) {
+              href = baseElements[0].href;
+            } // It is valid to to begin a URL with "//" so this case has to
+            // be considered. If the to resolved URL begins with "//" the
+            // manager prefixes it with "https:" to avoid any problems for IE
+
+
+            if (resourceUri.match(/^\/\//) != null) {
+              statics.__urlPrefix__P_105_1[lib] = window.location.protocol;
+            } // If the resourceUri begins with a single slash, include the current
+            // hostname
+            else if (resourceUri.match(/^\//) != null) {
+              if (href) {
+                statics.__urlPrefix__P_105_1[lib] = href;
+              } else {
+                statics.__urlPrefix__P_105_1[lib] = window.location.protocol + "//" + window.location.host;
+              }
+            } // If the resolved URL begins with "./" the final URL has to be
+            // put together using the document.URL property.
+            // IMPORTANT: this is only applicable for the source version
+            else if (resourceUri.match(/^\.\//) != null) {
+              var url = document.URL;
+              statics.__urlPrefix__P_105_1[lib] = url.substring(0, url.lastIndexOf("/") + 1);
+            } else if (resourceUri.match(/^http/) != null) {
+              // Let absolute URLs pass through
+              statics.__urlPrefix__P_105_1[lib] = "";
+            } else {
+              if (!href) {
+                // check for parameters with URLs as value
+                var index = window.location.href.indexOf("?");
+
+                if (index == -1) {
+                  href = window.location.href;
+                } else {
+                  href = window.location.href.substring(0, index);
+                }
+              }
+
+              statics.__urlPrefix__P_105_1[lib] = href.substring(0, href.lastIndexOf("/") + 1);
+            }
+          }
+        }
+      }
+    }
+  });
+  qx.util.ResourceManager.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2012 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Author:
+       * Daniel Wagner (danielwagner)
+  
+  ************************************************************************ */
+
+  /**
+   * Provides read/write access to library-specific information such as
+   * source/resource URIs.
+   */
+  qx.Class.define("qx.util.LibraryManager", {
+    extend: qx.core.Object,
+    type: "singleton",
+    statics: {
+      /** @type {Map} The libraries used by this application */
+      __libs__P_127_0: qx.$$libraries || {}
+    },
+    members: {
+      /**
+       * Checks whether the library with the given namespace is known to the
+       * application.
+       * @param namespace {String} The library's namespace
+       * @return {Boolean} <code>true</code> if the given library is known
+       */
+      has: function has(namespace) {
+        return !!qx.util.LibraryManager.__libs__P_127_0[namespace];
+      },
+
+      /**
+       * Returns the value of an attribute of the given library
+       * @param namespace {String} The library's namespace
+       * @param key {String} Name of the attribute
+       * @return {var|null} The attribute's value or <code>null</code> if it's not defined
+       */
+      get: function get(namespace, key) {
+        return qx.util.LibraryManager.__libs__P_127_0[namespace][key] ? qx.util.LibraryManager.__libs__P_127_0[namespace][key] : null;
+      },
+
+      /**
+       * Sets an attribute on the given library.
+       *
+       * @param namespace {String} The library's namespace
+       * @param key {String} Name of the attribute
+       * @param value {var} Value of the attribute
+       */
+      set: function set(namespace, key, value) {
+        qx.util.LibraryManager.__libs__P_127_0[namespace][key] = value;
+      }
+    }
+  });
+  qx.util.LibraryManager.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.data.marshal.Json": {
+        "construct": true
+      },
+      "qx.util.AliasManager": {},
+      "qx.util.ResourceManager": {},
+      "qx.io.request.Xhr": {},
+      "qx.lang.Type": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2009 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martin Wittemann (martinwittemann)
+       * Tristan Koch (tristankoch)
+  
+  ************************************************************************ */
+
+  /**
+   * The JSON data store is responsible for fetching data from an url. The type
+   * of the data has to be json.
+   *
+   * The loaded data will be parsed and saved in qooxdoo objects. Every value
+   * of the loaded data will be stored in a qooxdoo property. The model classes
+   * for the data will be created automatically.
+   *
+   * For the fetching itself it uses the {@link qx.io.request.Xhr} class and
+   * for parsing the loaded javascript objects into qooxdoo objects, the
+   * {@link qx.data.marshal.Json} class will be used.
+   *
+   * Please note that if you
+   *
+   * * upgrade from qooxdoo 1.4 or lower
+   * * choose not to force the old transport
+   * * use a delegate with qx.data.store.IStoreDelegate#configureRequest
+   *
+   * you probably need to change the implementation of your delegate to configure
+   * the {@link qx.io.request.Xhr} request.
+   *
+   * This class only needs to be disposed if you want to abort any current I/O
+   * request
+   *
+   */
+  qx.Class.define("qx.data.store.Json", {
+    extend: qx.core.Object,
+
+    /**
+     * @param url {String|null} The url where to find the data. The store starts
+     *   loading as soon as the URL is give. If you want to change some details
+     *   concerning the request, add null here and set the URL as soon as
+     *   everything is set up.
+     * @param delegate {Object?null} The delegate containing one of the methods
+     *   specified in {@link qx.data.store.IStoreDelegate}.
+     */
+    construct: function construct(url, delegate) {
+      qx.core.Object.constructor.call(this); // store the marshaler and the delegate
+
+      this._marshaler = new qx.data.marshal.Json(delegate);
+      this._delegate = delegate;
+
+      if (url != null) {
+        this.setUrl(url);
+      }
+    },
+    events: {
+      /**
+       * Data event fired after the model has been created. The data will be the
+       * created model.
+       */
+      loaded: "qx.event.type.Data",
+
+      /**
+       * Fired when a parse error (i.e. broken JSON) occurred
+       * during the load. The data contains a hash of the original
+       * response and the parser error (exception object).
+       */
+      parseError: "qx.event.type.Data",
+
+      /**
+       * Fired when an error (aborted, timeout or failed) occurred
+       * during the load. The data contains the response of the request.
+       * If you want more details, use the {@link #changeState} event.
+       */
+      error: "qx.event.type.Data"
+    },
+    properties: {
+      /**
+       * Property for holding the loaded model instance.
+       */
+      model: {
+        nullable: true,
+        event: "changeModel"
+      },
+
+      /**
+       * The state of the request as an url. If you want to check if the request
+       * did it’s job, use, the {@link #changeState} event and check for one of the
+       * listed values.
+       */
+      state: {
+        check: ["configured", "queued", "sending", "receiving", "completed", "aborted", "timeout", "failed"],
+        init: "configured",
+        event: "changeState"
+      },
+
+      /**
+       * The url where the request should go to.
+       */
+      url: {
+        check: "String",
+        apply: "_applyUrl",
+        event: "changeUrl",
+        nullable: true
+      }
+    },
+    members: {
+      _marshaler: null,
+      _delegate: null,
+      __request__P_218_0: null,
+      // apply function
+      _applyUrl: function _applyUrl(value, old) {
+        if (value != null) {
+          // take care of the resource management
+          value = qx.util.AliasManager.getInstance().resolve(value);
+          value = qx.util.ResourceManager.getInstance().toUri(value);
+
+          this._createRequest(value);
+        }
+      },
+
+      /**
+       * Get request
+       *
+       * @return {Object} The request.
+       */
+      _getRequest: function _getRequest() {
+        return this.__request__P_218_0;
+      },
+
+      /**
+       * Set request.
+       *
+       * @param request {Object} The request.
+       */
+      _setRequest: function _setRequest(request) {
+        this.__request__P_218_0 = request;
+      },
+
+      /**
+       * Creates and sends a GET request with the given url.
+       *
+       * Listeners will be added to respond to the request’s "success",
+       * "changePhase" and "fail" event.
+       *
+       * @param url {String} The url for the request.
+       */
+      _createRequest: function _createRequest(url) {
+        // dispose old request
+        if (this.__request__P_218_0) {
+          this.__request__P_218_0.dispose();
+
+          this.__request__P_218_0 = null;
+        }
+
+        var req = new qx.io.request.Xhr(url);
+
+        this._setRequest(req); // request json representation
+
+
+        req.setAccept("application/json"); // parse as json no matter what content type is returned
+
+        req.setParser("json"); // register the internal event before the user has the change to
+        // register its own event in the delegate
+
+        req.addListener("success", this._onSuccess, this);
+        req.addListener("parseError", this._onParseError, this); // check for the request configuration hook
+
+        var del = this._delegate;
+
+        if (del && qx.lang.Type.isFunction(del.configureRequest)) {
+          this._delegate.configureRequest(req);
+        } // map request phase to it’s own phase
+
+
+        req.addListener("changePhase", this._onChangePhase, this); // add failed, aborted and timeout listeners
+
+        req.addListener("fail", this._onFail, this);
+        req.send();
+      },
+
+      /**
+       * Handler called when request phase changes.
+       *
+       * Sets the store’s state.
+       *
+       * @param ev {qx.event.type.Data} The request’s changePhase event.
+       */
+      _onChangePhase: function _onChangePhase(ev) {
+        var requestPhase = ev.getData(),
+            requestPhaseToStorePhase = {},
+            state;
+        requestPhaseToStorePhase = {
+          opened: "configured",
+          sent: "sending",
+          loading: "receiving",
+          success: "completed",
+          abort: "aborted",
+          timeout: "timeout",
+          statusError: "failed"
+        };
+        state = requestPhaseToStorePhase[requestPhase];
+
+        if (state) {
+          this.setState(state);
+        }
+      },
+
+      /**
+       * Handler called when not completing the request successfully.
+       *
+       * @param ev {qx.event.type.Event} The request’s fail event.
+       */
+      _onFail: function _onFail(ev) {
+        var req = ev.getTarget();
+        this.fireDataEvent("error", req);
+      },
+
+      /**
+       * Handler called when not completing the request successfully because
+       * of parse errors.
+       *
+       * @param ev {qx.event.type.Data} Hash map containing the original 'request'
+       *                                and the original parser 'error' exception object.
+       */
+      _onParseError: function _onParseError(ev) {
+        this.fireDataEvent("parseError", ev.getData());
+      },
+
+      /**
+       * Handler for the completion of the requests. It invokes the creation of
+       * the needed classes and instances for the fetched data using
+       * {@link qx.data.marshal.Json}.
+       *
+       * @param ev {qx.event.type.Event} The request’s success event.
+       */
+      _onSuccess: function _onSuccess(ev) {
+        if (this.isDisposed()) {
+          return;
+        }
+
+        var req = ev.getTarget(),
+            data = req.getResponse(); // check for the data manipulation hook
+
+        var del = this._delegate;
+
+        if (del && qx.lang.Type.isFunction(del.manipulateData)) {
+          data = this._delegate.manipulateData(data);
+        } // create the class
+
+
+        this._marshaler.toClass(data, true);
+
+        var oldModel = this.getModel(); // set the initial data
+
+        this.setModel(this._marshaler.toModel(data)); // get rid of the old model
+
+        if (oldModel && oldModel.dispose) {
+          oldModel.dispose();
+        } // fire complete event
+
+
+        this.fireDataEvent("loaded", this.getModel()); // get rid of the request object
+
+        if (this.__request__P_218_0) {
+          this.__request__P_218_0.dispose();
+
+          this.__request__P_218_0 = null;
+        }
+      },
+
+      /**
+       * Reloads the data with the url set in the {@link #url} property.
+       */
+      reload: function reload() {
+        var url = this.getUrl();
+
+        if (url != null) {
+          this._createRequest(url);
+        }
+      }
+    },
+
+    /*
+     *****************************************************************************
+        DESTRUCT
+     *****************************************************************************
+     */
+    destruct: function destruct() {
+      if (this.__request__P_218_0 != null) {
+        this._disposeObjects("__request__P_218_0");
+      } // The marshaler internally uses the singleton pattern
+      // (constructor.$$instance.
+
+
+      this._disposeSingletonObjects("_marshaler");
+
+      this._delegate = null;
+    }
+  });
+  qx.data.store.Json.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
       "qx.Class": {
         "usage": "dynamic",
         "require": true
@@ -42191,6 +43266,716 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 (function () {
   var $$dbClassInfo = {
     "dependsOn": {
+      "qx.Interface": {
+        "usage": "dynamic",
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2009 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * Defines the methods needed by every marshaler which should work with the
+   * qooxdoo data stores.
+   */
+  qx.Interface.define("qx.data.marshal.IMarshaler", {
+    members: {
+      /**
+       * Creates for the given data the needed classes. The classes contain for
+       * every key in the data a property. The classname is always the prefix
+       * <code>qx.data.model</code>. Two objects containing the same keys will not
+       * create two different classes.
+       *
+       * @param data {Object} The object for which classes should be created.
+       * @param includeBubbleEvents {Boolean} Whether the model should support
+       *   the bubbling of change events or not.
+       */
+      toClass: function toClass(data, includeBubbleEvents) {},
+
+      /**
+       * Creates for the given data the needed models. Be sure to have the classes
+       * created with {@link #toClass} before calling this method.
+       *
+       * @param data {Object} The object for which models should be created.
+       *
+       * @return {qx.core.Object} The created model object.
+       */
+      toModel: function toModel(data) {}
+    }
+  });
+  qx.data.marshal.IMarshaler.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.core.Object": {
+        "construct": true,
+        "require": true
+      },
+      "qx.data.marshal.IMarshaler": {
+        "require": true
+      },
+      "qx.lang.Type": {},
+      "qx.Bootstrap": {},
+      "qx.lang.String": {},
+      "qx.data.marshal.MEventBubbling": {},
+      "qx.data.Array": {}
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2009 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Martin Wittemann (martinwittemann)
+  
+  ************************************************************************ */
+
+  /**
+   * This class is responsible for converting json data to class instances
+   * including the creation of the classes.
+   * To retrieve the native data of created models use the methods
+   *   described in {@link qx.util.Serializer}.
+   */
+  qx.Class.define("qx.data.marshal.Json", {
+    extend: qx.core.Object,
+    implement: [qx.data.marshal.IMarshaler],
+
+    /**
+     * @param delegate {Object} An object containing one of the methods described
+     *   in {@link qx.data.marshal.IMarshalerDelegate}.
+     */
+    construct: function construct(delegate) {
+      qx.core.Object.constructor.call(this);
+      this.__delegate__P_219_0 = delegate;
+    },
+    statics: {
+      $$instance: null,
+
+      /**
+       * Creates a qooxdoo object based on the given json data. This function
+       * is just a static wrapper. If you want to configure the creation
+       * process of the class, use {@link qx.data.marshal.Json} directly.
+       *
+       * @param data {Object} The object for which classes should be created.
+       * @param includeBubbleEvents {Boolean} Whether the model should support
+       *   the bubbling of change events or not.
+       *
+       * @return {qx.core.Object} An instance of the corresponding class.
+       */
+      createModel: function createModel(data, includeBubbleEvents) {
+        // singleton for the json marshaler
+        if (this.$$instance === null) {
+          this.$$instance = new qx.data.marshal.Json();
+        } // be sure to create the classes first
+
+
+        this.$$instance.toClass(data, includeBubbleEvents); // return the model
+
+        return this.$$instance.toModel(data);
+      },
+
+      /**
+       * Legacy json hash method used as default in Qooxdoo < v6.0.
+       * You can go back to the old behaviour like this:
+       *
+       * <code>
+       *  var marshaller = new qx.data.marshal.Json({
+       *   getJsonHash: qx.data.marshal.Json.legacyJsonHash
+       *  });
+       * </code>
+       */
+      legacyJsonHash: function legacyJsonHash(data, includeBubbleEvents) {
+        return Object.keys(data).sort().join('"') + (includeBubbleEvents === true ? "♥" : "");
+      }
+    },
+    members: {
+      __delegate__P_219_0: null,
+
+      /**
+       * Converts a given object into a hash which will be used to identify the
+       * classes under the namespace <code>qx.data.model</code>.
+       *
+       * @param data {Object} The JavaScript object from which the hash is
+       *   required.
+       * @param includeBubbleEvents {Boolean?false} Whether the model should
+       *   support the bubbling of change events or not.
+       * @return {String} The hash representation of the given JavaScript object.
+       */
+      __jsonToHash__P_219_1: function __jsonToHash__P_219_1(data, includeBubbleEvents) {
+        if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getJsonHash) {
+          return this.__delegate__P_219_0.getJsonHash(data, includeBubbleEvents);
+        }
+
+        return Object.keys(data).sort().join("|") + (includeBubbleEvents === true ? "♥" : "");
+      },
+
+      /**
+       * Get the "most enhanced" hash for a given object.  That is the hash for
+       * the class that is most feature rich in respect of the bubble event
+       * feature. If there are two equal classes available (defined), one with
+       * and one without the bubble event feature, this method will return the
+       * hash of the class that includes the bubble event.
+       *
+       * @param data {Object} The JavaScript object from which the hash is
+       *   required.
+       * @param includeBubbleEvents {Boolean} Whether the preferred model should
+       *   support the bubbling of change events or not.
+       *   If <code>null</code>, an automatic selection will take place which
+       *   selects the "best" model currently available.
+       * @return {String} The hash representation of the given JavaScript object.
+       */
+      __jsonToBestHash__P_219_2: function __jsonToBestHash__P_219_2(data, includeBubbleEvents) {
+        // forced mode?
+        //
+        if (includeBubbleEvents === true) {
+          return this.__jsonToHash__P_219_1(data, true);
+        }
+
+        if (includeBubbleEvents === false) {
+          return this.__jsonToHash__P_219_1(data, false);
+        } // automatic mode!
+        //
+
+
+        var hash = this.__jsonToHash__P_219_1(data); // without bubble event feature
+
+
+        var bubbleClassHash = hash + "♥"; // with bubble event feature
+
+        var bubbleClassName = "qx.data.model." + bubbleClassHash; // In case there's a class with bubbling, we *always* prefer that one!
+
+        return qx.Class.isDefined(bubbleClassName) ? bubbleClassHash : hash;
+      },
+
+      /**
+       * Creates for the given data the needed classes. The classes contain for
+       * every key in the data a property. The classname is always the prefix
+       * <code>qx.data.model</code> and the hash of the data created by
+       * {@link #__jsonToHash}. Two objects containing the same keys will not
+       * create two different classes. The class creation process also supports
+       * the functions provided by its delegate.
+       *
+       * Important, please keep in mind that only valid JavaScript identifiers
+       * can be used as keys in the data map. For convenience '-' in keys will
+       * be removed (a-b will be ab in the end).
+       *
+       * @see qx.data.store.IStoreDelegate
+       *
+       * @param data {Object} The object for which classes should be created.
+       * @param includeBubbleEvents {Boolean} Whether the model should support
+       *   the bubbling of change events or not.
+       */
+      toClass: function toClass(data, includeBubbleEvents) {
+        this.__toClass__P_219_3(data, includeBubbleEvents, null, 0);
+      },
+
+      /**
+       * Implementation of {@link #toClass} used for recursion.
+       *
+       * @param data {Object} The object for which classes should be created.
+       * @param includeBubbleEvents {Boolean} Whether the model should support
+       *   the bubbling of change events or not.
+       * @param parentProperty {String|null} The name of the property the
+       *   data will be stored in.
+       * @param depth {Number} The depth of the data relative to the data's root.
+       */
+      __toClass__P_219_3: function __toClass__P_219_3(data, includeBubbleEvents, parentProperty, depth) {
+        // break on all primitive json types and qooxdoo objects
+        if (!qx.lang.Type.isObject(data) || !!data.$$isString || // check for localized strings
+        data instanceof qx.core.Object) {
+          // check for arrays
+          if (data instanceof Array || qx.Bootstrap.getClass(data) == "Array") {
+            for (var i = 0; i < data.length; i++) {
+              this.__toClass__P_219_3(data[i], includeBubbleEvents, parentProperty + "[" + i + "]", depth + 1);
+            }
+          } // ignore arrays and primitive types
+
+
+          return;
+        }
+
+        var hash = this.__jsonToHash__P_219_1(data, includeBubbleEvents); // ignore rules
+
+
+        if (this.__ignore__P_219_4(hash, parentProperty, depth)) {
+          return;
+        } // check for the possible child classes
+
+
+        for (var key in data) {
+          this.__toClass__P_219_3(data[key], includeBubbleEvents, key, depth + 1);
+        } // class already exists
+
+
+        if (qx.Class.isDefined("qx.data.model." + hash)) {
+          return;
+        } // class is defined by the delegate
+
+
+        if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getModelClass && this.__delegate__P_219_0.getModelClass(hash, data, parentProperty, depth) != null) {
+          return;
+        } // create the properties map
+
+
+        var properties = {}; // include the disposeItem for the dispose process.
+
+        var members = {
+          __disposeItem__P_219_5: this.__disposeItem__P_219_5
+        };
+
+        for (var key in data) {
+          // apply the property names mapping
+          if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getPropertyMapping) {
+            key = this.__delegate__P_219_0.getPropertyMapping(key, hash);
+          } // strip the unwanted characters
+
+
+          key = key.replace(/-|\.|\s+/g, ""); // check for valid JavaScript identifier (leading numbers are ok)
+
+          {
+            this.assertTrue(/^[$0-9A-Za-z_]*$/.test(key), "The key '" + key + "' is not a valid JavaScript identifier.");
+          }
+          properties[key] = {};
+          properties[key].nullable = true;
+          properties[key].event = "change" + qx.lang.String.firstUp(key); // bubble events
+
+          if (includeBubbleEvents) {
+            properties[key].apply = "_applyEventPropagation";
+          } // validation rules
+
+
+          if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getValidationRule) {
+            var rule = this.__delegate__P_219_0.getValidationRule(hash, key);
+
+            if (rule) {
+              properties[key].validate = "_validate" + key;
+              members["_validate" + key] = rule;
+            }
+          }
+        } // try to get the superclass, qx.core.Object as default
+
+
+        if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getModelSuperClass) {
+          var superClass = this.__delegate__P_219_0.getModelSuperClass(hash, parentProperty, depth) || qx.core.Object;
+        } else {
+          var superClass = qx.core.Object;
+        } // try to get the mixins
+
+
+        var mixins = [];
+
+        if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getModelMixins) {
+          var delegateMixins = this.__delegate__P_219_0.getModelMixins(hash, parentProperty, depth); // check if its an array
+
+
+          if (!qx.lang.Type.isArray(delegateMixins)) {
+            if (delegateMixins != null) {
+              mixins = [delegateMixins];
+            }
+          } else {
+            mixins = delegateMixins;
+          }
+        } // include the mixin for the event bubbling
+
+
+        if (includeBubbleEvents) {
+          mixins.push(qx.data.marshal.MEventBubbling);
+        } // create the map for the class
+
+
+        var newClass = {
+          extend: superClass,
+          include: mixins,
+          properties: properties,
+          members: members
+        };
+        qx.Class.define("qx.data.model." + hash, newClass);
+      },
+
+      /**
+       * Helper for disposing items of the created class.
+       *
+       * @param item {var} The item to dispose.
+       */
+      __disposeItem__P_219_5: function __disposeItem__P_219_5(item) {
+        if (!(item instanceof qx.core.Object)) {
+          // ignore all non objects
+          return;
+        } // ignore already disposed items (could happen during shutdown)
+
+
+        if (item.isDisposed()) {
+          return;
+        }
+
+        item.dispose();
+      },
+
+      /**
+       * Creates an instance for the given data hash.
+       *
+       * @param hash {String} The hash of the data for which an instance should
+       *   be created.
+       * @param parentProperty {String|null} The name of the property the data
+       *   will be stored in.
+       * @param depth {Number} The depth of the object relative to the data root.
+       * @param data {Map} The data for which an instance should be created.
+       * @return {qx.core.Object} An instance of the corresponding class.
+       */
+      __createInstance__P_219_6: function __createInstance__P_219_6(hash, data, parentProperty, depth) {
+        var delegateClass; // get the class from the delegate
+
+        if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getModelClass) {
+          delegateClass = this.__delegate__P_219_0.getModelClass(hash, data, parentProperty, depth);
+        }
+
+        if (delegateClass != null) {
+          return new delegateClass();
+        } else {
+          var className = "qx.data.model." + hash;
+          var clazz = qx.Class.getByName(className);
+
+          if (!clazz) {
+            // Extra check for possible bubble-event feature inconsistency
+            var noBubbleClassName = className.replace("♥", "");
+
+            if (qx.Class.getByName(noBubbleClassName)) {
+              throw new Error("Class '" + noBubbleClassName + "' found, " + "but it does not support changeBubble event.");
+            }
+
+            throw new Error("Class '" + className + "' could not be found.");
+          }
+
+          return new clazz();
+        }
+      },
+
+      /**
+       * Helper to decide if the delegate decides to ignore a data set.
+       * @param hash {String} The property names.
+       * @param parentProperty {String|null} The name of the property the data
+       *   will be stored in.
+       * @param depth {Number} The depth of the object relative to the data root.
+       * @return {Boolean} <code>true</code> if the set should be ignored
+       */
+      __ignore__P_219_4: function __ignore__P_219_4(hash, parentProperty, depth) {
+        var del = this.__delegate__P_219_0;
+        return del && del.ignore && del.ignore(hash, parentProperty, depth);
+      },
+
+      /**
+       * Creates for the given data the needed models. Be sure to have the classes
+       * created with {@link #toClass} before calling this method. The creation
+       * of the class itself is delegated to the {@link #__createInstance} method,
+       * which could use the {@link qx.data.store.IStoreDelegate} methods, if
+       * given.
+       *
+       * @param data {Object} The object for which models should be created.
+       * @param includeBubbleEvents {Boolean?null} Whether the model should
+       *   support the bubbling of change events or not.
+       *   If omitted or <code>null</code>, an automatic selection will take place
+       *   which selects the "best" model currently available.
+       * @return {qx.core.Object} The created model object.
+       */
+      toModel: function toModel(data, includeBubbleEvents) {
+        return this.__toModel__P_219_7(data, includeBubbleEvents, null, 0);
+      },
+
+      /**
+       * Implementation of {@link #toModel} used for recursion.
+       *
+       * @param data {Object} The object for which models should be created.
+       * @param includeBubbleEvents {Boolean|null} Whether the model should
+       *   support the bubbling of change events or not.
+       *   If <code>null</code>, an automatic selection will take place which
+       *   selects the "best" model currently available.
+       * @param parentProperty {String|null} The name of the property the
+       *   data will be stored in.
+       * @param depth {Number} The depth of the data relative to the data's root.
+       * @return {qx.core.Object} The created model object.
+       */
+      __toModel__P_219_7: function __toModel__P_219_7(data, includeBubbleEvents, parentProperty, depth) {
+        var isObject = qx.lang.Type.isObject(data);
+        var isArray = data instanceof Array || qx.Bootstrap.getClass(data) == "Array";
+
+        if (!isObject && !isArray || !!data.$$isString || // check for localized strings
+        data instanceof qx.core.Object) {
+          return data; // ignore rules
+        } else if (this.__ignore__P_219_4(this.__jsonToBestHash__P_219_2(data, includeBubbleEvents), parentProperty, depth)) {
+          return data;
+        } else if (isArray) {
+          var arrayClass = qx.data.Array;
+
+          if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getArrayClass) {
+            var customArrayClass = this.__delegate__P_219_0.getArrayClass(parentProperty, depth);
+
+            arrayClass = customArrayClass || arrayClass;
+          }
+
+          var array = new arrayClass(); // set the auto dispose for the array
+
+          array.setAutoDisposeItems(true);
+
+          for (var i = 0; i < data.length; i++) {
+            array.push(this.__toModel__P_219_7(data[i], includeBubbleEvents, parentProperty + "[" + i + "]", depth + 1));
+          }
+
+          return array;
+        } else if (isObject) {
+          // create an instance for the object
+          var hash = this.__jsonToBestHash__P_219_2(data, includeBubbleEvents);
+
+          var model = this.__createInstance__P_219_6(hash, data, parentProperty, depth); // go threw all element in the data
+
+
+          for (var key in data) {
+            // apply the property names mapping
+            var propertyName = key;
+
+            if (this.__delegate__P_219_0 && this.__delegate__P_219_0.getPropertyMapping) {
+              propertyName = this.__delegate__P_219_0.getPropertyMapping(key, hash);
+            }
+
+            var propertyNameReplaced = propertyName.replace(/-|\.|\s+/g, ""); // warn if there has been a replacement
+
+            propertyName = propertyNameReplaced; // only set the properties if they are available [BUG #5909]
+
+            var setterName = "set" + qx.lang.String.firstUp(propertyName);
+
+            if (model[setterName]) {
+              model[setterName](this.__toModel__P_219_7(data[key], includeBubbleEvents, key, depth + 1));
+            }
+          }
+
+          return model;
+        }
+
+        throw new Error("Unsupported type!");
+      }
+    }
+  });
+  qx.data.marshal.Json.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
+      "qx.Class": {
+        "usage": "dynamic",
+        "require": true
+      },
+      "qx.util.ValueManager": {
+        "construct": true,
+        "require": true
+      }
+    }
+  };
+  qx.Bootstrap.executePendingDefers($$dbClassInfo);
+
+  /* ************************************************************************
+  
+     qooxdoo - the new era of web development
+  
+     http://qooxdoo.org
+  
+     Copyright:
+       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
+  
+     License:
+       MIT: https://opensource.org/licenses/MIT
+       See the LICENSE file in the project's top-level directory for details.
+  
+     Authors:
+       * Sebastian Werner (wpbasti)
+       * Andreas Ecker (ecker)
+  
+  ************************************************************************ */
+
+  /**
+   * This singleton manages global resource aliases.
+   *
+   * The AliasManager supports simple prefix replacement on strings. There are
+   * some pre-defined aliases, and you can register your own with {@link #add}.
+   * The AliasManager is automatically invoked in various situations, e.g. when
+   * resolving the icon image for a button, so it is common to register aliases for
+   * <a href="http://qooxdoo.org/docs/#desktop/gui/resources.md">resource id's</a>.
+   * You can of course call the AliasManager's {@link #resolve}
+   * explicitly to get an alias resolution in any situation, but keep that
+   * automatic invocation of the AliasManager in mind when defining new aliases as
+   * they will be applied globally in many classes, not only your own.
+   *
+   * Examples:
+   * <ul>
+   *  <li> <code>foo</code> -> <code>bar/16pt/baz</code>  (resolves e.g. __"foo/a/b/c.png"__ to
+   *    __"bar/16pt/baz/a/b/c.png"__)
+   *  <li> <code>imgserver</code> -> <code>http&#058;&#047;&#047;imgs03.myserver.com/my/app/</code>
+   *    (resolves e.g. __"imgserver/a/b/c.png"__ to
+   *    __"http&#058;&#047;&#047;imgs03.myserver.com/my/app/a/b/c.png"__)
+   * </ul>
+   *
+   * For resources, only aliases that resolve to proper resource id's can be __managed__
+   * resources, and will be considered __unmanaged__ resources otherwise.
+   */
+  qx.Class.define("qx.util.AliasManager", {
+    type: "singleton",
+    extend: qx.util.ValueManager,
+
+    /*
+    *****************************************************************************
+       CONSTRUCTOR
+    *****************************************************************************
+    */
+    construct: function construct() {
+      qx.util.ValueManager.constructor.call(this); // Contains defined aliases (like icons/, widgets/, application/, ...)
+
+      this.__aliases__P_102_0 = {}; // Define static alias from setting
+
+      this.add("static", "qx/static");
+    },
+
+    /*
+    *****************************************************************************
+       MEMBERS
+    *****************************************************************************
+    */
+    members: {
+      __aliases__P_102_0: null,
+
+      /**
+       * pre-process incoming dynamic value
+       *
+       * @param value {String} incoming value
+       * @return {String} pre processed value
+       */
+      _preprocess: function _preprocess(value) {
+        var dynamics = this._getDynamic();
+
+        if (dynamics[value] === false) {
+          return value;
+        } else if (dynamics[value] === undefined) {
+          if (value.charAt(0) === "/" || value.charAt(0) === "." || value.indexOf("http://") === 0 || value.indexOf("https://") === "0" || value.indexOf("file://") === 0) {
+            dynamics[value] = false;
+            return value;
+          }
+
+          if (this.__aliases__P_102_0[value]) {
+            return this.__aliases__P_102_0[value];
+          }
+
+          var alias = value.substring(0, value.indexOf("/"));
+          var resolved = this.__aliases__P_102_0[alias];
+
+          if (resolved !== undefined) {
+            dynamics[value] = resolved + value.substring(alias.length);
+          }
+        }
+
+        return value;
+      },
+
+      /**
+       * Define an alias to a resource path
+       *
+       * @param alias {String} alias name for the resource path/url
+       * @param base {String} first part of URI for all images which use this alias
+       */
+      add: function add(alias, base) {
+        // Store new alias value
+        this.__aliases__P_102_0[alias] = base; // Localify stores
+
+        var dynamics = this._getDynamic(); // Update old entries which use this alias
+
+
+        for (var path in dynamics) {
+          if (path.substring(0, path.indexOf("/")) === alias) {
+            dynamics[path] = base + path.substring(alias.length);
+          }
+        }
+      },
+
+      /**
+       * Remove a previously defined alias
+       *
+       * @param alias {String} alias name for the resource path/url
+       */
+      remove: function remove(alias) {
+        delete this.__aliases__P_102_0[alias]; // No signal for depending objects here. These
+        // will informed with the new value using add().
+      },
+
+      /**
+       * Resolves a given path
+       *
+       * @param path {String} input path
+       * @return {String} resulting path (with interpreted aliases)
+       */
+      resolve: function resolve(path) {
+        var dynamic = this._getDynamic();
+
+        if (path != null) {
+          path = this._preprocess(path);
+        }
+
+        return dynamic[path] || path;
+      },
+
+      /**
+       * Get registered aliases
+       *
+       * @return {Map} the map of the currently registered alias:resolution pairs
+       */
+      getAliases: function getAliases() {
+        var res = {};
+
+        for (var key in this.__aliases__P_102_0) {
+          res[key] = this.__aliases__P_102_0[key];
+        }
+
+        return res;
+      }
+    }
+  });
+  qx.util.AliasManager.$$dbClassInfo = $$dbClassInfo;
+})();
+
+(function () {
+  var $$dbClassInfo = {
+    "dependsOn": {
       "qx.Bootstrap": {
         "usage": "dynamic",
         "require": true
@@ -45732,187 +47517,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.ui.decoration.Decorator.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.util.ValueManager": {
-        "construct": true,
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Andreas Ecker (ecker)
-  
-  ************************************************************************ */
-
-  /**
-   * This singleton manages global resource aliases.
-   *
-   * The AliasManager supports simple prefix replacement on strings. There are
-   * some pre-defined aliases, and you can register your own with {@link #add}.
-   * The AliasManager is automatically invoked in various situations, e.g. when
-   * resolving the icon image for a button, so it is common to register aliases for
-   * <a href="http://qooxdoo.org/docs/#desktop/gui/resources.md">resource id's</a>.
-   * You can of course call the AliasManager's {@link #resolve}
-   * explicitly to get an alias resolution in any situation, but keep that
-   * automatic invocation of the AliasManager in mind when defining new aliases as
-   * they will be applied globally in many classes, not only your own.
-   *
-   * Examples:
-   * <ul>
-   *  <li> <code>foo</code> -> <code>bar/16pt/baz</code>  (resolves e.g. __"foo/a/b/c.png"__ to
-   *    __"bar/16pt/baz/a/b/c.png"__)
-   *  <li> <code>imgserver</code> -> <code>http&#058;&#047;&#047;imgs03.myserver.com/my/app/</code>
-   *    (resolves e.g. __"imgserver/a/b/c.png"__ to
-   *    __"http&#058;&#047;&#047;imgs03.myserver.com/my/app/a/b/c.png"__)
-   * </ul>
-   *
-   * For resources, only aliases that resolve to proper resource id's can be __managed__
-   * resources, and will be considered __unmanaged__ resources otherwise.
-   */
-  qx.Class.define("qx.util.AliasManager", {
-    type: "singleton",
-    extend: qx.util.ValueManager,
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-    construct: function construct() {
-      qx.util.ValueManager.constructor.call(this); // Contains defined aliases (like icons/, widgets/, application/, ...)
-
-      this.__aliases__P_102_0 = {}; // Define static alias from setting
-
-      this.add("static", "qx/static");
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      __aliases__P_102_0: null,
-
-      /**
-       * pre-process incoming dynamic value
-       *
-       * @param value {String} incoming value
-       * @return {String} pre processed value
-       */
-      _preprocess: function _preprocess(value) {
-        var dynamics = this._getDynamic();
-
-        if (dynamics[value] === false) {
-          return value;
-        } else if (dynamics[value] === undefined) {
-          if (value.charAt(0) === "/" || value.charAt(0) === "." || value.indexOf("http://") === 0 || value.indexOf("https://") === "0" || value.indexOf("file://") === 0) {
-            dynamics[value] = false;
-            return value;
-          }
-
-          if (this.__aliases__P_102_0[value]) {
-            return this.__aliases__P_102_0[value];
-          }
-
-          var alias = value.substring(0, value.indexOf("/"));
-          var resolved = this.__aliases__P_102_0[alias];
-
-          if (resolved !== undefined) {
-            dynamics[value] = resolved + value.substring(alias.length);
-          }
-        }
-
-        return value;
-      },
-
-      /**
-       * Define an alias to a resource path
-       *
-       * @param alias {String} alias name for the resource path/url
-       * @param base {String} first part of URI for all images which use this alias
-       */
-      add: function add(alias, base) {
-        // Store new alias value
-        this.__aliases__P_102_0[alias] = base; // Localify stores
-
-        var dynamics = this._getDynamic(); // Update old entries which use this alias
-
-
-        for (var path in dynamics) {
-          if (path.substring(0, path.indexOf("/")) === alias) {
-            dynamics[path] = base + path.substring(alias.length);
-          }
-        }
-      },
-
-      /**
-       * Remove a previously defined alias
-       *
-       * @param alias {String} alias name for the resource path/url
-       */
-      remove: function remove(alias) {
-        delete this.__aliases__P_102_0[alias]; // No signal for depending objects here. These
-        // will informed with the new value using add().
-      },
-
-      /**
-       * Resolves a given path
-       *
-       * @param path {String} input path
-       * @return {String} resulting path (with interpreted aliases)
-       */
-      resolve: function resolve(path) {
-        var dynamic = this._getDynamic();
-
-        if (path != null) {
-          path = this._preprocess(path);
-        }
-
-        return dynamic[path] || path;
-      },
-
-      /**
-       * Get registered aliases
-       *
-       * @return {Map} the map of the currently registered alias:resolution pairs
-       */
-      getAliases: function getAliases() {
-        var res = {};
-
-        for (var key in this.__aliases__P_102_0) {
-          res[key] = this.__aliases__P_102_0[key];
-        }
-
-        return res;
-      }
-    }
-  });
-  qx.util.AliasManager.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -51934,746 +53538,6 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
     }
   });
   qx.html.Label.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Bootstrap": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.bom.client.Engine": {},
-      "qx.core.Environment": {
-        "defer": "runtime"
-      }
-    },
-    "environment": {
-      "provided": ["io.maxrequests", "io.ssl", "io.xhr"],
-      "required": {}
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Carsten Lergenmueller (carstenl)
-       * Fabian Jakobs (fbjakobs)
-       * Martin Wittemann (martinwittemann)
-  
-  ************************************************************************ */
-
-  /**
-   * Determines browser-dependent information about the transport layer.
-   *
-   * This class is used by {@link qx.core.Environment} and should not be used
-   * directly. Please check its class comment for details how to use it.
-   *
-   * @internal
-   */
-  qx.Bootstrap.define("qx.bom.client.Transport", {
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      /**
-       * Returns the maximum number of parallel requests the current browser
-       * supports per host addressed.
-       *
-       * Note that this assumes one connection can support one request at a time
-       * only. Technically, this is not correct when pipelining is enabled (which
-       * it currently is only for IE 8 and Opera). In this case, the number
-       * returned will be too low, as one connection supports multiple pipelined
-       * requests. This is accepted for now because pipelining cannot be
-       * detected from JavaScript and because modern browsers have enough
-       * parallel connections already - it's unlikely an app will require more
-       * than 4 parallel XMLHttpRequests to one server at a time.
-       *
-       * @internal
-       * @return {Integer} Maximum number of parallel requests
-       */
-      getMaxConcurrentRequestCount: function getMaxConcurrentRequestCount() {
-        var maxConcurrentRequestCount; // Parse version numbers.
-
-        var versionParts = qx.bom.client.Engine.getVersion().split(".");
-        var versionMain = 0;
-        var versionMajor = 0;
-        var versionMinor = 0; // Main number
-
-        if (versionParts[0]) {
-          versionMain = versionParts[0];
-        } // Major number
-
-
-        if (versionParts[1]) {
-          versionMajor = versionParts[1];
-        } // Minor number
-
-
-        if (versionParts[2]) {
-          versionMinor = versionParts[2];
-        } // IE 8 gives the max number of connections in a property
-        // see http://msdn.microsoft.com/en-us/library/cc197013(VS.85).aspx
-
-
-        if (window.maxConnectionsPerServer) {
-          maxConcurrentRequestCount = window.maxConnectionsPerServer;
-        } else if (qx.bom.client.Engine.getName() == "opera") {
-          // Opera: 8 total
-          // see http://operawiki.info/HttpProtocol
-          maxConcurrentRequestCount = 8;
-        } else if (qx.bom.client.Engine.getName() == "webkit") {
-          // Safari: 4
-          // http://www.stevesouders.com/blog/2008/03/20/roundup-on-parallel-connections/
-          // Bug #6917: Distinguish Chrome from Safari, Chrome has 6 connections
-          //       according to
-          //      http://stackoverflow.com/questions/561046/how-many-concurrent-ajax-xmlhttprequest-requests-are-allowed-in-popular-browser
-          maxConcurrentRequestCount = 4;
-        } else if (qx.bom.client.Engine.getName() == "gecko" && (versionMain > 1 || versionMain == 1 && versionMajor > 9 || versionMain == 1 && versionMajor == 9 && versionMinor >= 1)) {
-          // FF 3.5 (== Gecko 1.9.1): 6 Connections.
-          // see  http://gemal.dk/blog/2008/03/18/firefox_3_beta_5_will_have_improved_connection_parallelism/
-          maxConcurrentRequestCount = 6;
-        } else {
-          // Default is 2, as demanded by RFC 2616
-          // see http://blogs.msdn.com/ie/archive/2005/04/11/407189.aspx
-          maxConcurrentRequestCount = 2;
-        }
-
-        return maxConcurrentRequestCount;
-      },
-
-      /**
-       * Checks whether the app is loaded with SSL enabled which means via https.
-       *
-       * @internal
-       * @return {Boolean} <code>true</code>, if the app runs on https
-       */
-      getSsl: function getSsl() {
-        return window.location.protocol === "https:";
-      },
-
-      /**
-       * Checks what kind of XMLHttpRequest object the browser supports
-       * for the current protocol, if any.
-       *
-       * The standard XMLHttpRequest is preferred over ActiveX XMLHTTP.
-       *
-       * @internal
-       * @return {String}
-       *  <code>"xhr"</code>, if the browser provides standard XMLHttpRequest.<br/>
-       *  <code>"activex"</code>, if the browser provides ActiveX XMLHTTP.<br/>
-       *  <code>""</code>, if there is not XHR support at all.
-       */
-      getXmlHttpRequest: function getXmlHttpRequest() {
-        // Standard XHR can be disabled in IE's security settings,
-        // therefore provide ActiveX as fallback. Additionally,
-        // standard XHR in IE7 is broken for file protocol.
-        var supports = window.ActiveXObject ? function () {
-          if (window.location.protocol !== "file:") {
-            try {
-              new window.XMLHttpRequest();
-              return "xhr";
-            } catch (noXhr) {}
-          }
-
-          try {
-            new window.ActiveXObject("Microsoft.XMLHTTP");
-            return "activex";
-          } catch (noActiveX) {}
-        }() : function () {
-          try {
-            new window.XMLHttpRequest();
-            return "xhr";
-          } catch (noXhr) {}
-        }();
-        return supports || "";
-      }
-    },
-    defer: function defer(statics) {
-      qx.core.Environment.add("io.maxrequests", statics.getMaxConcurrentRequestCount);
-      qx.core.Environment.add("io.ssl", statics.getSsl);
-      qx.core.Environment.add("io.xhr", statics.getXmlHttpRequest);
-    }
-  });
-  qx.bom.client.Transport.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.core.Environment": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.Object": {
-        "construct": true,
-        "require": true
-      },
-      "qx.bom.client.Device": {},
-      "qx.bom.client.Engine": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.bom.client.Transport": {
-        "defer": "load",
-        "require": true
-      },
-      "qx.util.LibraryManager": {
-        "defer": "runtime"
-      }
-    },
-    "environment": {
-      "provided": [],
-      "required": {
-        "engine.name": {
-          "className": "qx.bom.client.Engine",
-          "defer": true
-        },
-        "io.ssl": {
-          "className": "qx.bom.client.Transport",
-          "defer": true
-        }
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2008 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Authors:
-       * Sebastian Werner (wpbasti)
-       * Fabian Jakobs (fjakobs)
-  
-  ************************************************************************ */
-
-  /**
-   * Contains information about images (size, format, clipping, ...) and
-   * other resources like CSS files, local data, ...
-   */
-  qx.Class.define("qx.util.ResourceManager", {
-    extend: qx.core.Object,
-    type: "singleton",
-
-    /*
-    *****************************************************************************
-       CONSTRUCTOR
-    *****************************************************************************
-    */
-    construct: function construct() {
-      qx.core.Object.constructor.call(this);
-    },
-
-    /*
-    *****************************************************************************
-       STATICS
-    *****************************************************************************
-    */
-    statics: {
-      /** @type {Map} the shared image registry */
-      __registry__P_105_0: qx.$$resources || {},
-
-      /** @type {Map} prefix per library used in HTTPS mode for IE */
-      __urlPrefix__P_105_1: {}
-    },
-
-    /*
-    *****************************************************************************
-       MEMBERS
-    *****************************************************************************
-    */
-    members: {
-      /**
-       * Detects whether there is a high-resolution image available.
-       * A high-resolution image is assumed to have the same file name as
-       * the parameter source, but with a pixelRatio identifier before the file
-       * extension, like "@2x".
-       * Medium Resolution: "example.png", high-resolution: "example@2x.png"
-       *
-       * @param lowResImgSrc {String} source of the low resolution image.
-       * @param factor {Number} Factor to find the right image. If not set calculated by getDevicePixelRatio()
-       * @return {String|Boolean} If a high-resolution image source.
-       */
-      findHighResolutionSource: function findHighResolutionSource(lowResImgSrc, factor) {
-        var pixelRatioCandidates = ["3", "2", "1.5"]; // Calculate the optimal ratio, based on the rem scale factor of the application and the device pixel ratio.
-
-        if (!factor) {
-          factor = parseFloat(qx.bom.client.Device.getDevicePixelRatio().toFixed(2));
-        }
-
-        if (factor <= 1) {
-          return false;
-        }
-
-        var i = pixelRatioCandidates.length;
-
-        while (i > 0 && factor > pixelRatioCandidates[--i]) {}
-
-        var hiResImgSrc;
-        var k; // Search for best img with a higher resolution.
-
-        for (k = i; k >= 0; k--) {
-          hiResImgSrc = this.getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
-
-          if (hiResImgSrc) {
-            return hiResImgSrc;
-          }
-        } // Search for best img with a lower resolution.
-
-
-        for (k = i + 1; k < pixelRatioCandidates.length; k++) {
-          hiResImgSrc = this.getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
-
-          if (hiResImgSrc) {
-            return hiResImgSrc;
-          }
-        }
-
-        return null;
-      },
-
-      /**
-       * Returns the source name for the high-resolution image based on the passed
-       * parameters.
-       * @param source {String} the source of the medium resolution image.
-       * @param pixelRatio {Number} the pixel ratio of the high-resolution image.
-       * @return {String} the high-resolution source name or null if no source could be found.
-       */
-      getHighResolutionSource: function getHighResolutionSource(source, pixelRatio) {
-        var fileExtIndex = source.lastIndexOf(".");
-
-        if (fileExtIndex > -1) {
-          var pixelRatioIdentifier = "@" + pixelRatio + "x";
-          var candidate = source.slice(0, fileExtIndex) + pixelRatioIdentifier + source.slice(fileExtIndex);
-
-          if (this.has(candidate)) {
-            return candidate;
-          }
-        }
-
-        return null;
-      },
-
-      /**
-       * Get all known resource IDs.
-       *
-       * @param pathfragment{String|null|undefined} an optional path fragment to check against with id.indexOf(pathfragment)
-       * @return {Array|null} an array containing the IDs or null if the registry is not initialized
-       */
-      getIds: function getIds(pathfragment) {
-        var registry = qx.util.ResourceManager.__registry__P_105_0;
-
-        if (!registry) {
-          return null;
-        }
-
-        return Object.keys(registry).filter(function (key) {
-          return !pathfragment || key.indexOf(pathfragment) != -1;
-        });
-      },
-
-      /**
-       * Whether the registry has information about the given resource.
-       *
-       * @param id {String} The resource to get the information for
-       * @return {Boolean} <code>true</code> when the resource is known.
-       */
-      has: function has(id) {
-        return !!qx.util.ResourceManager.__registry__P_105_0[id];
-      },
-
-      /**
-       * Get information about an resource.
-       *
-       * @param id {String} The resource to get the information for
-       * @return {Array} Registered data or <code>null</code>
-       */
-      getData: function getData(id) {
-        return qx.util.ResourceManager.__registry__P_105_0[id] || null;
-      },
-
-      /**
-       * Returns the width of the given resource ID,
-       * when it is not a known image <code>0</code> is
-       * returned.
-       *
-       * @param id {String} Resource identifier
-       * @return {Integer} The image width, maybe <code>null</code> when the width is unknown
-       */
-      getImageWidth: function getImageWidth(id) {
-        var size;
-
-        if (id && id.startsWith("@")) {
-          var part = id.split("/");
-          size = parseInt(part[2], 10);
-
-          if (size) {
-            id = part[0] + "/" + part[1];
-          }
-        }
-
-        var entry = qx.util.ResourceManager.__registry__P_105_0[id]; // [ width, height, codepoint ]
-
-        if (size && entry) {
-          var width = Math.ceil(size / entry[1] * entry[0]);
-          return width;
-        }
-
-        return entry ? entry[0] : null;
-      },
-
-      /**
-       * Returns the height of the given resource ID,
-       * when it is not a known image <code>0</code> is
-       * returned.
-       *
-       * @param id {String} Resource identifier
-       * @return {Integer} The image height, maybe <code>null</code> when the height is unknown
-       */
-      getImageHeight: function getImageHeight(id) {
-        if (id && id.startsWith("@")) {
-          var part = id.split("/");
-          var size = parseInt(part[2], 10);
-
-          if (size) {
-            return size;
-          }
-        }
-
-        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
-        return entry ? entry[1] : null;
-      },
-
-      /**
-       * Returns the format of the given resource ID,
-       * when it is not a known image <code>null</code>
-       * is returned.
-       *
-       * @param id {String} Resource identifier
-       * @return {String} File format of the image
-       */
-      getImageFormat: function getImageFormat(id) {
-        if (id && id.startsWith("@")) {
-          return "font";
-        }
-
-        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
-        return entry ? entry[2] : null;
-      },
-
-      /**
-       * Returns the format of the combined image (png, gif, ...), if the given
-       * resource identifier is an image contained in one, or the empty string
-       * otherwise.
-       *
-       * @param id {String} Resource identifier
-       * @return {String} The type of the combined image containing id
-       */
-      getCombinedFormat: function getCombinedFormat(id) {
-        var clippedtype = "";
-        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
-        var isclipped = entry && entry.length > 4 && typeof entry[4] == "string" && this.constructor.__registry__P_105_0[entry[4]];
-
-        if (isclipped) {
-          var combId = entry[4];
-          var combImg = this.constructor.__registry__P_105_0[combId];
-          clippedtype = combImg[2];
-        }
-
-        return clippedtype;
-      },
-
-      /**
-       * Converts the given resource ID to a full qualified URI
-       *
-       * @param id {String} Resource ID
-       * @return {String} Resulting URI
-       */
-      toUri: function toUri(id) {
-        if (id == null) {
-          return id;
-        }
-
-        var entry = qx.util.ResourceManager.__registry__P_105_0[id];
-
-        if (!entry) {
-          return id;
-        }
-
-        if (typeof entry === "string") {
-          var lib = entry;
-        } else {
-          var lib = entry[3]; // no lib reference
-          // may mean that the image has been registered dynamically
-
-          if (!lib) {
-            return id;
-          }
-        }
-
-        var urlPrefix = "";
-
-        if (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("io.ssl")) {
-          urlPrefix = qx.util.ResourceManager.__urlPrefix__P_105_1[lib];
-        }
-
-        return urlPrefix + qx.util.LibraryManager.getInstance().get(lib, "resourceUri") + "/" + id;
-      },
-
-      /**
-       * Construct a data: URI for an image resource.
-       *
-       * Constructs a data: URI for a given resource id, if this resource is
-       * contained in a base64 combined image. If this is not the case (e.g.
-       * because the combined image has not been loaded yet), returns the direct
-       * URI to the image file itself.
-       *
-       * @param resid {String} resource id of the image
-       * @return {String} "data:" or "http:" URI
-       */
-      toDataUri: function toDataUri(resid) {
-        var resentry = this.constructor.__registry__P_105_0[resid];
-        var combined = resentry ? this.constructor.__registry__P_105_0[resentry[4]] : null;
-        var uri;
-
-        if (combined) {
-          var resstruct = combined[4][resid];
-          uri = "data:image/" + resstruct["type"] + ";" + resstruct["encoding"] + "," + resstruct["data"];
-        } else {
-          uri = this.toUri(resid);
-        }
-
-        return uri;
-      },
-
-      /**
-       * Checks whether a given resource id for an image is a font handle.
-       *
-       * @param resid {String} resource id of the image
-       * @return {Boolean} True if it's a font URI
-       */
-      isFontUri: function isFontUri(resid) {
-        return resid ? resid.startsWith("@") : false;
-      },
-
-      /**
-       * Returns the correct char code, ignoring scale postfix.
-       *
-       * The resource ID can be a ligature name (eg `@FontAwesome/heart` or `@MaterialIcons/home/16`),
-       * or a hex character code (eg `@FontAwesome/f004` or `@FontAwesome/f004/16`)
-       *
-       * @param source {String} resource id of the image
-       * @returns charCode of the glyph
-       */
-      fromFontUriToCharCode: function fromFontUriToCharCode(source) {
-        var sparts = source.split("/");
-        var fontSource = source;
-
-        if (sparts.length > 2) {
-          fontSource = sparts[0] + "/" + sparts[1];
-        }
-
-        var resource = this.getData(fontSource);
-        var charCode = null;
-
-        if (resource) {
-          charCode = resource[2];
-        } else {
-          var hexString = source.match(/@([^/]+)\/(.*)$/)[2];
-
-          if (hexString) {
-            charCode = parseInt(hexString, 16);
-
-            if (isNaN(charCode)) {
-              charCode = null;
-            }
-          }
-        }
-
-        if (!charCode) {
-          throw new Error("Cannot determine charCode from source: ".concat(source));
-        }
-
-        return charCode;
-      }
-    },
-    defer: function defer(statics) {
-      if (qx.core.Environment.get("engine.name") == "mshtml") {
-        // To avoid a "mixed content" warning in IE when the application is
-        // delivered via HTTPS a prefix has to be added. This will transform the
-        // relative URL to an absolute one in IE.
-        // Though this warning is only displayed in conjunction with images which
-        // are referenced as a CSS "background-image", every resource path is
-        // changed when the application is served with HTTPS.
-        if (qx.core.Environment.get("io.ssl")) {
-          for (var lib in qx.$$libraries) {
-            var resourceUri;
-
-            if (qx.util.LibraryManager.getInstance().get(lib, "resourceUri")) {
-              resourceUri = qx.util.LibraryManager.getInstance().get(lib, "resourceUri");
-            } else {
-              // default for libraries without a resourceUri set
-              statics.__urlPrefix__P_105_1[lib] = "";
-              continue;
-            }
-
-            var href; //first check if there is base url set
-
-            var baseElements = document.getElementsByTagName("base");
-
-            if (baseElements.length > 0) {
-              href = baseElements[0].href;
-            } // It is valid to to begin a URL with "//" so this case has to
-            // be considered. If the to resolved URL begins with "//" the
-            // manager prefixes it with "https:" to avoid any problems for IE
-
-
-            if (resourceUri.match(/^\/\//) != null) {
-              statics.__urlPrefix__P_105_1[lib] = window.location.protocol;
-            } // If the resourceUri begins with a single slash, include the current
-            // hostname
-            else if (resourceUri.match(/^\//) != null) {
-              if (href) {
-                statics.__urlPrefix__P_105_1[lib] = href;
-              } else {
-                statics.__urlPrefix__P_105_1[lib] = window.location.protocol + "//" + window.location.host;
-              }
-            } // If the resolved URL begins with "./" the final URL has to be
-            // put together using the document.URL property.
-            // IMPORTANT: this is only applicable for the source version
-            else if (resourceUri.match(/^\.\//) != null) {
-              var url = document.URL;
-              statics.__urlPrefix__P_105_1[lib] = url.substring(0, url.lastIndexOf("/") + 1);
-            } else if (resourceUri.match(/^http/) != null) {
-              // Let absolute URLs pass through
-              statics.__urlPrefix__P_105_1[lib] = "";
-            } else {
-              if (!href) {
-                // check for parameters with URLs as value
-                var index = window.location.href.indexOf("?");
-
-                if (index == -1) {
-                  href = window.location.href;
-                } else {
-                  href = window.location.href.substring(0, index);
-                }
-              }
-
-              statics.__urlPrefix__P_105_1[lib] = href.substring(0, href.lastIndexOf("/") + 1);
-            }
-          }
-        }
-      }
-    }
-  });
-  qx.util.ResourceManager.$$dbClassInfo = $$dbClassInfo;
-})();
-
-(function () {
-  var $$dbClassInfo = {
-    "dependsOn": {
-      "qx.Class": {
-        "usage": "dynamic",
-        "require": true
-      },
-      "qx.core.Object": {
-        "require": true
-      }
-    }
-  };
-  qx.Bootstrap.executePendingDefers($$dbClassInfo);
-
-  /* ************************************************************************
-  
-     qooxdoo - the new era of web development
-  
-     http://qooxdoo.org
-  
-     Copyright:
-       2004-2012 1&1 Internet AG, Germany, http://www.1und1.de
-  
-     License:
-       MIT: https://opensource.org/licenses/MIT
-       See the LICENSE file in the project's top-level directory for details.
-  
-     Author:
-       * Daniel Wagner (danielwagner)
-  
-  ************************************************************************ */
-
-  /**
-   * Provides read/write access to library-specific information such as
-   * source/resource URIs.
-   */
-  qx.Class.define("qx.util.LibraryManager", {
-    extend: qx.core.Object,
-    type: "singleton",
-    statics: {
-      /** @type {Map} The libraries used by this application */
-      __libs__P_127_0: qx.$$libraries || {}
-    },
-    members: {
-      /**
-       * Checks whether the library with the given namespace is known to the
-       * application.
-       * @param namespace {String} The library's namespace
-       * @return {Boolean} <code>true</code> if the given library is known
-       */
-      has: function has(namespace) {
-        return !!qx.util.LibraryManager.__libs__P_127_0[namespace];
-      },
-
-      /**
-       * Returns the value of an attribute of the given library
-       * @param namespace {String} The library's namespace
-       * @param key {String} Name of the attribute
-       * @return {var|null} The attribute's value or <code>null</code> if it's not defined
-       */
-      get: function get(namespace, key) {
-        return qx.util.LibraryManager.__libs__P_127_0[namespace][key] ? qx.util.LibraryManager.__libs__P_127_0[namespace][key] : null;
-      },
-
-      /**
-       * Sets an attribute on the given library.
-       *
-       * @param namespace {String} The library's namespace
-       * @param key {String} Name of the attribute
-       * @param value {var} Value of the attribute
-       */
-      set: function set(namespace, key, value) {
-        qx.util.LibraryManager.__libs__P_127_0[namespace][key] = value;
-      }
-    }
-  });
-  qx.util.LibraryManager.$$dbClassInfo = $$dbClassInfo;
 })();
 
 (function () {
@@ -75379,7 +76243,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
   });
   qx.theme.indigo.Color.$$dbClassInfo = $$dbClassInfo;
 })();
-//# sourceMappingURL=package-7.js.map?dt=1656843561071
+//# sourceMappingURL=package-7.js.map?dt=1656920092479
 qx.$$packageData['7'] = {
   "locales": {},
   "resources": {},

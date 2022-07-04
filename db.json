@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-03T10:19:14.021Z",
+      "mtime": "2022-07-03T10:36:30.828Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -23,7 +23,9 @@
         "qx.ui.layout.HBox": {},
         "qx.ui.groupbox.GroupBox": {},
         "qx.ui.layout.VBox": {},
-        "hoiphadaock.CpDaMua": {}
+        "hoiphadaock.CpDaMua": {},
+        "qx.util.ResourceManager": {},
+        "qx.data.store.Json": {}
       },
       "extends": "qx.application.Standalone",
       "include": [],
@@ -12043,7 +12045,7 @@
       "hasDefer": null
     },
     "hoiphadaock.CpDaMua": {
-      "mtime": "2022-07-03T10:07:29.733Z",
+      "mtime": "2022-07-04T07:34:45.065Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -12889,10 +12891,77 @@
       "include": [],
       "implement": [],
       "hasDefer": null
+    },
+    "qx.data.store.Json": {
+      "mtime": "2022-07-01T12:39:18.181Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.core.Object": {
+          "load": true,
+          "construct": true
+        },
+        "qx.data.marshal.Json": {
+          "construct": true
+        },
+        "qx.util.AliasManager": {},
+        "qx.util.ResourceManager": {},
+        "qx.io.request.Xhr": {},
+        "qx.lang.Type": {}
+      },
+      "extends": "qx.core.Object",
+      "include": [],
+      "implement": [],
+      "hasDefer": null
+    },
+    "qx.data.marshal.Json": {
+      "mtime": "2022-07-01T12:39:18.180Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Class": {
+          "load": true,
+          "usage": "dynamic"
+        },
+        "qx.core.Object": {
+          "load": true,
+          "construct": true
+        },
+        "qx.data.marshal.IMarshaler": {
+          "load": true
+        },
+        "qx.lang.Type": {},
+        "qx.Bootstrap": {},
+        "qx.lang.String": {},
+        "qx.data.marshal.MEventBubbling": {},
+        "qx.data.Array": {}
+      },
+      "extends": "qx.core.Object",
+      "include": [],
+      "implement": [
+        "qx.data.marshal.IMarshaler"
+      ],
+      "hasDefer": null
+    },
+    "qx.data.marshal.IMarshaler": {
+      "mtime": "2022-07-01T12:39:18.101Z",
+      "libraryName": "qx",
+      "dependsOn": {
+        "qx.Interface": {
+          "load": true,
+          "usage": "dynamic"
+        }
+      },
+      "extends": null,
+      "include": [],
+      "implement": [],
+      "hasDefer": null
     }
   },
   "manglePrefixes": {
-    "nextPrefix": 217,
+    "nextPrefix": 219,
     "classPrefixes": {
       "qx.Class": "__P_2_",
       "qx.log.appender.Console": "__P_3_",
@@ -13109,7 +13178,9 @@
       "qx.ui.form.RadioGroup": "__P_214_",
       "qx.ui.core.MSingleSelectionHandling": "__P_215_",
       "qx.ui.form.MModelSelection": "__P_216_",
-      "qx.ui.core.SingleSelectionManager": "__P_217_"
+      "qx.ui.core.SingleSelectionManager": "__P_217_",
+      "qx.data.store.Json": "__P_218_",
+      "qx.data.marshal.Json": "__P_219_"
     }
   }
 }

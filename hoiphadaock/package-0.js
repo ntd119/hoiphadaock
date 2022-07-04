@@ -282,6 +282,12 @@ qx.$$packageData['0'] = {
       "png",
       "hoiphadaock"
     ],
+    "hoiphadaock/da_mua.json": [
+      null,
+      null,
+      "json",
+      "hoiphadaock"
+    ],
     "qx/decoration/Indigo/font/JosefinSlab-SemiBold.ttf": [
       null,
       null,

@@ -14,7 +14,9 @@
       "qx.ui.layout.HBox": {},
       "qx.ui.groupbox.GroupBox": {},
       "qx.ui.layout.VBox": {},
-      "hoiphadaock.CpDaMua": {}
+      "hoiphadaock.CpDaMua": {},
+      "qx.util.ResourceManager": {},
+      "qx.data.store.Json": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -95,7 +97,10 @@
         hBox.add(commandFrame);
         var cpdamua = new hoiphadaock.CpDaMua();
         var table = cpdamua.createTable();
-        commandFrame.add(table); // o = new qx.ui.form.TextField();
+        commandFrame.add(table);
+        var url = qx.util.ResourceManager.getInstance().toUri("hoiphadaock/da_mua.json");
+        var store = new qx.data.store.Json(url);
+        console.log(url); // o = new qx.ui.form.TextField();
         // o.set({ readOnly: true });
         // commandFrame.add(o);
         // tree.addListener(
@@ -174,4 +179,4 @@
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656843554933
+//# sourceMappingURL=Application.js.map?dt=1656844591706

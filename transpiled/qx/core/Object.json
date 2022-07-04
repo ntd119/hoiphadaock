@@ -3983,6 +3983,8 @@
     "qx.io.request.AbstractRequest",
     "qx.ui.table.columnmodel.resizebehavior.Abstract",
     "qx.ui.form.RadioGroup",
-    "qx.ui.core.SingleSelectionManager"
+    "qx.ui.core.SingleSelectionManager",
+    "qx.data.store.Json",
+    "qx.data.marshal.Json"
   ]
 }
