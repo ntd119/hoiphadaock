@@ -7,7 +7,7 @@
   "compilerVersion": "7.1.1",
   "classInfo": {
     "hoiphadaock.Application": {
-      "mtime": "2022-07-03T10:36:30.828Z",
+      "mtime": "2022-07-05T03:25:42.096Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {
@@ -23,9 +23,7 @@
         "qx.ui.layout.HBox": {},
         "qx.ui.groupbox.GroupBox": {},
         "qx.ui.layout.VBox": {},
-        "hoiphadaock.CpDaMua": {},
-        "qx.util.ResourceManager": {},
-        "qx.data.store.Json": {}
+        "hoiphadaock.CpDaMua": {}
       },
       "extends": "qx.application.Standalone",
       "include": [],
@@ -12045,7 +12043,7 @@
       "hasDefer": null
     },
     "hoiphadaock.CpDaMua": {
-      "mtime": "2022-07-04T07:34:45.065Z",
+      "mtime": "2022-07-05T03:26:29.804Z",
       "libraryName": "hoiphadaock",
       "dependsOn": {
         "qx.Class": {

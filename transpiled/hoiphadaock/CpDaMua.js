@@ -36,6 +36,7 @@
   qx.Class.define("hoiphadaock.CpDaMua", {
     extend: qx.application.Standalone,
     members: {
+      timer: null,
       createTable: function createTable() {
         var BACKGROUND_LO = "#F33232";
         var BACKGROUND_LAI = "#00E11A";
@@ -61,8 +62,8 @@
         }
 
         tableModel.setData(rowData);
-        var timer = new qx.event.Timer(5000);
-        timer.addListener("interval", function (e) {
+        this.timer = new qx.event.Timer(5000);
+        this.timer.addListener("interval", function (e) {
           var request = new qx.io.request.Xhr("https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=");
           request.setAccept("application/json");
           request.setParser("json");
@@ -110,7 +111,7 @@
           });
           request.send();
         }, this);
-        timer.start(); // table
+        this.timer.start(); // table
 
         var table = new qx.ui.table.Table(tableModel);
         table.setMetaColumnCounts([1, -1]);
@@ -122,6 +123,9 @@
           width: 700
         });
         return table;
+      },
+      stop_timer: function stop_timer() {
+        alert("stop timer");
       },
       _update_table: function _update_table(tableModel) {
         // tableModel.setValue(1, 1, "xxx");
@@ -141,12 +145,16 @@
         var file_name = "data/da_mua.json"; //   const text =
         //     '{"EIB":{"bought":31400,"buyer":"Tuyết-NTA"},"HBC":{"bought":21100,"buyer":"Mỹ Mỹ"},"OCB":{"bought":20350,"buyer":"Mỹ Đạt"},"VHC":{"bought":102500,"buyer":"Đạt-NT"},"BCM":{"bought":72300,"buyer":"Tuyết-NTA"},"LPB":{"bought":13150,"buyer":"Mỹ Mỹ"},"CTG":{"bought":25250,"buyer":"Đạt-NT"},"VSH":{"bought":46100,"buyer":"Đạt-NT"},"DPM":{"bought":48900,"buyer":""},"VIB":{"bought":20900,"buyer":"Đạt-NT"},"VIP":{"bought":6330,"buyer":"Đạt-NT"},"AST":{"bought":57900,"buyer":""}}';
 
-        var text = '{"EIB":{"bought":31400,"buyer":"Tuyết-NTA"},"HBC":{"bought":21100,"buyer":"Mỹ Mỹ"},"OCB":{"bought":20350,"buyer":"Mỹ Đạt"},"VHC":{"bought":102500,"buyer":"Đạt-NT"},"BCM":{"bought":72300,"buyer":"Tuyết-NTA"},"LPB":{"bought":13150,"buyer":"Mỹ Mỹ"},"VSH":{"bought":46100,"buyer":"Đạt-NT"},"VIB":{"bought":20900,"buyer":"Đạt-NT"},"VIP":{"bought":6330,"buyer":"Đạt-NT"},"MWG":{"bought":66700,"buyer":"Tuyết-NTA"}}';
+        var text = '{"EIB":{"bought":31400,"buyer":"Tuyết-NTA"},"HBC":{"bought":21100,"buyer":"Mỹ Mỹ"},"OCB":{"bought":20350,"buyer":"Mỹ Đạt"},"VHC":{"bought":102500,"buyer":"Đạt-NT"},"BCM":{"bought":72300,"buyer":"Tuyết-NTA"},"LPB":{"bought":13150,"buyer":"Mỹ Mỹ"},"VSH":{"bought":46100,"buyer":"Đạt-NT"},"VIB":{"bought":20900,"buyer":"Đạt-NT"},"VIP":{"bought":6330,"buyer":"Đạt-NT"},"MWG":{"bought":66700,"buyer":"Tuyết-NTA"},"PNJ":{"bought":118100,"buyer":"Tuyết-NTA"}}';
         return JSON.parse(text);
       }
-    }
+    } // destruct() {
+    //   this._disposeObjects("_tableModel");
+    //   alert("huye");
+    // },
+
   });
   hoiphadaock.CpDaMua.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=CpDaMua.js.map?dt=1656920086195
+//# sourceMappingURL=CpDaMua.js.map?dt=1656991622409

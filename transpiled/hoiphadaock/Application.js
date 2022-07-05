@@ -14,9 +14,7 @@
       "qx.ui.layout.HBox": {},
       "qx.ui.groupbox.GroupBox": {},
       "qx.ui.layout.VBox": {},
-      "hoiphadaock.CpDaMua": {},
-      "qx.util.ResourceManager": {},
-      "qx.data.store.Json": {}
+      "hoiphadaock.CpDaMua": {}
     }
   };
   qx.Bootstrap.executePendingDefers($$dbClassInfo);
@@ -54,7 +52,8 @@
       main: function main() {
         // Call super class
         hoiphadaock.Application.superclass.prototype.main.call(this);
-        qx.Class.include(qx.ui.treevirtual.TreeVirtual, qx.ui.treevirtual.MNode); // Use an HBox to hold the tree and the groupbox
+        qx.Class.include(qx.ui.treevirtual.TreeVirtual, qx.ui.treevirtual.MNode);
+        var stock_table = null; // Use an HBox to hold the tree and the groupbox
 
         var hBox = new qx.ui.container.Composite(new qx.ui.layout.HBox(20));
         this.getRoot().add(hBox, {
@@ -76,14 +75,14 @@
         hBox.add(tree); // tree data model
 
         var dataModel = tree.getDataModel();
-        var te1 = dataModel.addBranch(null, "Desktop", true); // tree.nodeSetLabelStyle(
+        var te1 = dataModel.addBranch(null, "Stock list", true); // tree.nodeSetLabelStyle(
         //   te1,
         //   "background-color: red; " + "color: white;" + "font-weight: bold;"
         // );
 
         var te1_1;
-        dataModel.addBranch(te1, "Files", true);
-        te1_1 = dataModel.addBranch(te1, "Workspace", true);
+        dataModel.addBranch(te1, "Cp theo dõi", true);
+        te1_1 = dataModel.addBranch(te1, "Cp đã mua", true);
         dataModel.addBranch(te1, "Network", true); // tree.nodeSetCellStyle(te, "background-color: cyan;");
 
         var te2 = dataModel.addBranch(null, "Inbox", true);
@@ -96,87 +95,33 @@
         commandFrame.setLayout(new qx.ui.layout.VBox(8));
         hBox.add(commandFrame);
         var cpdamua = new hoiphadaock.CpDaMua();
-        var table = cpdamua.createTable();
-        commandFrame.add(table);
-        var url = qx.util.ResourceManager.getInstance().toUri("hoiphadaock/da_mua.json");
-        var store = new qx.data.store.Json(url);
-        console.log(url); // o = new qx.ui.form.TextField();
-        // o.set({ readOnly: true });
-        // commandFrame.add(o);
-        // tree.addListener(
-        //   "changeSelection",
-        //   function (e) {
-        //     // Get the list of selected nodes.  We're in single-selection mode,
-        //     // so there will be only one of them.
-        //     var nodes = e.getData();
-        //     this.setValue(tree.getHierarchy(nodes[0].nodeId).join("/"));
-        //     buttonRemove.setEnabled(true);
-        //   },
-        //   o
+        stock_table = cpdamua.createTable();
+        commandFrame.add(stock_table); // var url = qx.util.ResourceManager.getInstance().toUri(
+        //   "hoiphadaock/da_mua.json"
         // );
-        // var buttonRemove = new qx.ui.form.Button("Remove");
-        // buttonRemove.set({ enabled: false });
-        // commandFrame.add(buttonRemove);
-        // buttonRemove.addListener("execute", function (e) {
-        //   var selectedNodes = tree.getSelectedNodes();
-        //   for (var i = 0; i < selectedNodes.length; i++) {
-        //     dataModel.prune(selectedNodes[i].nodeId, true);
-        //     dataModel.setData();
-        //   }
-        // });
-        // o = new qx.ui.form.CheckBox("Use tree lines if theme supports them?");
-        // o.set({ value: true });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setUseTreeLines(e.getData());
-        // });
-        // o = new qx.ui.form.CheckBox("Exclude first-level tree lines?");
-        // o.set({ value: false });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setExcludeFirstLevelTreeLines(e.getData());
-        // });
-        // o = new qx.ui.form.CheckBox("Always show open/close symbol?");
-        // o.set({ value: true });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setAlwaysShowOpenCloseSymbol(e.getData());
-        // });
-        // o = new qx.ui.form.CheckBox("Remove open/close if found empty?");
-        // o.set({ value: true });
-        // commandFrame.add(o);
-        // tree.addListener(
-        //   "treeOpenWhileEmpty",
-        //   function (e) {
-        //     if (this.getValue()) {
-        //       var node = e.getData();
-        //       tree.nodeSetHideOpenClose(node, true);
-        //     }
-        //   },
-        //   o
-        // );
-        // o = new qx.ui.form.CheckBox("Open/close click selects row?");
-        // o.set({ value: false });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setOpenCloseClickSelectsRow(e.getData());
-        // });
-        // o = new qx.ui.form.CheckBox("Disable the tree?");
-        // o.set({ value: false });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setEnabled(!e.getData());
-        // });
-        // o = new qx.ui.form.CheckBox("Show column visibilty menu");
-        // o.set({ value: true });
-        // commandFrame.add(o);
-        // o.addListener("changeValue", function (e) {
-        //   tree.setColumnVisibilityButtonVisible(e.getData());
-        // });
+        // var store = new qx.data.store.Json(url);
+        // console.log(url);
+
+        tree.addListener("changeSelection", function (e) {
+          var text;
+          var selectedNodes = e.getData();
+
+          for (var i = 0; i < selectedNodes.length; i++) {
+            text = selectedNodes[i].label;
+          }
+
+          if (text == "Cp đã mua") {// stock_table.stop_timer();
+            // stock_table.createTable()();
+            // commandFrame.removeAll();
+            // var cpdamua = new hoiphadaock.CpDaMua();
+            // var table = cpdamua.createTable();
+            // commandFrame.add(table);
+          }
+        });
       }
     }
   });
   hoiphadaock.Application.$$dbClassInfo = $$dbClassInfo;
 })();
 
-//# sourceMappingURL=Application.js.map?dt=1656844591706
+//# sourceMappingURL=Application.js.map?dt=1656991620631

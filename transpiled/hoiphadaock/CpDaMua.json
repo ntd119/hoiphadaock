@@ -14,9 +14,9 @@
         "index": 338
       },
       "end": {
-        "line": 174,
+        "line": 182,
         "column": 3,
-        "index": 6425
+        "index": 6650
       }
     },
     "jsdoc": {
@@ -36,7 +36,7 @@
   },
   "type": "class",
   "members": {
-    "createTable": {
+    "timer": {
       "location": {
         "start": {
           "line": 20,
@@ -44,9 +44,41 @@
           "index": 438
         },
         "end": {
-          "line": 144,
+          "line": 20,
+          "column": 15,
+          "index": 449
+        }
+      },
+      "type": "variable",
+      "access": "public"
+    },
+    "createTable": {
+      "location": {
+        "start": {
+          "line": 21,
+          "column": 4,
+          "index": 456
+        },
+        "end": {
+          "line": 145,
           "column": 5,
-          "index": 4793
+          "index": 4822
+        }
+      },
+      "type": "function",
+      "access": "public"
+    },
+    "stop_timer": {
+      "location": {
+        "start": {
+          "line": 146,
+          "column": 4,
+          "index": 4829
+        },
+        "end": {
+          "line": 148,
+          "column": 5,
+          "index": 4878
         }
       },
       "type": "function",
@@ -55,14 +87,14 @@
     "_update_table": {
       "location": {
         "start": {
-          "line": 145,
+          "line": 149,
           "column": 4,
-          "index": 4800
+          "index": 4885
         },
         "end": {
-          "line": 148,
+          "line": 152,
           "column": 5,
-          "index": 4910
+          "index": 4995
         }
       },
       "type": "function",
@@ -71,14 +103,14 @@
     "call_api": {
       "location": {
         "start": {
-          "line": 149,
+          "line": 153,
           "column": 4,
-          "index": 4917
+          "index": 5002
         },
         "end": {
-          "line": 164,
+          "line": 168,
           "column": 5,
-          "index": 5353
+          "index": 5438
         }
       },
       "type": "function",
@@ -87,14 +119,14 @@
     "_read_file": {
       "location": {
         "start": {
-          "line": 165,
+          "line": 169,
           "column": 4,
-          "index": 5360
+          "index": 5445
         },
         "end": {
-          "line": 172,
+          "line": 176,
           "column": 5,
-          "index": 6413
+          "index": 6542
         }
       },
       "type": "function",
