@@ -52,7 +52,14 @@ $(document).ready(function () {
 
       // Mã chứng khoán
       const maCKElement = document.createElement("td");
-      maCKElement.textContent = key;
+      let link = document.createElement("a");
+      link.setAttribute(
+        "href",
+        "https://vn.tradingview.com/symbols/HOSE-" + key
+      );
+      link.setAttribute("target", "_blank");
+      link.textContent = key;
+      maCKElement.appendChild(link);
       rowElement.appendChild(maCKElement);
 
       // Lãi lỗ
@@ -289,7 +296,14 @@ $(document).ready(function () {
 
       // Mã chứng khoán
       const maCKElement = document.createElement("td");
-      maCKElement.textContent = key;
+      let link = document.createElement("a");
+      link.setAttribute(
+        "href",
+        "https://vn.tradingview.com/symbols/HOSE-" + key
+      );
+      link.setAttribute("target", "_blank");
+      link.textContent = key;
+      maCKElement.appendChild(link);
       rowElement.appendChild(maCKElement);
 
       // Giá lý tưởng
