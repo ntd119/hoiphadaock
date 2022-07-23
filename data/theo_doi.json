@@ -1,27 +1,27 @@
 {
     "EIB": {
         "gia_mua": 31400,
-        "gia_ban": 32600
+        "gia_ban": 32650
     },
     "LPB": {
         "gia_mua": 13150,
-        "gia_ban": 13150
+        "gia_ban": 14900
     },
     "VIB": {
         "gia_mua": 20900,
-        "gia_ban": 20900
+        "gia_ban": 26200
     },
     "MSB": {
         "gia_mua": 15200,
-        "gia_ban": 15200
+        "gia_ban": 20000
     },
     "ACB": {
         "gia_mua": 22900,
-        "gia_ban": 22900
+        "gia_ban": 25750
     },
     "BID": {
         "gia_mua": 31350,
-        "gia_ban": 31350
+        "gia_ban": 35500
     },
     "BVH": {
         "gia_mua": 51100,
