@@ -18,11 +18,10 @@ $(document).ready(function () {
   const BACKGROUND_NONE = "#FFFFFF";
   let da_mua_data = "";
   async function loadIntoTable() {
-    (url = DA_MUA_FILE), (table = document.querySelector("table"));
-
+    let table = document.getElementById("table_da_mua")
     const tableHead = table.querySelector("thead");
     const tableBody = table.querySelector("tbody");
-    const response = await fetch(url);
+    const response = await fetch(DA_MUA_FILE);
     da_mua_data = await response.json();
 
     // clear the table
