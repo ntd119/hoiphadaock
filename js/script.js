@@ -8,8 +8,8 @@ $(document).ready(function () {
     "Giá hiện tại",
   ];
   const DA_MUA_FILE = "./data/da_mua.json";
-  const BACKGROUND_LO = "#F33232";
-  const BACKGROUND_LAI = "#00E11A";
+  const BACKGROUND_LO = "#ff0017";
+  const BACKGROUND_LAI = "#0bdf39";
   const BACKGROUND_TRAN = "#860D98";
   const BACKGROUND_TANG = "#00E11A";
   const BACKGROUND_DUNG = "#FEA50C";
@@ -121,39 +121,57 @@ $(document).ready(function () {
 
           let percent = parseFloat(filter_data["Percent"]);
           let background = BACKGROUND_LAI;
-          if (percent < 0) {
-            background = BACKGROUND_LO;
-          }
           let giaHienTai = filter_data["Price"] * 1000;
-          $("#giahientai" + stt).html(
-            '<div style="background-color: ' +
-              background +
-              ';" >' +
-              format_price(giaHienTai) +
-              "(" +
-              percent +
-              "%)" +
-              "</div>"
-          );
+          if (percent >= 0) {
+            background = BACKGROUND_LO;
+            $("#giahientai" + stt).html(
+              "<div>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            background = BACKGROUND_LO;
+            $("#giahientai" + stt).html(
+              "<div>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
 
           //  lãi lỗ
           let giaDaMua = $("#giadamua" + stt).val();
           let percent_change = parseFloat(
             ((giaHienTai - giaDaMua) / giaDaMua) * 100
           ).toFixed(2);
-          let background_lailo = BACKGROUND_LAI;
-          if (percent_change < 0) {
-            background_lailo = BACKGROUND_LO;
+          if (percent_change >= 0) {
+            $("#lailo" + stt).html(
+              '<strong><div style="color: ' +
+                BACKGROUND_LAI +
+                '";font-weight: bold;>' +
+                format_price(percent_change) +
+                "%" +
+                '<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                ' ;"></i></div></strong>'
+            );
+          } else {
+            $("#lailo" + stt).html(
+              "<div>" +
+                format_price(percent_change) +
+                "%" +
+                '<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                ' ;"></i>  </div>'
+            );
           }
-
-          $("#lailo" + stt).html(
-            '<div style="background-color: ' +
-              background_lailo +
-              ';" >' +
-              format_price(percent_change) +
-              "%" +
-              "</div>"
-          );
 
           // status
           if (percent_change >= 4) {
