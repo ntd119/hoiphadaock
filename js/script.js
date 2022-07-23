@@ -272,11 +272,11 @@ $(document).ready(function () {
             } else {
               $("#percentGNMHT_theodoi" + stt_theodoi).html(
                 "<div style='color: " +
-                  BACKGROUND_LAI +
+                  BACKGROUND_LO +
                   "'>" +
                   percent_change +
                   '%<i class="fa-solid fa-caret-down" style="color:' +
-                  BACKGROUND_LAI +
+                  BACKGROUND_LO +
                   '"</div>'
               );
             }
