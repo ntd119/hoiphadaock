@@ -362,7 +362,7 @@ $(document).ready(function () {
       rowElement.appendChild(giaNenMuaInputHidden);
 
       // Giá bán
-      let gia_ban = THEO_DOI_DATA[key]["gia_mua"];
+      let gia_ban = THEO_DOI_DATA[key]["gia_ban"];
       const giaBanElement = document.createElement("td");
       giaBanElement.textContent = gia_ban.toLocaleString("en-US");
       rowElement.appendChild(giaBanElement);
