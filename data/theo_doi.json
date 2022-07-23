@@ -20,11 +20,11 @@
         "percent_mong_cho": "5-6%"
     },
     "BID": {
-        "price_ideal": 0,
+        "price_ideal": 31350,
         "percent_mong_cho": ""
     },
     "BVH": {
-        "price_ideal": 0,
+        "price_ideal": 51100,
         "percent_mong_cho": ""
     },
     "CTG": {
@@ -32,7 +32,7 @@
         "percent_mong_cho": "7-8%"
     },
     "FPT": {
-        "price_ideal": 0,
+        "price_ideal": 82600,
         "percent_mong_cho": ""
     },
     "GAS": {
@@ -40,19 +40,19 @@
         "percent_mong_cho": ">13%"
     },
     "GVR": {
-        "price_ideal": 0,
+        "price_ideal": 21650,
         "percent_mong_cho": ""
     },
     "HDB": {
-        "price_ideal": 0,
+        "price_ideal": 23000,
         "percent_mong_cho": ""
     },
     "HPG": {
-        "price_ideal": 0,
+        "price_ideal": 21500,
         "percent_mong_cho": ""
     },
     "KDH": {
-        "price_ideal": 0,
+        "price_ideal": 35050,
         "percent_mong_cho": ""
     },
     "MBB": {
