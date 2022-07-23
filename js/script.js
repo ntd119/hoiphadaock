@@ -348,12 +348,6 @@ $(document).ready(function () {
         THEO_DOI_DATA[key]["percent_mong_cho"];
       rowElement.appendChild(percentMongChoElement);
 
-      // Giá bán
-      let gia_ban = THEO_DOI_DATA[key]["gia_mua"];
-      const giaBanElement = document.createElement("td");
-      giaBanElement.textContent = gia_ban.toLocaleString("en-US");
-      rowElement.appendChild(giaBanElement);
-
       // Giá mua
       let gia_mua = THEO_DOI_DATA[key]["gia_mua"];
       const giaMuaElement = document.createElement("td");
@@ -367,6 +361,18 @@ $(document).ready(function () {
       giaNenMuaInputHidden.setAttribute("value", gia_mua);
       rowElement.appendChild(giaNenMuaInputHidden);
 
+      // Giá bán
+      let gia_ban = THEO_DOI_DATA[key]["gia_mua"];
+      const giaBanElement = document.createElement("td");
+      giaBanElement.textContent = gia_ban.toLocaleString("en-US");
+      rowElement.appendChild(giaBanElement);
+
+       // Giá nên bán hidden
+       let giaNenBanInputHidden = document.createElement("input");
+       giaNenBanInputHidden.setAttribute("type", "hidden");
+       giaNenBanInputHidden.setAttribute("id", "gianenban" + stt);
+       giaNenBanInputHidden.setAttribute("value", gia_ban);
+       rowElement.appendChild(giaNenBanInputHidden);
 
       // Giá hiện tại
       const giaHienTaiElement = document.createElement("td");
