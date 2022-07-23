@@ -252,6 +252,36 @@ $(document).ready(function () {
                 '"</div>'
             );
           }
+
+          // Phần trăm giá nên mua so với giá hiện tại
+          let giaNenMua = $("#gianenmua" + stt_theodoi).val();
+          if (giaNenMua > 0) {
+            let percent_change = parseFloat(
+              ((giaHienTai_theodoi - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_change >= 0) {
+              $("#percentGNMHT_theodoi" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percentGNMHT_theodoi" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            }
+          }
+
           stt_theodoi++;
         }
       },
@@ -262,8 +292,9 @@ $(document).ready(function () {
     const THEO_DOI_HEADER = [
       "STT",
       "Code",
-      "Giá lý tưởng",
-      "% mong chờ",
+      "%GNM-HT",
+      "Giá nên mua",
+      "% bán",
       "Giá hiện tại",
     ];
 
@@ -304,18 +335,24 @@ $(document).ready(function () {
       maCKElement.appendChild(link);
       rowElement.appendChild(maCKElement);
 
+      // Phần trăm giá nên mua so với giá hiện tại
+      const percentGNMHTElement = document.createElement("td");
+      percentGNMHTElement.textContent = "";
+      percentGNMHTElement.setAttribute("id", "percentGNMHT_theodoi" + stt);
+      rowElement.appendChild(percentGNMHTElement);
+
       // Giá lý tưởng
-      let gialytuong = THEO_DOI_DATA[key]["price_ideal"];
+      let giaNenMuatuong = THEO_DOI_DATA[key]["price_ideal"];
       const giaLyTuongElement = document.createElement("td");
-      giaLyTuongElement.textContent = gialytuong.toLocaleString("en-US");
+      giaLyTuongElement.textContent = giaNenMuatuong.toLocaleString("en-US");
       rowElement.appendChild(giaLyTuongElement);
 
-      // Giá mua hidden
-      let giaMuaInputHidden = document.createElement("input");
-      giaMuaInputHidden.setAttribute("type", "hidden");
-      // giaMuaInputHidden.setAttribute("id", "giadamua" + stt);
-      // giaMuaInputHidden.setAttribute("value", giaDaMua);
-      rowElement.appendChild(giaMuaInputHidden);
+      // Giá nên mua hidden
+      let giaNenMuaInputHidden = document.createElement("input");
+      giaNenMuaInputHidden.setAttribute("type", "hidden");
+      giaNenMuaInputHidden.setAttribute("id", "gianenmua" + stt);
+      giaNenMuaInputHidden.setAttribute("value", giaNenMuatuong);
+      rowElement.appendChild(giaNenMuaInputHidden);
 
       // % mong chờ
       const percentMongChoElement = document.createElement("td");
