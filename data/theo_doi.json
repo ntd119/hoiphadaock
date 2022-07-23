@@ -1,7 +1,7 @@
 {
     "EIB": {
         "gia_mua": 31400,
-        "gia_ban": 31400,
+        "gia_ban": 32600,
         "percent_mong_cho": "5-6%"
     },
     "LPB": {
@@ -116,7 +116,7 @@
     },
     "SSI": {
         "gia_mua": 0,
-        "gia_mua": 0,
+        "gia_ban": 0,
         "percent_mong_cho": ""
     },
     "STB": {
