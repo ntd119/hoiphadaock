@@ -224,8 +224,6 @@ $(document).ready(function () {
           let filter_data_theodoi = response.filter(
             (x) => x.NoneSymbol === key_theo_doi
           )[0];
-
-          console.log(filter_data_theodoi);
           // Giá hiện tại
           let percent_theodoi = parseFloat(filter_data_theodoi["Percent"]);
           let giaHienTai_theodoi = filter_data_theodoi["Price"] * 1000;
