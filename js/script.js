@@ -212,12 +212,13 @@ $(document).ready(function () {
         );
 
         // update giá bảng theo dõi
-        let stt_theodoi = 0;
+        let stt_theodoi = 1;
         for (const key_theo_doi in THEO_DOI_DATA) {
           let filter_data_theodoi = response.filter(
             (x) => x.NoneSymbol === key_theo_doi
           )[0];
 
+          console.log(filter_data_theodoi);
           // Giá hiện tại
           let percent_theodoi = parseFloat(filter_data_theodoi["Percent"]);
           let giaHienTai_theodoi = filter_data_theodoi["Price"] * 1000;
