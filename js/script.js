@@ -119,13 +119,14 @@ $(document).ready(function () {
         for (const key in da_mua_data) {
           let filter_data = response.filter((x) => x.NoneSymbol === key)[0];
 
+          // Giá hiện tại
           let percent = parseFloat(filter_data["Percent"]);
-          let background = BACKGROUND_LAI;
           let giaHienTai = filter_data["Price"] * 1000;
           if (percent >= 0) {
-            background = BACKGROUND_LO;
             $("#giahientai" + stt).html(
-              "<div>" +
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
                 format_price(giaHienTai) +
                 "(" +
                 percent +
@@ -134,9 +135,10 @@ $(document).ready(function () {
                 '"</div>'
             );
           } else {
-            background = BACKGROUND_LO;
             $("#giahientai" + stt).html(
-              "<div>" +
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
                 format_price(giaHienTai) +
                 "(" +
                 percent +
@@ -164,12 +166,14 @@ $(document).ready(function () {
             );
           } else {
             $("#lailo" + stt).html(
-              "<div>" +
+              '<strong><div style="color: ' +
+                BACKGROUND_LO +
+                '";font-weight: bold;>' +
                 format_price(percent_change) +
                 "%" +
                 '<i class="fa-solid fa-caret-down" style="color:' +
                 BACKGROUND_LO +
-                ' ;"></i>  </div>'
+                ' ;"></i></div></strong>'
             );
           }
 
