@@ -1,172 +1,138 @@
 {
     "EIB": {
         "gia_mua": 31400,
-        "gia_ban": 32600,
-        "percent_mong_cho": "5-6%"
+        "gia_ban": 32600
     },
     "LPB": {
         "gia_mua": 13150,
-        "gia_ban": 13150,
-        "percent_mong_cho": "5-6%"
+        "gia_ban": 13150
     },
     "VIB": {
         "gia_mua": 20900,
-        "gia_ban": 20900,
-        "percent_mong_cho": "18-20%"
+        "gia_ban": 20900
     },
     "MSB": {
         "gia_mua": 15200,
-        "gia_ban": 15200,
-        "percent_mong_cho": "9-10%"
+        "gia_ban": 15200
     },
     "ACB": {
         "gia_mua": 22900,
-        "gia_ban": 22900,
-        "percent_mong_cho": "5-6%"
+        "gia_ban": 22900
     },
     "BID": {
         "gia_mua": 31350,
-        "gia_ban": 31350,
-        "percent_mong_cho": ""
+        "gia_ban": 31350
     },
     "BVH": {
         "gia_mua": 51100,
-        "gia_ban": 51100,
-        "percent_mong_cho": ""
+        "gia_ban": 51100
     },
     "CTG": {
         "gia_mua": 25250,
-        "gia_ban": 25250,
-        "percent_mong_cho": "7-8%"
+        "gia_ban": 25250
     },
     "FPT": {
         "gia_mua": 82600,
-        "gia_ban": 82600,
-        "percent_mong_cho": ""
+        "gia_ban": 82600
     },
     "GAS": {
         "gia_mua": 95000,
-        "gia_ban": 95000,
-        "percent_mong_cho": ">13%"
+        "gia_ban": 95000
     },
     "GVR": {
         "gia_mua": 21650,
-        "gia_ban": 21650,
-        "percent_mong_cho": ""
+        "gia_ban": 21650
     },
     "HDB": {
         "gia_mua": 23000,
-        "gia_ban": 23000,
-        "percent_mong_cho": ""
+        "gia_ban": 23000
     },
     "HPG": {
         "gia_mua": 21500,
-        "gia_ban": 21500,
-        "percent_mong_cho": ""
+        "gia_ban": 21500
     },
     "KDH": {
         "gia_mua": 35050,
-        "gia_ban": 35050,
-        "percent_mong_cho": ""
+        "gia_ban": 35050
     },
     "MBB": {
         "gia_mua": 23850,
-        "gia_ban": 23850,
-        "percent_mong_cho": "7-8%"
+        "gia_ban": 23850
     },
     "MSN": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "MWG": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "NVL": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "PDR": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "PLX": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "PNJ": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "POW": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "SAB": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "SSI": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "STB": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "TCB": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "TPB": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VCB": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VHM": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VIC": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VJC": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VNM": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     },
     "VPB": {
         "gia_mua": 27500,
-        "gia_ban": 27500,
-        "percent_mong_cho": "4-5%"
+        "gia_ban": 27500
     },
     "VRE": {
         "gia_mua": 0,
-        "gia_ban": 0,
-        "percent_mong_cho": ""
+        "gia_ban": 0
     }
 }
