@@ -17,8 +17,9 @@ $(document).ready(function () {
   const BACKGROUND_SAN = "#0A8AE3";
   const BACKGROUND_NONE = "#FFFFFF";
   let da_mua_data = "";
+  let THEO_DOI_DATA = "";
   async function loadIntoTable() {
-    let table = document.getElementById("table_da_mua")
+    let table = document.getElementById("table_da_mua");
     const tableHead = table.querySelector("thead");
     const tableBody = table.querySelector("tbody");
     const response = await fetch(DA_MUA_FILE);
@@ -99,8 +100,6 @@ $(document).ready(function () {
   }
 
   function updateClass() {
-    // const response = await fetch(DA_MUA_FILE);
-    // const rows = await response.json();
     $.ajax({
       url: "https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=",
       // url: "https://api.vietstock.vn/finance/sectorInfo_v2?sectorID=0&catID=0&capitalID=0&languageID=1",
@@ -211,10 +210,108 @@ $(document).ready(function () {
         $("#logAPI").html(
           log + "Update giá cổ phiếu: " + date + ": " + hour + "\n"
         );
+
+        // update giá bảng theo dõi
+        let stt_theodoi = 0;
+        for (const key_theo_doi in THEO_DOI_DATA) {
+          let filter_data_theodoi = response.filter(
+            (x) => x.NoneSymbol === key_theo_doi
+          )[0];
+
+          // Giá hiện tại
+          let percent_theodoi = parseFloat(filter_data_theodoi["Percent"]);
+          let giaHienTai_theodoi = filter_data_theodoi["Price"] * 1000;
+          if (percent_theodoi >= 0) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
+          stt_theodoi++;
+        }
       },
     });
   }
+
+  async function loadTableTheodoi() {
+    const THEO_DOI_HEADER = ["STT", "Code", "Giá lý tưởng", "Giá hiện tại"];
+
+    let table = document.getElementById("table_theo_doi");
+    const tableHead = table.querySelector("thead");
+    const tableBody = table.querySelector("tbody");
+    const response = await fetch("./data/theo_doi.json");
+    THEO_DOI_DATA = await response.json();
+
+    // clear the table
+    tableHead.innerHTML = "<tr></tr>";
+    tableBody.innerHTML = "";
+
+    // Populate the header
+    for (const headerText of THEO_DOI_HEADER) {
+      const headerElement = document.createElement("th");
+      headerElement.textContent = headerText;
+      tableHead.querySelector("tr").appendChild(headerElement);
+    }
+    let stt = 1;
+    for (const key in THEO_DOI_DATA) {
+      const rowElement = document.createElement("tr");
+
+      // STT
+      const sttElement = document.createElement("td");
+      sttElement.textContent = stt;
+      rowElement.appendChild(sttElement);
+
+      // Mã chứng khoán
+      const maCKElement = document.createElement("td");
+      maCKElement.textContent = key;
+      rowElement.appendChild(maCKElement);
+
+      // Giá mua
+      // let giaDaMua = da_mua_data[key]["bought"];
+      const giaMuaElement = document.createElement("td");
+      // giaMuaElement.textContent = giaDaMua.toLocaleString("en-US");
+      giaMuaElement.textContent = "";
+      rowElement.appendChild(giaMuaElement);
+
+      // Giá mua hidden
+      let giaMuaInputHidden = document.createElement("input");
+      giaMuaInputHidden.setAttribute("type", "hidden");
+      // giaMuaInputHidden.setAttribute("id", "giadamua" + stt);
+      // giaMuaInputHidden.setAttribute("value", giaDaMua);
+      rowElement.appendChild(giaMuaInputHidden);
+
+      // Giá hiện tại
+      const giaHienTaiElement = document.createElement("td");
+      giaHienTaiElement.setAttribute("id", "giahientai_theodoi" + stt);
+      giaHienTaiElement.textContent = "";
+      rowElement.appendChild(giaHienTaiElement);
+
+      tableBody.appendChild(rowElement);
+      stt++;
+    }
+  }
+
   loadIntoTable();
+  loadTableTheodoi();
   updateClass();
   setInterval(updateClass, 5000);
   setInterval(clear_log, 60000);
