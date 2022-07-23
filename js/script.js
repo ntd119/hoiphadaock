@@ -253,7 +253,13 @@ $(document).ready(function () {
   }
 
   async function loadTableTheodoi() {
-    const THEO_DOI_HEADER = ["STT", "Code", "Giá lý tưởng", "Giá hiện tại"];
+    const THEO_DOI_HEADER = [
+      "STT",
+      "Code",
+      "Giá lý tưởng",
+      "% mong chờ",
+      "Giá hiện tại",
+    ];
 
     let table = document.getElementById("table_theo_doi");
     const tableHead = table.querySelector("thead");
@@ -297,6 +303,12 @@ $(document).ready(function () {
       // giaMuaInputHidden.setAttribute("id", "giadamua" + stt);
       // giaMuaInputHidden.setAttribute("value", giaDaMua);
       rowElement.appendChild(giaMuaInputHidden);
+
+      // % mong chờ
+      const percentMongChoElement = document.createElement("td");
+      percentMongChoElement.textContent =
+        THEO_DOI_DATA[key]["percent_mong_cho"];
+      rowElement.appendChild(percentMongChoElement);
 
       // Giá hiện tại
       const giaHienTaiElement = document.createElement("td");
