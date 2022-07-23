@@ -1,5 +1,12 @@
 $(document).ready(function () {
-  const HEADER_TABLE = ["STT", "Mã CK", "Giá mua", "Lãi/Lỗ", "Giá hiện tại"];
+  const HEADER_TABLE = [
+    "STT",
+    "Status",
+    "Code",
+    "Lãi/Lỗ",
+    "Mua",
+    "Giá hiện tại",
+  ];
   const DA_MUA_FILE = "./data/da_mua.json";
   const BACKGROUND_LO = "#F33232";
   const BACKGROUND_LAI = "#00E11A";
@@ -37,10 +44,22 @@ $(document).ready(function () {
       sttElement.textContent = stt;
       rowElement.appendChild(sttElement);
 
+      // Status
+      const statusElement = document.createElement("td");
+      statusElement.textContent = "";
+      statusElement.setAttribute("id", "status" + stt);
+      rowElement.appendChild(statusElement);
+
       // Mã chứng khoán
       const maCKElement = document.createElement("td");
       maCKElement.textContent = key;
       rowElement.appendChild(maCKElement);
+
+      // Lãi lỗ
+      const laiLoElement = document.createElement("td");
+      laiLoElement.setAttribute("id", "lailo" + stt);
+      laiLoElement.textContent = "";
+      rowElement.appendChild(laiLoElement);
 
       // Giá mua
       let giaDaMua = da_mua_data[key]["bought"];
@@ -54,12 +73,6 @@ $(document).ready(function () {
       giaMuaInputHidden.setAttribute("id", "giadamua" + stt);
       giaMuaInputHidden.setAttribute("value", giaDaMua);
       rowElement.appendChild(giaMuaInputHidden);
-
-      // Lãi lỗ
-      const laiLoElement = document.createElement("td");
-      laiLoElement.setAttribute("id", "lailo" + stt);
-      laiLoElement.textContent = "";
-      rowElement.appendChild(laiLoElement);
 
       // Giá hiện tại
       const giaHienTaiElement = document.createElement("td");
@@ -142,6 +155,19 @@ $(document).ready(function () {
               "</div>"
           );
 
+          // status
+          if (percent_change >= 4) {
+            $("#status" + stt).html(
+              '<div style="background-color:' + BACKGROUND_LAI + ';">Bán</div>'
+            );
+          } else if (percent_change <= -4) {
+            $("#status" + stt).html(
+              '<div style="background-color:' +
+                BACKGROUND_LO +
+                ';">Cắt lỗ</div>'
+            );
+          }
+
           stt++;
         }
         let today = new Date();
@@ -167,6 +193,6 @@ $(document).ready(function () {
   }
   loadIntoTable();
   updateClass();
-  setInterval(updateClass, 5000); 
+  setInterval(updateClass, 5000);
   setInterval(clear_log, 60000);
 });
