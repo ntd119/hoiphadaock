@@ -124,15 +124,15 @@
         "gia_ban": 129500
     },
     "VNM": {
-        "gia_mua": 0,
-        "gia_ban": 0
+        "gia_mua": 65800,
+        "gia_ban": 72600
     },
     "VPB": {
         "gia_mua": 27500,
-        "gia_ban": 27500
+        "gia_ban": 29650
     },
     "VRE": {
-        "gia_mua": 0,
-        "gia_ban": 0
+        "gia_mua": 26000,
+        "gia_ban": 28500
     }
 }
