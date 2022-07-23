@@ -25,39 +25,39 @@
     },
     "BVH": {
         "gia_mua": 51100,
-        "gia_ban": 51100
+        "gia_ban": 56300
     },
     "CTG": {
         "gia_mua": 25250,
-        "gia_ban": 25250
+        "gia_ban": 27250
     },
     "FPT": {
         "gia_mua": 82600,
-        "gia_ban": 82600
+        "gia_ban": 88700
     },
     "GAS": {
         "gia_mua": 95000,
-        "gia_ban": 95000
+        "gia_ban": 118200
     },
     "GVR": {
         "gia_mua": 21650,
-        "gia_ban": 21650
+        "gia_ban": 25850
     },
     "HDB": {
         "gia_mua": 23000,
-        "gia_ban": 23000
+        "gia_ban": 24500
     },
     "HPG": {
         "gia_mua": 21500,
-        "gia_ban": 21500
+        "gia_ban": 23200
     },
     "KDH": {
         "gia_mua": 35050,
-        "gia_ban": 35050
+        "gia_ban": 37500
     },
     "MBB": {
         "gia_mua": 23850,
-        "gia_ban": 23850
+        "gia_ban": 27200
     },
     "MSN": {
         "gia_mua": 0,
