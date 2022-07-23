@@ -4,7 +4,7 @@ $(document).ready(function () {
     "Status",
     "Code",
     "Lãi/Lỗ",
-    "Mua",
+    "Giá mua",
     "Giá hiện tại",
   ];
   const DA_MUA_FILE = "./data/da_mua.json";
