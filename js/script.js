@@ -285,12 +285,11 @@ $(document).ready(function () {
       maCKElement.textContent = key;
       rowElement.appendChild(maCKElement);
 
-      // Giá mua
-      // let giaDaMua = da_mua_data[key]["bought"];
-      const giaMuaElement = document.createElement("td");
-      // giaMuaElement.textContent = giaDaMua.toLocaleString("en-US");
-      giaMuaElement.textContent = "";
-      rowElement.appendChild(giaMuaElement);
+      // Giá lý tưởng
+      let gialytuong = THEO_DOI_DATA[key]["price_ideal"];
+      const giaLyTuongElement = document.createElement("td");
+      giaLyTuongElement.textContent = gialytuong.toLocaleString("en-US");
+      rowElement.appendChild(giaLyTuongElement);
 
       // Giá mua hidden
       let giaMuaInputHidden = document.createElement("input");
