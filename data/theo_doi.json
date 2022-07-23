@@ -1,106 +1,106 @@
 {
     "EIB": {
-        "price_ideal": 31400,
+        "gia_mua": 31400,
         "percent_mong_cho": "5-6%"
     },
     "LPB": {
-        "price_ideal": 13150,
+        "gia_mua": 13150,
         "percent_mong_cho": "5-6%"
     },
     "VIB": {
-        "price_ideal": 20900,
+        "gia_mua": 20900,
         "percent_mong_cho": "18-20%"
     },
     "MSB": {
-        "price_ideal": 15200,
+        "gia_mua": 15200,
         "percent_mong_cho": "9-10%"
     },
     "ACB": {
-        "price_ideal": 22900,
+        "gia_mua": 22900,
         "percent_mong_cho": "5-6%"
     },
     "BID": {
-        "price_ideal": 31350,
+        "gia_mua": 31350,
         "percent_mong_cho": ""
     },
     "BVH": {
-        "price_ideal": 51100,
+        "gia_mua": 51100,
         "percent_mong_cho": ""
     },
     "CTG": {
-        "price_ideal": 25250,
+        "gia_mua": 25250,
         "percent_mong_cho": "7-8%"
     },
     "FPT": {
-        "price_ideal": 82600,
+        "gia_mua": 82600,
         "percent_mong_cho": ""
     },
     "GAS": {
-        "price_ideal": 95000,
+        "gia_mua": 95000,
         "percent_mong_cho": ">13%"
     },
     "GVR": {
-        "price_ideal": 21650,
+        "gia_mua": 21650,
         "percent_mong_cho": ""
     },
     "HDB": {
-        "price_ideal": 23000,
+        "gia_mua": 23000,
         "percent_mong_cho": ""
     },
     "HPG": {
-        "price_ideal": 21500,
+        "gia_mua": 21500,
         "percent_mong_cho": ""
     },
     "KDH": {
-        "price_ideal": 35050,
+        "gia_mua": 35050,
         "percent_mong_cho": ""
     },
     "MBB": {
-        "price_ideal": 23850,
+        "gia_mua": 23850,
         "percent_mong_cho": "7-8%"
     },
     "MSN": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "MWG": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "NVL": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "PDR": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "PLX": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "PNJ": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "POW": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "SAB": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "SSI": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "STB": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "TCB": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "enable_sound": 0,
         "bought": 0,
         "percent_cut_loss": "4.0",
@@ -108,43 +108,35 @@
         "follow": 0
     },
     "TPB": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "VCB": {
-        "price_ideal": 0,
-        "enable_sound": 0,
-        "bought": 0,
-        "percent_cut_loss": "4.0",
-        "percent_sell": "4.0",
-        "follow": 0
+        "gia_mua": 0,
+        "percent_mong_cho": ""
     },
     "VHM": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "VIC": {
-        "price_ideal": 0,
-        "enable_sound": 0,
-        "bought": 0,
-        "percent_cut_loss": "4.0",
-        "percent_sell": "4.0",
-        "follow": 0
+        "gia_mua": 0,
+        "percent_mong_cho": ""
     },
     "VJC": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "VNM": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     },
     "VPB": {
-        "price_ideal": 27500,
+        "gia_mua": 27500,
         "percent_mong_cho": "4-5%"
     },
     "VRE": {
-        "price_ideal": 0,
+        "gia_mua": 0,
         "percent_mong_cho": ""
     }
 }

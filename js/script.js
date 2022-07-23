@@ -292,9 +292,10 @@ $(document).ready(function () {
     const THEO_DOI_HEADER = [
       "STT",
       "Code",
-      "%GNM-HT",
-      "Giá nên mua",
-      "% bán",
+      "GM-HT",
+      "GM-GB",
+      "Giá mua",
+      "Giá bán",
       "Giá hiện tại",
     ];
 
@@ -341,24 +342,31 @@ $(document).ready(function () {
       percentGNMHTElement.setAttribute("id", "percentGNMHT_theodoi" + stt);
       rowElement.appendChild(percentGNMHTElement);
 
-      // Giá lý tưởng
-      let giaNenMuatuong = THEO_DOI_DATA[key]["price_ideal"];
-      const giaLyTuongElement = document.createElement("td");
-      giaLyTuongElement.textContent = giaNenMuatuong.toLocaleString("en-US");
-      rowElement.appendChild(giaLyTuongElement);
+      // Phần trăm Giá mua - Giá bán
+      const percentMongChoElement = document.createElement("td");
+      percentMongChoElement.textContent =
+        THEO_DOI_DATA[key]["percent_mong_cho"];
+      rowElement.appendChild(percentMongChoElement);
+
+      // Giá bán
+      let gia_ban = THEO_DOI_DATA[key]["gia_mua"];
+      const giaBanElement = document.createElement("td");
+      giaBanElement.textContent = gia_ban.toLocaleString("en-US");
+      rowElement.appendChild(giaBanElement);
+
+      // Giá mua
+      let gia_mua = THEO_DOI_DATA[key]["gia_mua"];
+      const giaMuaElement = document.createElement("td");
+      giaMuaElement.textContent = gia_mua.toLocaleString("en-US");
+      rowElement.appendChild(giaMuaElement);
 
       // Giá nên mua hidden
       let giaNenMuaInputHidden = document.createElement("input");
       giaNenMuaInputHidden.setAttribute("type", "hidden");
       giaNenMuaInputHidden.setAttribute("id", "gianenmua" + stt);
-      giaNenMuaInputHidden.setAttribute("value", giaNenMuatuong);
+      giaNenMuaInputHidden.setAttribute("value", gia_mua);
       rowElement.appendChild(giaNenMuaInputHidden);
 
-      // % mong chờ
-      const percentMongChoElement = document.createElement("td");
-      percentMongChoElement.textContent =
-        THEO_DOI_DATA[key]["percent_mong_cho"];
-      rowElement.appendChild(percentMongChoElement);
 
       // Giá hiện tại
       const giaHienTaiElement = document.createElement("td");
