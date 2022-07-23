@@ -188,6 +188,8 @@ $(document).ready(function () {
                 BACKGROUND_LO +
                 ';">Cắt lỗ</div>'
             );
+          } else {
+            $("#status" + stt).html("");
           }
 
           stt++;
