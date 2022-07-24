@@ -132,7 +132,7 @@ $(document).ready(function () {
               // show notification here
               showNotification();
             } else {
-              let error = "User blocked notifications.";
+              let error = "User blocked notifications.\n";
               let log = $("#logAPI").val();
               $("#logAPI").html(log + error);
               console.log(error);
