@@ -108,8 +108,8 @@ $(document).ready(function () {
 
   function showNotification() {
     const notify = new Notification("Hội Phá Đảo CK!", {
-      body: "How are you doing?",
-      icon: "images/favicon.ico",
+      body: "How are you doing?"
+      // icon: "images/favicon.ico",
     });
   }
 
