@@ -106,6 +106,47 @@ $(document).ready(function () {
     $("#logAPI").html("");
   }
 
+  function showNotification() {
+    const notify = new Notification("Hội Phá Đảo CK!", {
+      body: "How are you doing?",
+      icon: "images/favicon.ico",
+    });
+  }
+
+  function notifyMe() {
+    if (!window.Notification) {
+      let error = "Browser does not support notifications.\n";
+      let log = $("#logAPI").val();
+      $("#logAPI").html(log + error);
+      console.log(error);
+    } else {
+      // check if permission is already granted
+      if (Notification.permission === "granted") {
+        // show notification here
+        showNotification();
+      } else {
+        // request permission from user
+        Notification.requestPermission()
+          .then(function (p) {
+            if (p === "granted") {
+              // show notification here
+              showNotification();
+            } else {
+              let error = "User blocked notifications.";
+              let log = $("#logAPI").val();
+              $("#logAPI").html(log + error);
+              console.log(error);
+            }
+          })
+          .catch(function (err) {
+            let log = $("#logAPI").val();
+            $("#logAPI").html(log + err);
+            console.error(err);
+          });
+      }
+    }
+  }
+
   function updateClass() {
     $.ajax({
       url: "https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&cate=",
@@ -196,6 +237,10 @@ $(document).ready(function () {
           } else {
             $("#status" + stt).html("");
           }
+          if (stt == 1){
+            notifyMe();
+          } 
+         
 
           stt++;
         }
