@@ -106,14 +106,14 @@ $(document).ready(function () {
     $("#logAPI").html("");
   }
 
-  function showNotification() {
-    const notify = new Notification("Hội Phá Đảo CK!", {
-      body: "How are you doing?"
-      // icon: "images/favicon.ico",
+  function showNotification(code, percent) {
+    const notify = new Notification("Hội Phá Đảo CK: Bán " + code, {
+      body: code + ": " +   percent + "%",
+      icon: "images/selling.png",
     });
   }
 
-  function notifyMe() {
+  function notifyMe(code, percent) {
     if (!window.Notification) {
       let error = "Browser does not support notifications.\n";
       let log = $("#logAPI").val();
@@ -123,14 +123,14 @@ $(document).ready(function () {
       // check if permission is already granted
       if (Notification.permission === "granted") {
         // show notification here
-        showNotification();
+        showNotification(code, percent);
       } else {
         // request permission from user
         Notification.requestPermission()
           .then(function (p) {
             if (p === "granted") {
               // show notification here
-              showNotification();
+              showNotification(code, percent);
             } else {
               let error = "User blocked notifications.\n";
               let log = $("#logAPI").val();
@@ -238,7 +238,7 @@ $(document).ready(function () {
             $("#status" + stt).html("");
           }
           if (stt == 1){
-            notifyMe();
+            notifyMe(key, percent_change);
           } 
          
 
