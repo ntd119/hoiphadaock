@@ -81,6 +81,13 @@ $(document).ready(function () {
       giaMuaInputHidden.setAttribute("value", giaDaMua);
       rowElement.appendChild(giaMuaInputHidden);
 
+      // Thông báo
+      let thongbaoInputHidden = document.createElement("input");
+      thongbaoInputHidden.setAttribute("type", "hidden");
+      thongbaoInputHidden.setAttribute("id", "thongbao" + stt);
+      thongbaoInputHidden.setAttribute("value", 0);
+      rowElement.appendChild(thongbaoInputHidden);
+
       // Giá hiện tại
       const giaHienTaiElement = document.createElement("td");
       giaHienTaiElement.setAttribute("id", "giahientai" + stt);
@@ -108,7 +115,7 @@ $(document).ready(function () {
 
   function showNotification(code, percent) {
     const notify = new Notification("Hội Phá Đảo CK: Bán " + code, {
-      body: code + ": " +   percent + "%",
+      body: code + ": " + percent + "%",
       icon: "images/selling.png",
     });
   }
@@ -225,6 +232,16 @@ $(document).ready(function () {
 
           // status
           if (percent_change >= 4) {
+            let thongbao = $("#thongbao" + stt).val();
+            thongbao++;
+            $("#thongbao" + stt).val(thongbao);
+            if (thongbao <= 3) {
+              notifyMe(key, percent_change);
+            }
+            if (thongbao > 1800) {
+              // 30 phút
+              $("#thongbao" + stt).val(0);
+            }
             $("#status" + stt).html(
               '<div style="background-color:' + BACKGROUND_LAI + ';">Bán</div>'
             );
@@ -237,11 +254,6 @@ $(document).ready(function () {
           } else {
             $("#status" + stt).html("");
           }
-          if (stt == 1){
-            notifyMe(key, percent_change);
-          } 
-         
-
           stt++;
         }
         let today = new Date();
