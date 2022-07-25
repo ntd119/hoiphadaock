@@ -50,3 +50,14 @@ h2 {
   font-size: 1.2rem;
   font-family: "Montserrat-Light";
 }
+
+.skulls {
+  position: relative;
+  width: 600px;
+  height: 200px;
+  margin: auto;
+  border: 24px solid;
+  border-image: url('../images/skull-border.svg');
+  border-image-slice: 32;
+  border-image-repeat: round;
+}
