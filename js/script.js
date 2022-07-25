@@ -246,12 +246,14 @@ $(document).ready(function () {
               '<div style="background-color:' + BACKGROUND_LAI + ';">Bán</div>'
             );
           } else if (percent_change <= -4) {
+            $("#thongbao" + stt).val(0);
             $("#status" + stt).html(
               '<div style="background-color:' +
                 BACKGROUND_LO +
                 ';">Cắt lỗ</div>'
             );
           } else {
+            $("#thongbao" + stt).val(0);
             $("#status" + stt).html("");
           }
           stt++;
