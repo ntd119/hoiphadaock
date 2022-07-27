@@ -472,6 +472,23 @@ $(document).ready(function () {
     }
   }
 
+  function chu_chay() {
+    const list_span = document.querySelectorAll("span");
+    list_span.forEach((item) => {
+      let x = Math.floor(Math.random() * 5000);
+      let y = Math.floor(Math.random() * 5000);
+      item.style.transform = `translate(${x}px, ${y}px)`;
+    });
+
+    let index = 0;
+    setInterval(() => {
+      list_span[index].style.transform = `translate(0px, 0px)`;
+      index++;
+    }, 600);
+  }
+
+  chu_chay();
+  setInterval(chu_chay, 9600);
   loadIntoTable();
   loadTableTheodoi();
   updateClass();

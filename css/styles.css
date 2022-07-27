@@ -57,7 +57,27 @@ h2 {
   height: 200px;
   margin: auto;
   border: 24px solid;
-  border-image: url('../images/skull-border.svg');
+  border-image: url("../images/skull-border.svg");
   border-image-slice: 32;
   border-image-repeat: round;
+}
+
+.chu-chay {
+  font-family: "Poppins", sans-serif;
+  min-height: 20vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+span {
+  display: inline-block;
+  font-size: 40px;
+  color: #fff;
+  font-weight: bold;
+  transition: 1.2s;
+  background: linear-gradient(90deg, #ff4c68 0%, #ff4c68 99%, #ff4c68 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
