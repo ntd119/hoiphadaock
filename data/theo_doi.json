@@ -1,11 +1,11 @@
 {
     "EIB": {
-        "gia_mua": 31400,
+        "gia_mua": 30400,
         "gia_ban": 32650
     },
     "LPB": {
         "gia_mua": 13150,
-        "gia_ban": 14900
+        "gia_ban": 16100
     },
     "VIB": {
         "gia_mua": 20900,
@@ -21,15 +21,15 @@
     },
     "BID": {
         "gia_mua": 31350,
-        "gia_ban": 35500
+        "gia_ban": 39000
     },
     "BVH": {
         "gia_mua": 51100,
-        "gia_ban": 56300
+        "gia_ban": 58800
     },
     "CTG": {
         "gia_mua": 25250,
-        "gia_ban": 27250
+        "gia_ban": 29000
     },
     "FPT": {
         "gia_mua": 82600,
@@ -45,15 +45,15 @@
     },
     "HDB": {
         "gia_mua": 23000,
-        "gia_ban": 24500
+        "gia_ban": 24700
     },
     "HPG": {
         "gia_mua": 21500,
-        "gia_ban": 23200
+        "gia_ban": 23300
     },
     "KDH": {
         "gia_mua": 35050,
-        "gia_ban": 37500
+        "gia_ban": 38700
     },
     "MBB": {
         "gia_mua": 23850,
@@ -69,7 +69,7 @@
     },
     "NVL": {
         "gia_mua": 73200,
-        "gia_ban": 75500
+        "gia_ban": 80900
     },
     "PDR": {
         "gia_mua": 49700,
@@ -85,23 +85,23 @@
     },
     "POW": {
         "gia_mua": 12500,
-        "gia_ban": 13900
+        "gia_ban": 14000
     },
     "SAB": {
         "gia_mua": 154100,
-        "gia_ban": 166000
+        "gia_ban": 182600
     },
     "SSI": {
         "gia_mua": 18300,
-        "gia_ban": 24550
+        "gia_ban": 24800
     },
     "STB": {
         "gia_mua": 19900,
-        "gia_ban": 23000
+        "gia_ban": 25250
     },
     "TCB": {
         "gia_mua": 33600,
-        "gia_ban": 37700
+        "gia_ban": 38400
     },
     "TPB": {
         "gia_mua": 25800,
@@ -109,14 +109,14 @@
     },
     "VCB": {
         "gia_mua": 72300,
-        "gia_ban": 76400
+        "gia_ban": 82000
     },
     "VHM": {
         "gia_mua": 58700,
         "gia_ban": 66000
     },
     "VIC": {
-        "gia_mua": 66500,
+        "gia_mua": 65400,
         "gia_ban": 72700
     },
     "VJC": {
@@ -133,6 +133,10 @@
     },
     "VRE": {
         "gia_mua": 26000,
-        "gia_ban": 28500
+        "gia_ban": 28950
+    },
+    "REE": {
+        "gia_mua": 75100,
+        "gia_ban": 81000
     }
 }
