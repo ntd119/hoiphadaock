@@ -18,6 +18,7 @@ $(document).ready(function () {
   const BACKGROUND_NONE = "#FFFFFF";
   let da_mua_data = "";
   let THEO_DOI_DATA = "";
+  let LUOT_SONG_DATA = "";
   async function loadIntoTable() {
     let table = document.getElementById("table_da_mua");
     const tableHead = table.querySelector("thead");
@@ -368,8 +369,101 @@ $(document).ready(function () {
               );
             }
           }
-
           stt_theodoi++;
+        }
+
+        // update giá bảng luot sóng
+        let stt_luot_song = 1;
+        for (const key_luot_song in LUOT_SONG_DATA) {
+          let filter_data_luotsong = response.filter(
+            (x) => x.NoneSymbol === key_luot_song
+          )[0];
+          // Giá hiện tại
+          let percent_luot_song = parseFloat(filter_data_luotsong["Percent"]);
+          let giaHienTai_luotsong = filter_data_luotsong["Price"] * 1000;
+          if (percent_luot_song >= 0) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
+
+          // Phần trăm giá nên mua so với giá hiện tại
+          let giaNenMua = $("#gianenmua_luot_song" + stt_luot_song).val();
+          let giaNenBan = $("#gianenban_luot_song" + stt_luot_song).val();
+          if (giaNenMua > 0) {
+            // Giá nên mua - giá hiện tại
+            let percent_change = parseFloat(
+              ((giaHienTai_luotsong - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_change >= 0) {
+              $("#percentGNMHT_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percentGNMHT_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
+
+            // Giá nên mua - giá bán
+            let percent_gia_nen_mua_gia_nen_ban = parseFloat(
+              ((giaNenBan - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_gia_nen_mua_gia_nen_ban >= 0) {
+              $("#percent_mua_ban_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percent_mua_ban_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
+          }
+          stt_luot_song++;
         }
       },
     });
@@ -472,6 +566,106 @@ $(document).ready(function () {
     }
   }
 
+  async function loadTableLuotSong() {
+    const THEO_DOI_HEADER = [
+      "STT",
+      "Code",
+      "GM-HT",
+      "GM-GB",
+      "Giá mua",
+      "Giá bán",
+      "Giá hiện tại",
+    ];
+
+    let table = document.getElementById("table_luot_song");
+    const tableHead = table.querySelector("thead");
+    const tableBody = table.querySelector("tbody");
+    const response = await fetch("./data/luot_song.json");
+    LUOT_SONG_DATA = await response.json();
+
+    // clear the table
+    tableHead.innerHTML = "<tr></tr>";
+    tableBody.innerHTML = "";
+
+    // Populate the header
+    for (const headerText of THEO_DOI_HEADER) {
+      const headerElement = document.createElement("th");
+      headerElement.textContent = headerText;
+      tableHead.querySelector("tr").appendChild(headerElement);
+    }
+    let stt = 1;
+    for (const key in LUOT_SONG_DATA) {
+      const rowElement = document.createElement("tr");
+
+      // STT
+      const sttElement = document.createElement("td");
+      sttElement.textContent = stt;
+      rowElement.appendChild(sttElement);
+
+      // Mã chứng khoán
+      const maCKElement = document.createElement("td");
+      let link = document.createElement("a");
+      link.setAttribute(
+        "href",
+        "https://vn.tradingview.com/symbols/HOSE-" + key
+      );
+      link.setAttribute("target", "_blank");
+      link.textContent = key;
+      maCKElement.appendChild(link);
+      rowElement.appendChild(maCKElement);
+
+      // Phần trăm giá nên mua so với giá hiện tại
+      const percentGNMHTElement = document.createElement("td");
+      percentGNMHTElement.textContent = "";
+      percentGNMHTElement.setAttribute("id", "percentGNMHT_luot_song" + stt);
+      rowElement.appendChild(percentGNMHTElement);
+
+      // Phần trăm Giá mua - Giá bán
+      let gia_mua = LUOT_SONG_DATA[key]["gia_mua"];
+      let gia_ban = LUOT_SONG_DATA[key]["gia_ban"];
+      const percentMongChoElement = document.createElement("td");
+      percentMongChoElement.textContent = "";
+      percentMongChoElement.setAttribute(
+        "id",
+        "percent_mua_ban_luot_song" + stt
+      );
+      rowElement.appendChild(percentMongChoElement);
+
+      // Giá mua
+      const giaMuaElement = document.createElement("td");
+      giaMuaElement.textContent = gia_mua.toLocaleString("en-US");
+      rowElement.appendChild(giaMuaElement);
+
+      // Giá nên mua hidden
+      let giaNenMuaInputHidden = document.createElement("input");
+      giaNenMuaInputHidden.setAttribute("type", "hidden");
+      giaNenMuaInputHidden.setAttribute("id", "gianenmua_luot_song" + stt);
+      giaNenMuaInputHidden.setAttribute("value", gia_mua);
+      rowElement.appendChild(giaNenMuaInputHidden);
+
+      // Giá bán
+      const giaBanElement = document.createElement("td");
+      giaBanElement.textContent = gia_ban.toLocaleString("en-US");
+      rowElement.appendChild(giaBanElement);
+
+      // Giá nên bán hidden
+      let giaNenBanInputHidden = document.createElement("input");
+      giaNenBanInputHidden.setAttribute("type", "hidden");
+      giaNenBanInputHidden.setAttribute("id", "gianenban_luot_song" + stt);
+      giaNenBanInputHidden.setAttribute("value", gia_ban);
+      rowElement.appendChild(giaNenBanInputHidden);
+
+      // Giá hiện tại
+      const giaHienTaiElement = document.createElement("td");
+      giaHienTaiElement.setAttribute("id", "giahientai_luot_song" + stt);
+      giaHienTaiElement.textContent = "";
+      rowElement.appendChild(giaHienTaiElement);
+
+      tableBody.appendChild(rowElement);
+      stt++;
+    }
+  }
+
   function chu_chay() {
     const list_span = document.querySelectorAll("span");
     list_span.forEach((item) => {
@@ -491,6 +685,7 @@ $(document).ready(function () {
   setInterval(chu_chay, 9600);
   loadIntoTable();
   loadTableTheodoi();
+  loadTableLuotSong();
   updateClass();
   setInterval(updateClass, 5000);
   setInterval(clear_log, 60000);
