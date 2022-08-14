@@ -64,29 +64,19 @@
     "gia_ban": 19700,
     "linh_vuc": ""
   },
-  "ST8": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
-  },
   "FIR": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 42700,
+    "gia_ban": 44500,
     "linh_vuc": ""
   },
   "S4A": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 35000,
+    "gia_ban": 37100,
     "linh_vuc": ""
   },
   "SHP": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
-  },
-  "VPD": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 26750,
+    "gia_ban": 29000,
     "linh_vuc": ""
   },
   "MDG": {
