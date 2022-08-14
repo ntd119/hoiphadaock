@@ -35,43 +35,33 @@
     "linh_vuc": "Không được tốt"
   },
   "PC1": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 34900,
+    "gia_ban": 45500,
     "linh_vuc": ""
   },
   "PNJ": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 97500,
+    "gia_ban": 128200,
     "linh_vuc": ""
   },
   "REE": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
-  },
-  "SAB": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 75200,
+    "gia_ban": 99000,
     "linh_vuc": ""
   },
   "VPI": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 62000,
+    "gia_ban": 65000,
     "linh_vuc": ""
   },
   "VSH": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
-  },
-  "TDM": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 38450,
+    "gia_ban": 46350,
     "linh_vuc": ""
   },
   "OGC": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 10450,
+    "gia_ban": 19700,
     "linh_vuc": ""
   },
   "ST8": {
