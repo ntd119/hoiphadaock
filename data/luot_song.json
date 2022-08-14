@@ -2,31 +2,31 @@
   "GAS": {
     "gia_mua": 105000,
     "gia_ban": 118200,
-    "linh_vuc": ""
+    "linh_vuc": "Năng lượng"
   },
   "ANV": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
+    "gia_mua": 42750,
+    "gia_ban": 54600,
+    "linh_vuc": "Bán lẻ"
   },
   "BWE": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
+    "gia_mua": 48000,
+    "gia_ban": 53000,
+    "linh_vuc": "Lựa chọn bởi các quỹ"
   },
   "DGC": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
-    "linh_vuc": ""
+    "gia_mua": 91600,
+    "gia_ban": 132000,
+    "linh_vuc": "< 3 năm>"
   },
   "DPM": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 46900,
+    "gia_ban": 69000,
     "linh_vuc": ""
   },
   "GEG": {
-    "gia_mua": 105000,
-    "gia_ban": 118200,
+    "gia_mua": 17700,
+    "gia_ban": 25500,
     "linh_vuc": ""
   },
   "KOS": {
