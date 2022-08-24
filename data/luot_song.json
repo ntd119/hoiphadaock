@@ -1,8 +1,13 @@
 {
   "GAS": {
-    "gia_mua": 105000,
+    "gia_mua": 95000,
     "gia_ban": 118200,
     "linh_vuc": "Năng lượng"
+  },
+   "DGW": {
+    "gia_mua": 57300,
+    "gia_ban": 74400,
+    "linh_vuc": ""
   },
   "ANV": {
     "gia_mua": 42750,
