@@ -688,6 +688,6 @@ $(document).ready(function () {
   loadTableTheodoi();
   loadTableLuotSong();
   updateClass();
-  setInterval(updateClass, 5000);
+  setInterval(updateClass, 10000);
   setInterval(clear_log, 60000);
 });
