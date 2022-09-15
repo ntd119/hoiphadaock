@@ -181,7 +181,19 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent = parseFloat(filter_data["change_percent"]);
           let giaHienTai = filter_data["last_price"];
-          if (percent >= 0) {
+           if (percent == 0) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          }else if (percent >= 0) {
             $("#giahientai" + stt).html(
               "<div style='color: " +
                 BACKGROUND_LAI +
@@ -292,7 +304,19 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent_theodoi = parseFloat(filter_data_theodoi["change_percent"]);
           let giaHienTai_theodoi = filter_data_theodoi["last_price"];
-          if (percent_theodoi >= 0) {
+          if (percent_theodoi == 0) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          } else if (percent_theodoi >= 0) {
             $("#giahientai_theodoi" + stt_theodoi).html(
               "<div style='color: " +
                 BACKGROUND_LAI +
@@ -386,7 +410,19 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent_luot_song = parseFloat(filter_data_luotsong["change_percent"]);
           let giaHienTai_luotsong = filter_data_luotsong["last_price"];
-          if (percent_luot_song >= 0) {
+          if (percent_luot_song == 0) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          } else if (percent_luot_song >= 0) {
             $("#giahientai_luot_song" + stt_luot_song).html(
               "<div style='color: " +
                 BACKGROUND_LAI +
