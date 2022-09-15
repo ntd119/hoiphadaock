@@ -181,7 +181,33 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent = parseFloat(filter_data["change_percent"]);
           let giaHienTai = filter_data["last_price"];
-           if (percent == 0) {
+          let gia_tran = filter_data["ceiling_price"];
+          let gia_san = filter_data["floor_price"];
+          if (giaHienTai == gia_tran) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai == gia_san) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent == 0) {
             $("#giahientai" + stt).html(
               "<div style='color: " +
                 BACKGROUND_DUNG +
@@ -304,7 +330,33 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent_theodoi = parseFloat(filter_data_theodoi["change_percent"]);
           let giaHienTai_theodoi = filter_data_theodoi["last_price"];
-          if (percent_theodoi == 0) {
+          let gia_tran = filter_data_theodoi["ceiling_price"];
+          let gia_san = filter_data_theodoi["floor_price"];
+          if (giaHienTai_theodoi == gia_tran) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai_theodoi == gia_san) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent_theodoi == 0) {
             $("#giahientai_theodoi" + stt_theodoi).html(
               "<div style='color: " +
                 BACKGROUND_DUNG +
@@ -410,7 +462,33 @@ $(document).ready(function () {
           // Giá hiện tại
           let percent_luot_song = parseFloat(filter_data_luotsong["change_percent"]);
           let giaHienTai_luotsong = filter_data_luotsong["last_price"];
-          if (percent_luot_song == 0) {
+          let gia_tran = filter_data_luotsong["ceiling_price"];
+          let gia_san = filter_data_luotsong["floor_price"];
+          if (giaHienTai_luotsong == gia_tran) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai_luotsong == gia_san) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent_luot_song == 0) {
             $("#giahientai_luot_song" + stt_luot_song).html(
               "<div style='color: " +
                 BACKGROUND_DUNG +
