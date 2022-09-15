@@ -156,10 +156,14 @@ $(document).ready(function () {
   }
 
   function updateClass() {
-    let URL = "https://ntd119-stock-vietnam.herokuapp.com/stock/search";
+    let URL = "https://stock-vietnam.p.rapidapi.com/stock/search";
     $.ajax({
       url: URL,
       dataType: "JSON",
+      headers: {
+        'X-RapidAPI-Key': '407edd3509msh10d53232339f9e8p11494ajsn2ba2074881d5',
+        'X-RapidAPI-Host': 'stock-vietnam.p.rapidapi.com'
+      },
       error: function (msg) {
         $("#logAPI").html(msg);
         return msg;
