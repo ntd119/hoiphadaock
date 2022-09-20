@@ -333,19 +333,19 @@ $(document).ready(function () {
           let gia_tran = filter_data_theodoi["ceiling_price"];
           let gia_san = filter_data_theodoi["floor_price"];
           if (giaHienTai_theodoi == gia_tran) {
-            $("#giahientai" + stt).html(
+            $("#giahientai_theodoi" + stt_theodoi).html(
               "<div style='color: " +
                 BACKGROUND_TRAN +
                 "'>" +
                 format_price(giaHienTai_theodoi) +
                 "(" +
-                percent +
+                percent_theodoi +
                 '%)<i class="fa-solid fa-caret-up" style="color:' +
                 BACKGROUND_TRAN +
                 '"</div>'
             );
           } else if (giaHienTai_theodoi == gia_san) {
-            $("#giahientai" + stt).html(
+            $("#giahientai_theodoi" + stt_theodoi).html(
               "<div style='color: " +
                 BACKGROUND_SAN +
                 "'>" +
@@ -465,19 +465,19 @@ $(document).ready(function () {
           let gia_tran = filter_data_luotsong["ceiling_price"];
           let gia_san = filter_data_luotsong["floor_price"];
           if (giaHienTai_luotsong == gia_tran) {
-            $("#giahientai" + stt).html(
+            $("#giahientai_luot_song" + stt_luot_song).html(
               "<div style='color: " +
                 BACKGROUND_TRAN +
                 "'>" +
-                format_price(giaHienTai) +
+                format_price(giaHienTai_luotsong) +
                 "(" +
-                percent +
+                percent_luot_song +
                 '%)<i class="fa-solid fa-caret-up" style="color:' +
                 BACKGROUND_TRAN +
                 '"</div>'
             );
           } else if (giaHienTai_luotsong == gia_san) {
-            $("#giahientai" + stt).html(
+            $("#giahientai_luot_song" + stt_luot_song).html(
               "<div style='color: " +
                 BACKGROUND_SAN +
                 "'>" +
