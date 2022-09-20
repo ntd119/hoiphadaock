@@ -337,7 +337,7 @@ $(document).ready(function () {
               "<div style='color: " +
                 BACKGROUND_TRAN +
                 "'>" +
-                format_price(giaHienTai) +
+                format_price(giaHienTai_theodoi) +
                 "(" +
                 percent +
                 '%)<i class="fa-solid fa-caret-up" style="color:' +
@@ -349,9 +349,9 @@ $(document).ready(function () {
               "<div style='color: " +
                 BACKGROUND_SAN +
                 "'>" +
-                format_price(giaHienTai) +
+                format_price(giaHienTai_theodoi) +
                 "(" +
-                percent +
+                percent_theodoi +
                 '%)<i class="fa-solid fa-caret-up" style="color:' +
                 BACKGROUND_SAN +
                 '"</div>'
@@ -481,9 +481,9 @@ $(document).ready(function () {
               "<div style='color: " +
                 BACKGROUND_SAN +
                 "'>" +
-                format_price(giaHienTai) +
+                format_price(giaHienTai_luotsong) +
                 "(" +
-                percent +
+                percent_luot_song +
                 '%)<i class="fa-solid fa-caret-up" style="color:' +
                 BACKGROUND_SAN +
                 '"</div>'
