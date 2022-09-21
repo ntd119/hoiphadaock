@@ -1,4 +1,12 @@
 {
+    "GAS": {
+        "gia_mua": 95000,
+        "gia_ban": 118200
+    },
+    "EIB": {
+        "gia_mua": 30950,
+        "gia_ban": 35300
+    },
     "LPB": {
         "gia_mua": 13150,
         "gia_ban": 16100
