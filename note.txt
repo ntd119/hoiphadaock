@@ -1,0 +1,5 @@
+"MDG": {
+    "gia_mua": 16400,
+    "gia_ban": 18850,
+    "linh_vuc": ""
+  }
