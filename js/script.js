@@ -156,582 +156,433 @@ $(document).ready(function () {
   }
 
   function updateClass() {
-    let URL = "https://s.cafef.vn/ajax/marketmap.ashx?stock=1&type=1&&cate=";
-    let lis_response = [];
+    let URL = "https://stock-vietnam.p.rapidapi.com/stock/search";
     $.ajax({
-      url: URL + "345",
+      url: URL,
       dataType: "JSON",
+      headers: {
+        'X-RapidAPI-Key': '407edd3509msh10d53232339f9e8p11494ajsn2ba2074881d5',
+        'X-RapidAPI-Host': 'stock-vietnam.p.rapidapi.com'
+      },
       error: function (msg) {
         $("#logAPI").html(msg);
         return msg;
       },
       success: function (response) {
-        lis_response = response;
-        $.ajax({
-          url: URL + "347",
-          dataType: "JSON",
-          error: function (msg) {
-            $("#logAPI").html(msg);
-            return msg;
-          },
-          success: function (response) {
-            lis_response = lis_response.concat(response);
-            $.ajax({
-              url: URL + "343",
-              dataType: "JSON",
-              error: function (msg) {
-                $("#logAPI").html(msg);
-                return msg;
-              },
-              success: function (response) {
-                lis_response = lis_response.concat(response);
-                $.ajax({
-                  url: URL + "346",
-                  dataType: "JSON",
-                  error: function (msg) {
-                    $("#logAPI").html(msg);
-                    return msg;
-                  },
-                  success: function (response) {
-                    lis_response = lis_response.concat(response);
-                    $.ajax({
-                      url: URL + "339",
-                      dataType: "JSON",
-                      error: function (msg) {
-                        $("#logAPI").html(msg);
-                        return msg;
-                      },
-                      success: function (response) {
-                        lis_response = lis_response.concat(response);
-                        $.ajax({
-                          url: URL + "340",
-                          dataType: "JSON",
-                          error: function (msg) {
-                            $("#logAPI").html(msg);
-                            return msg;
-                          },
-                          success: function (response) {
-                            lis_response = lis_response.concat(response);
-                            $.ajax({
-                              url: URL + "344",
-                              dataType: "JSON",
-                              error: function (msg) {
-                                $("#logAPI").html(msg);
-                                return msg;
-                              },
-                              success: function (response) {
-                                lis_response = lis_response.concat(response);
-                                $.ajax({
-                                  url: URL + "338",
-                                  dataType: "JSON",
-                                  error: function (msg) {
-                                    $("#logAPI").html(msg);
-                                    return msg;
-                                  },
-                                  success: function (response) {
-                                    lis_response =
-                                      lis_response.concat(response);
-                                    $.ajax({
-                                      url: URL + "341",
-                                      dataType: "JSON",
-                                      error: function (msg) {
-                                        $("#logAPI").html(msg);
-                                        return msg;
-                                      },
-                                      success: function (response) {
-                                        lis_response =
-                                          lis_response.concat(response);
-                                        $.ajax({
-                                          url: URL + "348",
-                                          dataType: "JSON",
-                                          error: function (msg) {
-                                            $("#logAPI").html(msg);
-                                            return msg;
-                                          },
-                                          success: function (response) {
-                                            lis_response =
-                                              lis_response.concat(response);
-                                            $.ajax({
-                                              url: URL + "342",
-                                              dataType: "JSON",
-                                              error: function (msg) {
-                                                $("#logAPI").html(msg);
-                                                return msg;
-                                              },
-                                              success: function (response) {
-                                                lis_response =
-                                                  lis_response.concat(response);
-                                                let stt = 1;
-                                                for (const key in da_mua_data) {
-                                                  let filter_data =
-                                                  lis_response.filter(
-                                                      (x) =>
-                                                        x.NoneSymbol === key
-                                                    )[0];
+        let lis_response = response["data"];
+        let stt = 1;
+        for (const key in da_mua_data) {
+          let filter_data = lis_response.filter((x) => x.symbol === key)[0];
+          if (filter_data == null) {
+            continue;
+          }
 
-                                                  if (filter_data == null) {
-                                                    continue;
-                                                  }
+          // Giá hiện tại
+          let percent = parseFloat(filter_data["change_percent"]);
+          let giaHienTai = filter_data["last_price"];
+          let gia_tran = filter_data["ceiling_price"];
+          let gia_san = filter_data["floor_price"];
+          if (giaHienTai == gia_tran) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai == gia_san) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent == 0) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          }else if (percent >= 0) {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            $("#giahientai" + stt).html(
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
+                format_price(giaHienTai) +
+                "(" +
+                percent +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
 
-                                                  // Giá hiện tại
-                                                  let percent = parseFloat(
-                                                    filter_data["Percent"]
-                                                  );
-                                                  let giaHienTai =
-                                                    filter_data["Price"] * 1000;
-                                                  if (percent >= 0) {
-                                                    $("#giahientai" + stt).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LAI +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai
-                                                        ) +
-                                                        "(" +
-                                                        percent +
-                                                        '%)<i class="fa-solid fa-caret-up" style="color:' +
-                                                        BACKGROUND_LAI +
-                                                        '"</div>'
-                                                    );
-                                                  } else {
-                                                    $("#giahientai" + stt).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LO +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai
-                                                        ) +
-                                                        "(" +
-                                                        percent +
-                                                        '%)<i class="fa-solid fa-caret-down" style="color:' +
-                                                        BACKGROUND_LO +
-                                                        '"</div>'
-                                                    );
-                                                  }
+          //  lãi lỗ
+          let giaDaMua = $("#giadamua" + stt).val();
+          let percent_change = parseFloat(
+            ((giaHienTai - giaDaMua) / giaDaMua) * 100
+          ).toFixed(2);
+          if (percent_change >= 0) {
+            $("#lailo" + stt).html(
+              '<strong><div style="color: ' +
+                BACKGROUND_LAI +
+                '";font-weight: bold;>' +
+                format_price(percent_change) +
+                "%" +
+                '<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                ' ;"></i></div></strong>'
+            );
+          } else {
+            $("#lailo" + stt).html(
+              '<strong><div style="color: ' +
+                BACKGROUND_LO +
+                '";font-weight: bold;>' +
+                format_price(percent_change) +
+                "%" +
+                '<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                ' ;"></i></div></strong>'
+            );
+          }
 
-                                                  //  lãi lỗ
-                                                  let giaDaMua = $(
-                                                    "#giadamua" + stt
-                                                  ).val();
-                                                  let percent_change =
-                                                    parseFloat(
-                                                      ((giaHienTai - giaDaMua) /
-                                                        giaDaMua) *
-                                                        100
-                                                    ).toFixed(2);
-                                                  if (percent_change >= 0) {
-                                                    $("#lailo" + stt).html(
-                                                      '<strong><div style="color: ' +
-                                                        BACKGROUND_LAI +
-                                                        '";font-weight: bold;>' +
-                                                        format_price(
-                                                          percent_change
-                                                        ) +
-                                                        "%" +
-                                                        '<i class="fa-solid fa-caret-up" style="color:' +
-                                                        BACKGROUND_LAI +
-                                                        ' ;"></i></div></strong>'
-                                                    );
-                                                  } else {
-                                                    $("#lailo" + stt).html(
-                                                      '<strong><div style="color: ' +
-                                                        BACKGROUND_LO +
-                                                        '";font-weight: bold;>' +
-                                                        format_price(
-                                                          percent_change
-                                                        ) +
-                                                        "%" +
-                                                        '<i class="fa-solid fa-caret-down" style="color:' +
-                                                        BACKGROUND_LO +
-                                                        ' ;"></i></div></strong>'
-                                                    );
-                                                  }
+          // status
+          if (percent_change >= 4) {
+            let thongbao = $("#thongbao" + stt).val();
+            thongbao++;
+            $("#thongbao" + stt).val(thongbao);
+            if (thongbao <= 3) {
+              notifyMe(key, percent_change);
+            }
+            if (thongbao > 1800) {
+              // 30 phút
+              $("#thongbao" + stt).val(0);
+            }
+            $("#status" + stt).html(
+              '<div style="background-color:' + BACKGROUND_LAI + ';">Bán</div>'
+            );
+          } else if (percent_change <= -4) {
+            $("#thongbao" + stt).val(0);
+            $("#status" + stt).html(
+              '<div style="background-color:' +
+                BACKGROUND_LO +
+                ';">Cắt lỗ</div>'
+            );
+          } else {
+            $("#thongbao" + stt).val(0);
+            $("#status" + stt).html("");
+          }
+          stt++;
+        }
+        let today = new Date();
+        let date =
+          leading_zero(today.getDate(), 2) +
+          "-" +
+          leading_zero(today.getMonth() + 1, 2) +
+          "-" +
+          today.getFullYear();
 
-                                                  // status
-                                                  if (percent_change >= 4) {
-                                                    let thongbao = $(
-                                                      "#thongbao" + stt
-                                                    ).val();
-                                                    thongbao++;
-                                                    $("#thongbao" + stt).val(
-                                                      thongbao
-                                                    );
-                                                    if (thongbao <= 3) {
-                                                      notifyMe(
-                                                        key,
-                                                        percent_change
-                                                      );
-                                                    }
-                                                    if (thongbao > 1800) {
-                                                      // 30 phút
-                                                      $("#thongbao" + stt).val(
-                                                        0
-                                                      );
-                                                    }
-                                                    $("#status" + stt).html(
-                                                      '<div style="background-color:' +
-                                                        BACKGROUND_LAI +
-                                                        ';">Bán</div>'
-                                                    );
-                                                  } else if (
-                                                    percent_change <= -4
-                                                  ) {
-                                                    $("#thongbao" + stt).val(0);
-                                                    $("#status" + stt).html(
-                                                      '<div style="background-color:' +
-                                                        BACKGROUND_LO +
-                                                        ';">Cắt lỗ</div>'
-                                                    );
-                                                  } else {
-                                                    $("#thongbao" + stt).val(0);
-                                                    $("#status" + stt).html("");
-                                                  }
-                                                  stt++;
-                                                }
-                                                let today = new Date();
-                                                let date =
-                                                  leading_zero(
-                                                    today.getDate(),
-                                                    2
-                                                  ) +
-                                                  "-" +
-                                                  leading_zero(
-                                                    today.getMonth() + 1,
-                                                    2
-                                                  ) +
-                                                  "-" +
-                                                  today.getFullYear();
+        let hour =
+          leading_zero(today.getHours(), 2) +
+          ":" +
+          leading_zero(today.getMinutes(), 2) +
+          ":" +
+          leading_zero(today.getSeconds(), 2);
+        let log = $("#logAPI").val();
+        $("#logAPI").html(
+          log + "Update giá cổ phiếu: " + date + ": " + hour + "\n"
+        );
 
-                                                let hour =
-                                                  leading_zero(
-                                                    today.getHours(),
-                                                    2
-                                                  ) +
-                                                  ":" +
-                                                  leading_zero(
-                                                    today.getMinutes(),
-                                                    2
-                                                  ) +
-                                                  ":" +
-                                                  leading_zero(
-                                                    today.getSeconds(),
-                                                    2
-                                                  );
-                                                let log = $("#logAPI").val();
-                                                $("#logAPI").html(
-                                                  log +
-                                                    "Update giá cổ phiếu: " +
-                                                    date +
-                                                    ": " +
-                                                    hour +
-                                                    "\n"
-                                                );
+        // update giá bảng theo dõi
+        let stt_theodoi = 1;
+        for (const key_theo_doi in THEO_DOI_DATA) {
+          let filter_data_theodoi = lis_response.filter(
+            (x) => x.symbol === key_theo_doi
+          )[0];
+          // Giá hiện tại
+          let percent_theodoi = parseFloat(filter_data_theodoi["change_percent"]);
+          let giaHienTai_theodoi = filter_data_theodoi["last_price"];
+          let gia_tran = filter_data_theodoi["ceiling_price"];
+          let gia_san = filter_data_theodoi["floor_price"];
+          if (giaHienTai_theodoi == gia_tran) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai_theodoi == gia_san) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent_theodoi == 0) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          } else if (percent_theodoi >= 0) {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            $("#giahientai_theodoi" + stt_theodoi).html(
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
+                format_price(giaHienTai_theodoi) +
+                "(" +
+                percent_theodoi +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
 
-                                                // update giá bảng theo dõi
-                                                let stt_theodoi = 1;
-                                                for (const key_theo_doi in THEO_DOI_DATA) {
-                                                  let filter_data_theodoi =
-                                                  lis_response.filter(
-                                                      (x) =>
-                                                        x.NoneSymbol ===
-                                                        key_theo_doi
-                                                    )[0];
-                                                  // Giá hiện tại
-                                                  let percent_theodoi =
-                                                    parseFloat(
-                                                      filter_data_theodoi[
-                                                        "Percent"
-                                                      ]
-                                                    );
-                                                  let giaHienTai_theodoi =
-                                                    filter_data_theodoi[
-                                                      "Price"
-                                                    ] * 1000;
-                                                  if (percent_theodoi >= 0) {
-                                                    $(
-                                                      "#giahientai_theodoi" +
-                                                        stt_theodoi
-                                                    ).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LAI +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai_theodoi
-                                                        ) +
-                                                        "(" +
-                                                        percent_theodoi +
-                                                        '%)<i class="fa-solid fa-caret-up" style="color:' +
-                                                        BACKGROUND_LAI +
-                                                        '"</div>'
-                                                    );
-                                                  } else {
-                                                    $(
-                                                      "#giahientai_theodoi" +
-                                                        stt_theodoi
-                                                    ).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LO +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai_theodoi
-                                                        ) +
-                                                        "(" +
-                                                        percent_theodoi +
-                                                        '%)<i class="fa-solid fa-caret-down" style="color:' +
-                                                        BACKGROUND_LO +
-                                                        '"</div>'
-                                                    );
-                                                  }
+          // Phần trăm giá nên mua so với giá hiện tại
+          let giaNenMua = $("#gianenmua" + stt_theodoi).val();
+          let giaNenBan = $("#gianenban" + stt_theodoi).val();
+          if (giaNenMua > 0) {
+            // Giá nên mua - giá hiện tại
+            let percent_change = parseFloat(
+              ((giaHienTai_theodoi - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_change >= 0) {
+              $("#percentGNMHT_theodoi" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percentGNMHT_theodoi" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
 
-                                                  // Phần trăm giá nên mua so với giá hiện tại
-                                                  let giaNenMua = $(
-                                                    "#gianenmua" + stt_theodoi
-                                                  ).val();
-                                                  let giaNenBan = $(
-                                                    "#gianenban" + stt_theodoi
-                                                  ).val();
-                                                  if (giaNenMua > 0) {
-                                                    // Giá nên mua - giá hiện tại
-                                                    let percent_change =
-                                                      parseFloat(
-                                                        ((giaHienTai_theodoi -
-                                                          giaNenMua) /
-                                                          giaNenMua) *
-                                                          100
-                                                      ).toFixed(2);
-                                                    if (percent_change >= 0) {
-                                                      $(
-                                                        "#percentGNMHT_theodoi" +
-                                                          stt_theodoi
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LAI +
-                                                          "'>" +
-                                                          percent_change +
-                                                          '%<i class="fa-solid fa-caret-up" style="color:' +
-                                                          BACKGROUND_LAI +
-                                                          '"</div>'
-                                                      );
-                                                    } else {
-                                                      $(
-                                                        "#percentGNMHT_theodoi" +
-                                                          stt_theodoi
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LO +
-                                                          "'>" +
-                                                          percent_change +
-                                                          '%<i class="fa-solid fa-caret-down" style="color:' +
-                                                          BACKGROUND_LO +
-                                                          '"</div>'
-                                                      );
-                                                    }
+            // Giá nên mua - giá bán
+            let percent_gia_nen_mua_gia_nen_ban = parseFloat(
+              ((giaNenBan - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_gia_nen_mua_gia_nen_ban >= 0) {
+              $("#percent_mua_ban" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percent_mua_ban" + stt_theodoi).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
+          }
+          stt_theodoi++;
+        }
 
-                                                    // Giá nên mua - giá bán
-                                                    let percent_gia_nen_mua_gia_nen_ban =
-                                                      parseFloat(
-                                                        ((giaNenBan -
-                                                          giaNenMua) /
-                                                          giaNenMua) *
-                                                          100
-                                                      ).toFixed(2);
-                                                    if (
-                                                      percent_gia_nen_mua_gia_nen_ban >=
-                                                      0
-                                                    ) {
-                                                      $(
-                                                        "#percent_mua_ban" +
-                                                          stt_theodoi
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LAI +
-                                                          "'>" +
-                                                          percent_gia_nen_mua_gia_nen_ban +
-                                                          '%<i class="fa-solid fa-caret-up" style="color:' +
-                                                          BACKGROUND_LAI +
-                                                          '"</div>'
-                                                      );
-                                                    } else {
-                                                      $(
-                                                        "#percent_mua_ban" +
-                                                          stt_theodoi
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LO +
-                                                          "'>" +
-                                                          percent_gia_nen_mua_gia_nen_ban +
-                                                          '%<i class="fa-solid fa-caret-down" style="color:' +
-                                                          BACKGROUND_LO +
-                                                          '"</div>'
-                                                      );
-                                                    }
-                                                  }
-                                                  stt_theodoi++;
-                                                }
+        // update giá bảng luot sóng
+        let stt_luot_song = 1;
+        for (const key_luot_song in LUOT_SONG_DATA) {
+          let filter_data_luotsong = lis_response.filter(
+            (x) => x.symbol === key_luot_song
+          )[0];
+          // Giá hiện tại
+          let percent_luot_song = parseFloat(filter_data_luotsong["change_percent"]);
+          let giaHienTai_luotsong = filter_data_luotsong["last_price"];
+          let gia_tran = filter_data_luotsong["ceiling_price"];
+          let gia_san = filter_data_luotsong["floor_price"];
+          if (giaHienTai_luotsong == gia_tran) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_TRAN +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_TRAN +
+                '"</div>'
+            );
+          } else if (giaHienTai_luotsong == gia_san) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_SAN +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_SAN +
+                '"</div>'
+            );
+          } else if (percent_luot_song == 0) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_DUNG +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_DUNG +
+                '"</div>'
+            );
+          } else if (percent_luot_song >= 0) {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_LAI +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-up" style="color:' +
+                BACKGROUND_LAI +
+                '"</div>'
+            );
+          } else {
+            $("#giahientai_luot_song" + stt_luot_song).html(
+              "<div style='color: " +
+                BACKGROUND_LO +
+                "'>" +
+                format_price(giaHienTai_luotsong) +
+                "(" +
+                percent_luot_song +
+                '%)<i class="fa-solid fa-caret-down" style="color:' +
+                BACKGROUND_LO +
+                '"</div>'
+            );
+          }
 
-                                                // update giá bảng luot sóng
-                                                let stt_luot_song = 1;
-                                                for (const key_luot_song in LUOT_SONG_DATA) {
-                                                  let filter_data_luotsong =
-                                                  lis_response.filter(
-                                                      (x) =>
-                                                        x.NoneSymbol ===
-                                                        key_luot_song
-                                                    )[0];
-                                                  // Giá hiện tại
-                                                  let percent_luot_song =
-                                                    parseFloat(
-                                                      filter_data_luotsong[
-                                                        "Percent"
-                                                      ]
-                                                    );
-                                                  let giaHienTai_luotsong =
-                                                    filter_data_luotsong[
-                                                      "Price"
-                                                    ] * 1000;
-                                                  if (percent_luot_song >= 0) {
-                                                    $(
-                                                      "#giahientai_luot_song" +
-                                                        stt_luot_song
-                                                    ).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LAI +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai_luotsong
-                                                        ) +
-                                                        "(" +
-                                                        percent_luot_song +
-                                                        '%)<i class="fa-solid fa-caret-up" style="color:' +
-                                                        BACKGROUND_LAI +
-                                                        '"</div>'
-                                                    );
-                                                  } else {
-                                                    $(
-                                                      "#giahientai_luot_song" +
-                                                        stt_luot_song
-                                                    ).html(
-                                                      "<div style='color: " +
-                                                        BACKGROUND_LO +
-                                                        "'>" +
-                                                        format_price(
-                                                          giaHienTai_luotsong
-                                                        ) +
-                                                        "(" +
-                                                        percent_luot_song +
-                                                        '%)<i class="fa-solid fa-caret-down" style="color:' +
-                                                        BACKGROUND_LO +
-                                                        '"</div>'
-                                                    );
-                                                  }
+          // Phần trăm giá nên mua so với giá hiện tại
+          let giaNenMua = $("#gianenmua_luot_song" + stt_luot_song).val();
+          let giaNenBan = $("#gianenban_luot_song" + stt_luot_song).val();
+          if (giaNenMua > 0) {
+            // Giá nên mua - giá hiện tại
+            let percent_change = parseFloat(
+              ((giaHienTai_luotsong - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_change >= 0) {
+              $("#percentGNMHT_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percentGNMHT_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_change +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
 
-                                                  // Phần trăm giá nên mua so với giá hiện tại
-                                                  let giaNenMua = $(
-                                                    "#gianenmua_luot_song" +
-                                                      stt_luot_song
-                                                  ).val();
-                                                  let giaNenBan = $(
-                                                    "#gianenban_luot_song" +
-                                                      stt_luot_song
-                                                  ).val();
-                                                  if (giaNenMua > 0) {
-                                                    // Giá nên mua - giá hiện tại
-                                                    let percent_change =
-                                                      parseFloat(
-                                                        ((giaHienTai_luotsong -
-                                                          giaNenMua) /
-                                                          giaNenMua) *
-                                                          100
-                                                      ).toFixed(2);
-                                                    if (percent_change >= 0) {
-                                                      $(
-                                                        "#percentGNMHT_luot_song" +
-                                                          stt_luot_song
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LAI +
-                                                          "'>" +
-                                                          percent_change +
-                                                          '%<i class="fa-solid fa-caret-up" style="color:' +
-                                                          BACKGROUND_LAI +
-                                                          '"</div>'
-                                                      );
-                                                    } else {
-                                                      $(
-                                                        "#percentGNMHT_luot_song" +
-                                                          stt_luot_song
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LO +
-                                                          "'>" +
-                                                          percent_change +
-                                                          '%<i class="fa-solid fa-caret-down" style="color:' +
-                                                          BACKGROUND_LO +
-                                                          '"</div>'
-                                                      );
-                                                    }
-
-                                                    // Giá nên mua - giá bán
-                                                    let percent_gia_nen_mua_gia_nen_ban =
-                                                      parseFloat(
-                                                        ((giaNenBan -
-                                                          giaNenMua) /
-                                                          giaNenMua) *
-                                                          100
-                                                      ).toFixed(2);
-                                                    if (
-                                                      percent_gia_nen_mua_gia_nen_ban >=
-                                                      0
-                                                    ) {
-                                                      $(
-                                                        "#percent_mua_ban_luot_song" +
-                                                          stt_luot_song
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LAI +
-                                                          "'>" +
-                                                          percent_gia_nen_mua_gia_nen_ban +
-                                                          '%<i class="fa-solid fa-caret-up" style="color:' +
-                                                          BACKGROUND_LAI +
-                                                          '"</div>'
-                                                      );
-                                                    } else {
-                                                      $(
-                                                        "#percent_mua_ban_luot_song" +
-                                                          stt_luot_song
-                                                      ).html(
-                                                        "<div style='color: " +
-                                                          BACKGROUND_LO +
-                                                          "'>" +
-                                                          percent_gia_nen_mua_gia_nen_ban +
-                                                          '%<i class="fa-solid fa-caret-down" style="color:' +
-                                                          BACKGROUND_LO +
-                                                          '"</div>'
-                                                      );
-                                                    }
-                                                  }
-                                                  stt_luot_song++;
-                                                }
-                                              },
-                                            });
-                                          },
-                                        });
-                                      },
-                                    });
-                                  },
-                                });
-                              },
-                            });
-                          },
-                        });
-                      },
-                    });
-                  },
-                });
-              },
-            });
-          },
-        });
+            // Giá nên mua - giá bán
+            let percent_gia_nen_mua_gia_nen_ban = parseFloat(
+              ((giaNenBan - giaNenMua) / giaNenMua) * 100
+            ).toFixed(2);
+            if (percent_gia_nen_mua_gia_nen_ban >= 0) {
+              $("#percent_mua_ban_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LAI +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-up" style="color:' +
+                  BACKGROUND_LAI +
+                  '"</div>'
+              );
+            } else {
+              $("#percent_mua_ban_luot_song" + stt_luot_song).html(
+                "<div style='color: " +
+                  BACKGROUND_LO +
+                  "'>" +
+                  percent_gia_nen_mua_gia_nen_ban +
+                  '%<i class="fa-solid fa-caret-down" style="color:' +
+                  BACKGROUND_LO +
+                  '"</div>'
+              );
+            }
+          }
+          stt_luot_song++;
+        }
       },
     });
   }
@@ -954,6 +805,6 @@ $(document).ready(function () {
   loadTableTheodoi();
   loadTableLuotSong();
   updateClass();
-  setInterval(updateClass, 15000);
+  setInterval(updateClass, 10000);
   setInterval(clear_log, 60000);
 });

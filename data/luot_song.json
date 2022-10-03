@@ -83,5 +83,10 @@
     "gia_mua": 26750,
     "gia_ban": 29000,
     "linh_vuc": ""
+  },
+  "MDG": {
+    "gia_mua": 16400,
+    "gia_ban": 18850,
+    "linh_vuc": ""
   }
 }
