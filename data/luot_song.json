@@ -4,6 +4,11 @@
     "gia_ban": 118200,
     "linh_vuc": "Năng lượng"
   },
+  "VPB": {
+    "gia_mua": 16850,
+    "gia_ban": 16850,
+    "linh_vuc": ""
+  },
    "DGW": {
     "gia_mua": 57300,
     "gia_ban": 74400,
