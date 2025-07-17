@@ -3,3 +3,5 @@
     "gia_ban": 18850,
     "linh_vuc": ""
   }
+
+  "bought": 18300,
