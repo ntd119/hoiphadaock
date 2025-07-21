@@ -37,7 +37,8 @@ $(document).ready(function () {
       tableHead.querySelector("tr").appendChild(headerElement);
     }
     let stt = 1;
-    for (const key in da_mua_data) {
+    for (const obj of da_mua_data) {
+    for (const key in obj) {
       const rowElement = document.createElement("tr");
 
       // STT
@@ -70,7 +71,7 @@ $(document).ready(function () {
       rowElement.appendChild(laiLoElement);
 
       // Giá mua
-      let giaDaMua = da_mua_data[key]["bought"];
+      let giaDaMua = obj[key];
       const giaMuaElement = document.createElement("td");
       giaMuaElement.textContent = giaDaMua.toLocaleString("en-US");
       rowElement.appendChild(giaMuaElement);
@@ -97,6 +98,7 @@ $(document).ready(function () {
 
       tableBody.appendChild(rowElement);
       stt++;
+    }
     }
   }
 
@@ -171,7 +173,8 @@ $(document).ready(function () {
       success: function (response) {
         let lis_response = response["data"];
         let stt = 1;
-        for (const key in da_mua_data) {
+         for (const obj of da_mua_data) {
+        for (const key in obj) {
           let filter_data = lis_response.filter((x) => x.symbol === key)[0];
           if (filter_data == null) {
             continue;
@@ -300,6 +303,7 @@ $(document).ready(function () {
             $("#status" + stt).html("");
           }
           stt++;
+        }
         }
         let today = new Date();
         let date =
